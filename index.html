@@ -3,77 +3,134 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LINE 貼圖製作大師 (V7: 專業匯出版)</title>
+    <title>LINE 貼圖製作大師 (V8: 雙色主題+自訂尺寸版)</title>
     
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 
     <style>
-        :root { --primary: #06C755; --bg: #f0f2f5; --dark-bg: #2b2b2b; --panel-bg: #ffffff; }
-        body { font-family: "Segoe UI", "Microsoft JhengHei", sans-serif; background: var(--bg); padding: 20px; color: #333; }
-        .container { max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: 400px 1fr; gap: 25px; }
+        /* 定義變數：預設為明亮模式 */
+        :root {
+            --primary: #06C755;
+            --bg: #f0f2f5;
+            --card-bg: #ffffff;
+            --text-main: #333333;
+            --text-sub: #666666;
+            --border: #dddddd;
+            --input-bg: #ffffff;
+            --preview-bg: #2b2b2b; /* 預覽區永遠保持深色比較好看 */
+            --panel-bg: #f8f9fa;
+        }
+
+        /* 暗黑模式變數 */
+        body.dark-mode {
+            --bg: #121212;
+            --card-bg: #1e1e1e;
+            --text-main: #e0e0e0;
+            --text-sub: #aaaaaa;
+            --border: #444444;
+            --input-bg: #2d2d2d;
+            --panel-bg: #252525;
+        }
+
+        body { 
+            font-family: "Segoe UI", "Microsoft JhengHei", sans-serif; 
+            background: var(--bg); 
+            padding: 20px; 
+            color: var(--text-main);
+            transition: background 0.3s, color 0.3s;
+        }
+
+        .header {
+            display: flex; justify-content: space-between; align-items: center;
+            max-width: 1400px; margin: 0 auto 20px auto;
+        }
+
+        .container { 
+            max-width: 1400px; margin: 0 auto; 
+            display: grid; grid-template-columns: 380px 1fr; gap: 25px; 
+        }
         @media (max-width: 950px) { .container { grid-template-columns: 1fr; } }
         
-        /* 通用卡片樣式 */
-        .card { background: var(--panel-bg); padding: 25px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); display: flex; flex-direction: column; gap: 15px; }
-        h1 { grid-column: 1/-1; text-align: center; margin-bottom: 10px; color: #444; font-size: 1.8rem; }
-        h2 { font-size: 1.1rem; color: #555; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px; margin: 0; }
+        /* 卡片樣式 */
+        .card { 
+            background: var(--card-bg); padding: 25px; border-radius: 16px; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.06); 
+            display: flex; flex-direction: column; gap: 15px;
+            transition: background 0.3s;
+        }
+
+        h1 { margin: 0; color: var(--text-main); font-size: 1.6rem; }
+        h2 { font-size: 1.1rem; color: var(--text-sub); border-bottom: 2px solid var(--border); padding-bottom: 10px; margin: 0; }
         
+        /* 主題切換按鈕 */
+        .theme-btn {
+            background: transparent; border: 2px solid var(--border); color: var(--text-main);
+            padding: 8px 15px; border-radius: 20px; cursor: pointer; font-weight: bold;
+            display: flex; align-items: center; gap: 5px; transition: 0.3s;
+        }
+        .theme-btn:hover { background: var(--panel-bg); border-color: var(--primary); }
+
         /* 上傳區 */
         .upload-box { 
-            border: 2px dashed #ccc; border-radius: 12px; padding: 25px 15px; text-align: center; 
-            cursor: pointer; background: #fafafa; transition: 0.3s;
+            border: 2px dashed var(--border); border-radius: 12px; padding: 20px 15px; text-align: center; 
+            cursor: pointer; background: var(--panel-bg); transition: 0.3s;
         }
-        .upload-box:hover { border-color: var(--primary); background: #f0fff4; }
+        .upload-box:hover { border-color: var(--primary); background: rgba(6, 199, 85, 0.05); }
+        .upload-box span { color: var(--text-sub); }
+
+        /* 輸入框優化 (更短、更精緻) */
+        input[type="number"], input[type="text"], select { 
+            width: 100%; padding: 6px 10px; 
+            border: 1px solid var(--border); border-radius: 6px; 
+            font-size: 0.9rem; background: var(--input-bg); color: var(--text-main);
+        }
+        input[type="number"]:focus, input[type="text"]:focus, select:focus { outline: none; border-color: var(--primary); }
         
+        /* 短欄位專用 class */
+        .input-short { width: 70px; text-align: center; } 
+
         /* 按鈕 */
         .btn { width: 100%; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1rem; transition: 0.2s; }
-        .btn-green { background: var(--primary); color: white; box-shadow: 0 4px 10px rgba(6,199,85,0.2); }
+        .btn-green { background: var(--primary); color: white; }
         .btn-green:hover { background: #05b34c; transform: translateY(-1px); }
-        .btn-green:disabled { background: #ccc; cursor: not-allowed; transform: none; box-shadow: none; }
-        .btn-outline { background: white; border: 1px solid #ccc; color: #555; font-size: 0.9rem; padding: 8px; }
-        .btn-outline:hover { background: #f9f9f9; }
+        .btn-green:disabled { background: #ccc; cursor: not-allowed; transform: none; }
+        .btn-outline { background: var(--card-bg); border: 1px solid var(--border); color: var(--text-main); padding: 8px; font-size: 0.9rem; }
+        .btn-outline:hover { background: var(--panel-bg); }
 
         /* 模式切換 Tabs */
-        .mode-tabs { display: flex; gap: 5px; background: #eee; padding: 4px; border-radius: 8px; }
-        .mode-tab { flex: 1; padding: 8px; text-align: center; cursor: pointer; border-radius: 6px; font-size: 0.9rem; font-weight: bold; color: #666; transition: 0.2s; }
-        .mode-tab.active { background: white; color: var(--primary); box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .mode-tabs { display: flex; gap: 5px; background: var(--border); padding: 4px; border-radius: 8px; }
+        .mode-tab { flex: 1; padding: 8px; text-align: center; cursor: pointer; border-radius: 6px; font-size: 0.9rem; font-weight: bold; color: var(--text-sub); }
+        .mode-tab.active { background: var(--card-bg); color: var(--primary); box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
 
-        /* 控制面板與表單 */
-        .control-panel { background: #f8f9fa; border-radius: 8px; padding: 15px; border: 1px solid #eee; }
+        /* 控制面板 */
+        .control-panel { background: var(--panel-bg); border-radius: 8px; padding: 15px; border: 1px solid var(--border); }
         .hidden { display: none; }
-        label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 0.9rem; color: #444; }
-        input[type="range"] { width: 100%; accent-color: var(--primary); }
-        input[type="number"], input[type="text"], select { width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.95rem; }
-        input[type="color"] { width: 100%; height: 40px; border: none; cursor: pointer; padding: 0; }
-        .row { display: flex; gap: 10px; } .col { flex: 1; }
+        label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 0.85rem; color: var(--text-main); }
+        .row { display: flex; gap: 10px; align-items: center; } 
+        .col { flex: 1; }
 
-        /* 右側：匯出設定區 */
+        /* 匯出設定區 (新版) */
         .export-bar {
-            background: #fff8e1; border: 1px solid #ffecb3; padding: 15px; border-radius: 10px;
+            background: rgba(6, 199, 85, 0.08); border: 1px solid var(--primary); padding: 15px; border-radius: 10px;
             display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;
         }
-        .export-group { flex: 1; min-width: 120px; }
+        .export-group { display: flex; flex-direction: column; gap: 5px; }
+        .size-inputs { display: flex; align-items: center; gap: 5px; color: var(--text-main); }
 
         /* 預覽區 */
-        .preview-section { display: flex; flex-direction: column; gap: 20px; }
-        
-        /* 原始圖預覽 */
         #origPreviewBox { 
-            text-align: center; background: #eee; border-radius: 8px; padding: 10px; min-height: 100px; 
-            display: flex; align-items: center; justify-content: center; overflow: hidden;
+            text-align: center; background: var(--panel-bg); border-radius: 8px; padding: 10px; min-height: 100px; 
+            display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1px solid var(--border);
         }
-        #origPreviewBox img { max-width: 100%; max-height: 250px; border-radius: 4px; display: none; }
-        #origPreviewBox.empty::after { content: "上傳後將在此顯示原圖"; color: #999; font-size: 0.9rem; }
-
-        /* 結果網格 (黑底) */
+        #origPreviewBox img { max-width: 100%; max-height: 200px; border-radius: 4px; display: none; }
+        
         #previewContainer {
-            background: var(--dark-bg); padding: 20px; border-radius: 12px; min-height: 300px;
+            background: var(--preview-bg); padding: 20px; border-radius: 12px; min-height: 300px;
             display: grid; gap: 15px; align-content: start;
         }
 
-        /* 單張貼圖卡片 */
         .sticker-card { display: flex; flex-direction: column; gap: 5px; position: relative; }
         .sticker-img-box {
             width: 100%; aspect-ratio: 1;
@@ -83,47 +140,43 @@
             background-size: 20px 20px;
             cursor: pointer; transition: transform 0.2s, border-color 0.2s;
         }
-        .sticker-img-box:hover { transform: scale(1.02); border-color: var(--primary); }
+        .sticker-img-box:hover { transform: scale(1.05); border-color: var(--primary); }
         .sticker-img-box img { max-width: 100%; max-height: 100%; object-fit: contain; }
-        
-        /* 檔名標籤 */
         .sticker-name { 
             text-align: center; color: #bbb; font-size: 0.8rem; font-family: monospace; 
             background: rgba(0,0,0,0.5); padding: 2px 5px; border-radius: 4px;
         }
-        
-        /* 下載提示 */
-        .download-hint { position: absolute; top: 5px; right: 5px; background: var(--primary); color: white; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; opacity: 0; transition: 0.2s; pointer-events: none; }
+        .download-hint { position: absolute; top: 5px; right: 5px; background: var(--primary); color: white; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; opacity: 0; pointer-events: none; transition: 0.2s; }
         .sticker-card:hover .download-hint { opacity: 1; }
 
-        /* 狀態列 */
-        .status-bar { padding: 10px; border-radius: 6px; font-size: 0.85em; background: #e3f2fd; color: #0d47a1; display: flex; align-items: center; gap: 8px; }
+        .status-bar { padding: 8px; border-radius: 6px; font-size: 0.85em; background: #e3f2fd; color: #0d47a1; margin-top: 10px; }
         .status-error { background: #ffebee; color: #c62828; }
         .status-success { background: #e8f5e9; color: #2e7d32; }
 
-        #manualLoad { display: none; margin-top: 10px; padding: 10px; border: 1px solid #fab1a0; background: #fff5f5; border-radius: 6px; font-size: 0.9rem; }
+        #manualLoad { display: none; margin-top: 10px; padding: 10px; border: 1px solid #fab1a0; background: #fff5f5; border-radius: 6px; font-size: 0.9rem; color: #333; }
     </style>
 </head>
-<body>
+<body class="light-mode"> <div class="header">
+    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V8 雙色版</span></h1>
+    <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">🌙 暗黑模式</button>
+</div>
 
 <div class="container">
-    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:#888;">V7 專業匯出版</span></h1>
-
     <div class="card">
         <h2>🛠️ 步驟 1：影像處理設定</h2>
 
         <div class="mode-tabs">
-            <div class="mode-tab active" onclick="switchMode('ai')" id="tab-ai">🤖 AI 智慧去背</div>
-            <div class="mode-tab" onclick="switchMode('color')" id="tab-color">🎨 指定顏色去背</div>
+            <div class="mode-tab active" onclick="switchMode('ai')" id="tab-ai">🤖 AI 去背</div>
+            <div class="mode-tab" onclick="switchMode('color')" id="tab-color">🎨 顏色去背</div>
         </div>
 
         <div id="panel-ai" class="control-panel">
             <label>AI 模型</label>
             <select id="aiModelSel">
-                <option value="u2netp">🚀 輕量版 (u2netp) - 快速</option>
-                <option value="u2net">💪 完整版 (u2net) - 精準 (176MB)</option>
+                <option value="u2netp">🚀 輕量版 (u2netp)</option>
+                <option value="u2net">💪 完整版 (u2net)</option>
             </select>
-            <div id="status" class="status-bar" style="margin-top:10px;">🔄 準備中...</div>
+            <div id="status" class="status-bar">🔄 準備中...</div>
             
             <div id="manualLoad">
                 <strong>⚠️ 自動載入失敗</strong>
@@ -131,8 +184,8 @@
                 <input type="file" id="modelInput" accept=".onnx" style="display:none">
             </div>
 
-            <label style="margin-top:10px;">靈敏度 (保留細節)</label>
-            <input type="range" id="aiThreshold" min="0.05" max="0.95" step="0.05" value="0.2">
+            <label style="margin-top:10px;">靈敏度</label>
+            <input type="range" id="aiThreshold" min="0.05" max="0.95" step="0.05" value="0.2" style="width:100%">
         </div>
 
         <div id="panel-color" class="control-panel hidden">
@@ -142,10 +195,13 @@
                 <button class="btn btn-outline" style="flex:1; padding:5px;" onclick="setRemoveColor('#00FF00')">🟩 綠</button>
                 <button class="btn btn-outline" style="flex:1; padding:5px;" onclick="setRemoveColor('#000000')">⬛ 黑</button>
             </div>
-            <input type="color" id="targetColor" value="#FFFFFF">
+            <input type="color" id="targetColor" value="#FFFFFF" style="width:100%; height:35px; border:none; padding:0;">
             
-            <label style="margin-top:15px;">寬容度 (Tolerance): <span id="tolVal">15%</span></label>
-            <input type="range" id="tolerance" min="0" max="100" value="15">
+            <div class="row" style="margin-top:10px;">
+                <label style="margin:0;">寬容度:</label>
+                <span id="tolVal" style="font-size:0.9em; color:var(--text-main);">15%</span>
+            </div>
+            <input type="range" id="tolerance" min="0" max="100" value="15" style="width:100%">
         </div>
 
         <div style="margin-top:10px;">
@@ -157,13 +213,18 @@
         </div>
 
         <div class="row" style="margin-top:5px;">
-            <div class="col"><label>垂直列數</label><input type="number" id="rows" value="2" min="1"></div>
-            <div class="col"><label>水平行數</label><input type="number" id="cols" value="2" min="1"></div>
-        </div>
-
-        <div style="margin-top:5px;">
-            <label>物體描邊 (白邊, px): <span id="borderVal">0</span></label>
-            <input type="range" id="borderSize" min="0" max="5" value="0">
+            <div class="col">
+                <label>垂直 (Rows)</label>
+                <input type="number" id="rows" value="2" min="1" class="input-short">
+            </div>
+            <div class="col">
+                <label>水平 (Cols)</label>
+                <input type="number" id="cols" value="2" min="1" class="input-short">
+            </div>
+            <div class="col">
+                <label>描邊 (px)</label>
+                <input type="number" id="borderSize" value="0" min="0" max="10" class="input-short">
+            </div>
         </div>
 
         <button id="runBtn" class="btn btn-green">開始製作 (預覽)</button>
@@ -172,29 +233,32 @@
     <div class="card">
         <h2>🖼️ 步驟 2：預覽與匯出</h2>
         
-        <label>原始圖片預覽：</label>
-        <div id="origPreviewBox" class="empty">
+        <div id="origPreviewBox">
+            <span style="color:var(--text-sub); font-size:0.9rem;">(上傳後顯示原圖)</span>
             <img id="origPreviewImg" src="" alt="原圖">
         </div>
 
         <div class="export-bar" id="exportBar" style="opacity: 0.5; pointer-events: none;">
             <div class="export-group">
-                <label>起始編號 (自動補零)</label>
-                <input type="text" id="startNum" value="001" placeholder="例如: 01, 001">
+                <label>起始檔名</label>
+                <input type="text" id="startNum" value="001" placeholder="001" style="width:80px;">
             </div>
-            <div class="export-group">
-                <label>下載尺寸 (px)</label>
-                <input type="number" id="outputSize" value="370" min="10">
+            <div class="export-group" style="flex:2;">
+                <label>下載尺寸 (寬 x 高)</label>
+                <div class="size-inputs">
+                    <input type="number" id="outW" value="370" class="input-short">
+                    <span>x</span>
+                    <input type="number" id="outH" value="320" class="input-short">
+                </div>
             </div>
-            <div class="export-group" style="flex:0 0 auto;">
-                <label>&nbsp;</label>
-                <button id="dlBtn" class="btn btn-green" style="margin:0; width:auto; padding:10px 20px;">📦 下載全部 ZIP</button>
+            <div class="export-group" style="flex:0 0 auto; justify-content: flex-end;">
+                <button id="dlBtn" class="btn btn-green" style="margin:0; width:auto; padding:8px 20px; font-size:0.9rem;">📦 下載 ZIP</button>
             </div>
         </div>
 
         <div id="previewContainer">
             <div style="grid-column:1/-1; text-align:center; color:#888; padding:50px;">
-                請先設定參數並點擊左側「開始製作」
+                請點擊「開始製作」
             </div>
         </div>
     </div>
@@ -203,9 +267,27 @@
 <script>
     ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/";
 
+    // --- 主題切換邏輯 ---
+    let isDark = false;
+    function toggleTheme() {
+        isDark = !isDark;
+        if(isDark) {
+            document.body.classList.add('dark-mode');
+            document.getElementById('themeBtn').textContent = '☀️ 明亮模式';
+            document.getElementById('themeBtn').style.background = '#fff';
+            document.getElementById('themeBtn').style.color = '#333';
+        } else {
+            document.body.classList.remove('dark-mode');
+            document.getElementById('themeBtn').textContent = '🌙 暗黑模式';
+            document.getElementById('themeBtn').style.background = 'transparent';
+            document.getElementById('themeBtn').style.color = 'var(--text-main)';
+        }
+    }
+
+    // --- 核心變數 ---
     let currentMode = 'ai';
     let session = null;
-    let rawStickers = []; // 儲存尚未縮放的高解析度貼圖資料
+    let rawStickers = [];
 
     const MODELS = {
         'u2netp': 'https://huggingface.co/schyy/u2netp.onnx/resolve/main/u2netp.onnx',
@@ -229,16 +311,14 @@
         rows: document.getElementById('rows'),
         cols: document.getElementById('cols'),
         borderSize: document.getElementById('borderSize'),
-        borderVal: document.getElementById('borderVal'),
-        // 新增/移動的元件
         origPreviewBox: document.getElementById('origPreviewBox'),
         origPreviewImg: document.getElementById('origPreviewImg'),
         startNum: document.getElementById('startNum'),
-        outputSize: document.getElementById('outputSize'),
+        outW: document.getElementById('outW'), // 新增
+        outH: document.getElementById('outH'), // 新增
         exportBar: document.getElementById('exportBar')
     };
 
-    // --- 模式與初始化 ---
     window.switchMode = (mode) => {
         currentMode = mode;
         els.tabs.ai.classList.toggle('active', mode === 'ai');
@@ -299,52 +379,42 @@
 
     window.setRemoveColor = (hex) => { els.targetColor.value = hex; };
     els.tolerance.addEventListener('input', (e) => els.tolVal.textContent = e.target.value + '%');
-    els.borderSize.addEventListener('input', (e) => els.borderVal.textContent = e.target.value);
 
-    // --- 圖片上傳與預覽 (Requirement 3) ---
     els.imgIn.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if(file) {
             document.getElementById('fileName').textContent = file.name;
-            // 顯示原圖預覽
             const url = URL.createObjectURL(file);
             els.origPreviewImg.src = url;
             els.origPreviewImg.style.display = 'block';
-            els.origPreviewBox.classList.remove('empty');
+            els.origPreviewBox.querySelector('span').style.display = 'none';
             
             if(currentMode === 'ai') checkAIReady();
         }
     });
 
-    // --- 主執行流程 ---
     els.runBtn.addEventListener('click', async () => {
         const file = els.imgIn.files[0];
         if(!file) { alert("請先上傳圖片！"); return; }
 
         els.runBtn.disabled = true;
         els.runBtn.textContent = "處理中...";
-        els.preview.innerHTML = "<div style='grid-column:1/-1;text-align:center;color:white;'>🚀 正在裁切與去背...</div>";
+        els.preview.innerHTML = "<div style='grid-column:1/-1;text-align:center;color:#ccc;'>🚀 正在裁切與去背...</div>";
 
         try {
             const originalImg = await loadImage(URL.createObjectURL(file));
             let noBgImgUrl;
 
-            // 1. 去背
             if (currentMode === 'ai') noBgImgUrl = await runAIProcess(originalImg);
             else noBgImgUrl = runColorProcess(originalImg);
 
-            // 2. 切割 (產生高解析度原始資料)
             const rows = parseInt(els.rows.value);
             const cols = parseInt(els.cols.value);
             const stroke = parseInt(els.borderSize.value);
 
-            // 注意：這裡只生成 Raw Data，不綁定最終檔名和尺寸
             rawStickers = await cutAndStickerRaw(await loadImage(noBgImgUrl), rows, cols, stroke);
             
-            // 3. 渲染預覽介面
             renderPreviewGrid(rows, cols);
-            
-            // 啟用右側匯出設定
             els.exportBar.style.opacity = '1';
             els.exportBar.style.pointerEvents = 'auto';
 
@@ -357,13 +427,10 @@
         }
     });
 
-    // --- AI 處理 ---
     async function runAIProcess(img) {
         const size = 320;
         const cvs = document.createElement('canvas'); cvs.width = size; cvs.height = size;
         const ctx = cvs.getContext('2d');
-        
-        // 防變形 Letterbox
         const scale = Math.min(size/img.width, size/img.height);
         const nw = img.width*scale; const nh = img.height*scale;
         const ox = (size-nw)/2; const oy = (size-nh)/2;
@@ -408,14 +475,12 @@
         return fCvs.toDataURL();
     }
 
-    // --- 色彩處理 ---
     function runColorProcess(img) {
         const cvs = document.createElement('canvas'); cvs.width = img.width; cvs.height = img.height;
         const ctx = cvs.getContext('2d');
         ctx.drawImage(img, 0, 0);
         const imgData = ctx.getImageData(0, 0, cvs.width, cvs.height);
         const data = imgData.data;
-        
         const hex = els.targetColor.value;
         const tr = parseInt(hex.slice(1,3), 16); const tg = parseInt(hex.slice(3,5), 16); const tb = parseInt(hex.slice(5,7), 16);
         const tolerance = parseInt(els.tolerance.value);
@@ -429,33 +494,24 @@
         return cvs.toDataURL();
     }
 
-    // --- 切割 (產生 Raw Data) ---
     async function cutAndStickerRaw(img, rows, cols, stroke) {
         const w = img.width; const h = img.height;
         const tileW = Math.floor(w/cols); const tileH = Math.floor(h/rows);
         const res = [];
         const cvs = document.createElement('canvas'); const ctx = cvs.getContext('2d');
 
-        // 為確保品質，內部處理使用較大尺寸 (例如 512px 或原圖切片大小)
-        // 這裡我們直接使用切片後的原始大小進行描邊，確保細節
-        
         for(let r=0; r<rows; r++) {
             for(let c=0; c<cols; c++) {
-                // 1. 切出單格
                 cvs.width = tileW; cvs.height = tileH;
                 ctx.clearRect(0,0,tileW,tileH);
                 ctx.drawImage(img, c*tileW, r*tileH, tileW, tileH, 0, 0, tileW, tileH);
                 
-                // 2. 轉換為圖片物件
                 const tImg = await loadImage(cvs.toDataURL());
-
-                // 3. 應用描邊 (在原尺寸上操作)
                 const sCvs = document.createElement('canvas'); 
                 sCvs.width = tileW; sCvs.height = tileH; 
                 const sCtx = sCvs.getContext('2d');
 
                 if (stroke > 0) {
-                    // 產生剪影
                     const silCvs = document.createElement('canvas'); silCvs.width = tileW; silCvs.height = tileH;
                     const silCtx = silCvs.getContext('2d');
                     silCtx.drawImage(tImg, 0, 0);
@@ -463,12 +519,9 @@
                     silCtx.fillStyle = 'white';
                     silCtx.fillRect(0, 0, tileW, tileH);
 
-                    // 繪製外框
                     sCtx.globalCompositeOperation = 'source-over';
                     sCtx.shadowColor = 'white';
-                    // 根據圖片大小比例調整 stroke 粗細 (粗略估計)
-                    const scaledStroke = stroke * (tileW / 180); // 假設預覽是180，按比例放大描邊
-                    
+                    const scaledStroke = stroke * (tileW / 180);
                     const steps = 16; 
                     for(let i=0; i<steps; i++) {
                         const angle = (i / steps) * 2 * Math.PI;
@@ -479,54 +532,45 @@
                     sCtx.drawImage(silCvs, 0, 0);
                 }
                 
-                // 繪製本體
                 sCtx.globalCompositeOperation = 'source-over';
                 sCtx.shadowColor = 'transparent';
                 sCtx.drawImage(tImg, 0, 0);
-
-                res.push(sCvs); // 儲存 Canvas 物件
+                res.push(sCvs);
             }
         }
         return res;
     }
 
-    // --- 檔名生成器 (Requirement 1) ---
     function getFilename(index) {
-        const startStr = els.startNum.value.trim(); // "01" or "001"
-        const padding = startStr.length; // 2 or 3
+        const startStr = els.startNum.value.trim();
+        const padding = startStr.length; 
         const startVal = parseInt(startStr) || 1;
         const currentVal = startVal + index;
         return String(currentVal).padStart(padding, '0') + '.png';
     }
 
-    // --- 調整尺寸並輸出 DataURL (Requirement 4 & 5) ---
-    function resizeCanvasToDataURL(canvas, targetSize) {
+    // 更新：支援寬與高分別設定
+    function resizeCanvasToDataURL(canvas, targetW, targetH) {
         const tCvs = document.createElement('canvas');
-        tCvs.width = targetSize; tCvs.height = targetSize;
+        tCvs.width = targetW; tCvs.height = targetH;
         const tCtx = tCvs.getContext('2d');
-        
-        // 保持比例置中
-        const scale = Math.min(targetSize/canvas.width, targetSize/canvas.height);
+        const scale = Math.min(targetW/canvas.width, targetH/canvas.height);
         const dw = canvas.width * scale;
         const dh = canvas.height * scale;
-        const dx = (targetSize - dw) / 2;
-        const dy = (targetSize - dh) / 2;
-        
+        const dx = (targetW - dw) / 2;
+        const dy = (targetH - dh) / 2;
         tCtx.drawImage(canvas, dx, dy, dw, dh);
         return tCvs.toDataURL('image/png');
     }
 
-    // --- 渲染預覽網格 ---
     function renderPreviewGrid(rows, cols) {
         els.preview.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
         els.preview.innerHTML = '';
         
-        // 預覽統一顯示較小尺寸 (例如 150px) 以節省效能，下載時再依設定輸出
-        const previewSize = 150; 
-
         rawStickers.forEach((canvas, idx) => {
-            const url = resizeCanvasToDataURL(canvas, previewSize); // 僅供預覽
-            const name = getFilename(idx); // 預覽目前的檔名設定
+            // 預覽使用固定大小，比較快
+            const url = resizeCanvasToDataURL(canvas, 150, 150); 
+            const name = getFilename(idx);
 
             const div = document.createElement('div');
             div.className = 'sticker-card';
@@ -541,7 +585,6 @@
         });
     }
 
-    // --- 監聽起始編號改變，即時更新預覽檔名 ---
     els.startNum.addEventListener('input', () => {
         rawStickers.forEach((_, idx) => {
             const el = document.getElementById(`name-${idx}`);
@@ -549,14 +592,14 @@
         });
     });
 
-    // --- 下載全部 (Requirement 1 & 4) ---
     els.dlBtn.onclick = () => {
         const zip = new JSZip();
-        const targetSize = parseInt(els.outputSize.value) || 370;
-        const dateStr = new Date().toISOString().slice(0,10).replace(/-/g,''); // YYYYMMDD
+        const w = parseInt(els.outW.value) || 370;
+        const h = parseInt(els.outH.value) || 320;
+        const dateStr = new Date().toISOString().slice(0,10).replace(/-/g,'');
         
         rawStickers.forEach((canvas, idx) => {
-            const url = resizeCanvasToDataURL(canvas, targetSize);
+            const url = resizeCanvasToDataURL(canvas, w, h);
             const name = getFilename(idx);
             zip.file(name, url.split(',')[1], {base64:true});
         });
@@ -564,11 +607,11 @@
         zip.generateAsync({type:"blob"}).then(b => saveAs(b, `LineStickers_${dateStr}.zip`));
     };
 
-    // --- 單張下載 (Requirement 5) ---
     window.downloadSingle = (idx) => {
-        const targetSize = parseInt(els.outputSize.value) || 370;
+        const w = parseInt(els.outW.value) || 370;
+        const h = parseInt(els.outH.value) || 320;
         const canvas = rawStickers[idx];
-        const url = resizeCanvasToDataURL(canvas, targetSize);
+        const url = resizeCanvasToDataURL(canvas, w, h);
         const name = getFilename(idx);
         saveAs(dataURLtoBlob(url), name);
     };

@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Line 貼圖切割 & 去背工具（輕量模型版）</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+    body { background: #f9f9f9; padding: 20px; color: #333; }
+    .container {
+      display: flex;
+      gap: 20px;
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+    .panel {
+      background: white;
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+      flex: 1;
+    }
+    h2 { margin-bottom: 15px; color: #2c3e50; }
+    h3 { font-size: 16px; margin: 10px 0; }
+    label { display: block; margin: 12px 0 5px; font-weight: 500; }
+    input[type="file"], input[type="number"], select, button {
+      width: 100%;
+      padding: 9px;
+      margin-bottom: 12px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    input[type="range"] {
+      width: 80%;
+      margin-right: 10px;
+    }
+    button {
+      background: #27ae60;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.2s;
+    }
+    button:hover { background: #219653; }
+    button:disabled { background: #bdc3c7; cursor: not-allowed; }
+    #previewArea {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      margin-top: 15px;
+    }
+    .sticker-preview {
+      border: 1px solid #eee;
+      border-radius: 8px;
+      overflow: hidden;
+      aspect-ratio: 1;
+      background: #f8f9fa;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .sticker-preview img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+    .status {
+      margin-top: 10px;
+      padding: 8px;
+      background: #f1f1f1;
+      border-radius: 4px;
+      font-size: 0.95em;
+      color: #555;
+    }
+    .controls-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+      flex-wrap: wrap;
+    }
+    .btn-row button {
+      flex: 1;
+      min-width: 120px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="panel">
+      <h2>📌 設定</h2>
+      <input type="file" id="imageInput" accept="image/*" />
+      
+      <label>列數（垂直）：</label>
+      <input type="number" id="rows" min="1" value="2" />
+      
+      <label>行數（水平）：</label>
+      <input type="number" id="cols" min="1" value="2" />
+      
+      <label>去背處理：</label>
+      <select id="removeBg">
+        <option value="none">不處理</option>
+        <option value="rembg" selected>使用 AI 去背（輕量模型 u2netp）</option>
+      </select>
+      
+      <label>黑邊寬度（px）：</label>
+      <div class="controls-row">
+        <input type="range" id="borderSize" min="0" max="5" value="0" />
+        <span id="borderValue">0</span>
+      </div>
+      
+      <button id="processBtn">✂️ 開始切割與處理</button>
+      <div class="status" id="status">請上傳圖片並設定參數。</div>
+    </div>
+
+    <div class="panel">
+      <h2>🖼️ 預覽（180×180）</h2>
+      <div id="previewArea"></div>
+      <div class="btn-row">
+        <button id="downloadFullBtn" style="display: none; background: #3498db;">📥 下載完整去背圖</button>
+        <button id="downloadBtn" style="display: none;">📦 下載所有貼圖（ZIP）</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    // ========== 使用 u2netp.onnx（輕量模型）==========
+    import * as ort from 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/ort.min.js';
+
+    // ✅ 已設定為 u2netp.onnx（4.36MB）
+    const model_url = './u2netp.onnx';
+    let session = null;
+
+    async function initRembg() {
+      if (session) return session;
+      const statusEl = document.getElementById('status');
+      statusEl.textContent = '正在載入本地 AI 去背模型（u2netp.onnx，4.36MB）...';
+      try {
+        session = await ort.InferenceSession.create(model_url, {
+          executionProviders: ['webgl'],
+        });
+        statusEl.textContent = '✅ 輕量模型載入成功！';
+        return session;
+      } catch (e) {
+        console.error('Model load error:', e);
+        throw new Error(
+          '無法載入 "u2netp.onnx"。\n' +
+          '請確認：\n' +
+          '1. 檔案存在於同目錄\n' +
+          '2. 檔名為 "u2netp.onnx"\n' +
+          '3. 使用 Chrome 或 Edge'
+        );
+      }
+    }
+
+    // ========== 去背核心 ==========
+    async function removeBackground(imageDataUrl) {
+      const session = await initRembg();
+      const img = new Image();
+      await new Promise((resolve) => {
+        img.onload = resolve;
+        img.src = imageDataUrl;
+      });
+
+      const width = img.width;
+      const height = img.height;
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+
+      const imageData = ctx.getImageData(0, 0, width, height);
+      const data = imageData.data;
+      const tensor_data = new Float32Array(width * height * 3);
+      for (let i = 0; i < data.length; i += 4) {
+        tensor_data[i / 4] = (data[i] - 0.485 * 255) / (0.229 * 255);
+        tensor_data[i / 4 + width * height] = (data[i + 1] - 0.456 * 255) / (0.224 * 255);
+        tensor_data[i / 4 + 2 * width * height] = (data[i + 2] - 0.406 * 255) / (0.225 * 255);
+      }
+
+      const tensor = new ort.Tensor('float32', tensor_data, [1, 3, height, width]);
+      const feeds = { input: tensor };
+      const results = await session.run(feeds);
+      const output = results['output'];
+
+      const mask = new Uint8ClampedArray(width * height * 4);
+      for (let i = 0; i < width * height; i++) {
+        const alpha = Math.max(0, Math.min(255, output.data[i] * 255));
+        mask[i * 4] = data[i * 4];
+        mask[i * 4 + 1] = data[i * 4 + 1];
+        mask[i * 4 + 2] = data[i * 4 + 2];
+        mask[i * 4 + 3] = alpha;
+      }
+
+      const outCanvas = document.createElement('canvas');
+      outCanvas.width = width;
+      outCanvas.height = height;
+      const outCtx = outCanvas.getContext('2d');
+      const outImageData = new ImageData(mask, width, height);
+      outCtx.putImageData(outImageData, 0, 0);
+
+      return outCanvas.toDataURL('image/png');
+    }
+
+    // ========== 工具函數 ==========
+    function loadImage(src) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error('圖片載入失敗'));
+        img.src = src;
+      });
+    }
+
+    // ========== 主流程 ==========
+    let fullBgRemovedImage = null;
+    let processedStickers = [];
+
+    document.getElementById('borderSize').addEventListener('input', e => {
+      document.getElementById('borderValue').textContent = e.target.value;
+    });
+
+    document.getElementById('processBtn').addEventListener('click', async () => {
+      const file = document.getElementById('imageInput').files[0];
+      if (!file) {
+        alert('請先選擇一張圖片！');
+        return;
+      }
+
+      fullBgRemovedImage = null;
+      processedStickers = [];
+
+      const rows = parseInt(document.getElementById('rows').value) || 2;
+      const cols = parseInt(document.getElementById('cols').value) || 2;
+      const borderSize = parseInt(document.getElementById('borderSize').value) || 0;
+      const removeBgMode = document.getElementById('removeBg').value;
+
+      const statusEl = document.getElementById('status');
+      const processBtn = document.getElementById('processBtn');
+      const downloadFullBtn = document.getElementById('downloadFullBtn');
+      const downloadBtn = document.getElementById('downloadBtn');
+
+      downloadFullBtn.style.display = 'none';
+      downloadBtn.style.display = 'none';
+      processBtn.disabled = true;
+
+      try {
+        let img = await loadImage(URL.createObjectURL(file));
+
+        if (removeBgMode === 'rembg') {
+          statusEl.textContent = '正在對整張圖片進行 AI 去背...';
+          const originalCanvas = document.createElement('canvas');
+          originalCanvas.width = img.width;
+          originalCanvas.height = img.height;
+          const origCtx = originalCanvas.getContext('2d');
+          origCtx.drawImage(img, 0, 0);
+          const originalDataUrl = originalCanvas.toDataURL('image/png');
+
+          const nobgDataUrl = await removeBackground(originalDataUrl);
+          fullBgRemovedImage = nobgDataUrl;
+          img = await loadImage(nobgDataUrl);
+        }
+
+        statusEl.textContent = '正在切割貼圖...';
+        const stickers = await cutImage(img, rows, cols, borderSize);
+        renderPreviews(stickers);
+        processedStickers = stickers;
+
+        if (fullBgRemovedImage) {
+          downloadFullBtn.style.display = 'block';
+        }
+        downloadBtn.style.display = 'block';
+
+        statusEl.textContent = `✅ 處理完成！共 ${stickers.length} 張貼圖（180×180）。`;
+      } catch (err) {
+        console.error(err);
+        statusEl.textContent = `❌ 處理失敗：${err.message || '未知錯誤'}`;
+      } finally {
+        processBtn.disabled = false;
+      }
+    });
+
+    async function cutImage(img, rows, cols, borderSize) {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+
+      const w = img.width;
+      const h = img.height;
+      const tileW = Math.floor(w / cols);
+      const tileH = Math.floor(h / rows);
+
+      const stickers = [];
+      let index = 1;
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          canvas.width = tileW;
+          canvas.height = tileH;
+          ctx.clearRect(0, 0, tileW, tileH);
+          ctx.drawImage(img, c * tileW, r * tileH, tileW, tileH, 0, 0, tileW, tileH);
+
+          let imageData = canvas.toDataURL('image/png');
+
+          const finalCanvas = document.createElement('canvas');
+          finalCanvas.width = 180;
+          finalCanvas.height = 180;
+          const finalCtx = finalCanvas.getContext('2d');
+          finalCtx.clearRect(0, 0, 180, 180);
+
+          const tempImg = await loadImage(imageData);
+          const scale = Math.min(180 / tempImg.width, 180 / tempImg.height);
+          const newW = tempImg.width * scale;
+          const newH = tempImg.height * scale;
+          const x = (180 - newW) / 2;
+          const y = (180 - newH) / 2;
+
+          finalCtx.drawImage(tempImg, x, y, newW, newH);
+
+          if (borderSize > 0) {
+            finalCtx.strokeStyle = 'black';
+            finalCtx.lineWidth = borderSize * 2;
+            finalCtx.strokeRect(borderSize, borderSize, 180 - borderSize * 2, 180 - borderSize * 2);
+          }
+
+          const finalDataUrl = finalCanvas.toDataURL('image/png');
+          const filename = String(index).padStart(3, '0') + '.png';
+          stickers.push({ dataUrl: finalDataUrl, filename });
+          index++;
+        }
+      }
+
+      return stickers;
+    }
+
+    function renderPreviews(stickers) {
+      const previewArea = document.getElementById('previewArea');
+      previewArea.innerHTML = '';
+
+      if (fullBgRemovedImage) {
+        const fullDiv = document.createElement('div');
+        fullDiv.style.gridColumn = '1 / -1';
+        fullDiv.innerHTML = '<h3>🖼️ 完整去背圖（未切割）</h3>';
+        
+        const fullImg = document.createElement('img');
+        fullImg.src = fullBgRemovedImage;
+        fullImg.style.maxWidth = '100%';
+        fullImg.style.border = '1px solid #eee';
+        fullImg.style.borderRadius = '6px';
+        fullImg.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+        fullDiv.appendChild(fullImg);
+        previewArea.appendChild(fullDiv);
+      }
+
+      stickers.forEach(sticker => {
+        const div = document.createElement('div');
+        div.className = 'sticker-preview';
+        const img = document.createElement('img');
+        img.src = sticker.dataUrl;
+        img.alt = sticker.filename;
+        div.appendChild(img);
+        previewArea.appendChild(div);
+      });
+    }
+
+    // ========== 下載功能 ==========
+    document.getElementById('downloadFullBtn').addEventListener('click', () => {
+      if (!fullBgRemovedImage) return;
+      const byteString = atob(fullBgRemovedImage.split(',')[1]);
+      const ab = new Uint8Array(byteString.length);
+      for (let i = 0; i < byteString.length; i++) {
+        ab[i] = byteString.charCodeAt(i);
+      }
+      const blob = new Blob([ab], { type: 'image/png' });
+      saveAs(blob, 'full_image_nobg.png');
+    });
+
+    document.getElementById('downloadBtn').addEventListener('click', () => {
+      const zip = new JSZip();
+      processedStickers.forEach(sticker => {
+        const byteString = atob(sticker.dataUrl.split(',')[1]);
+        const ab = new Uint8Array(byteString.length);
+        for (let i = 0; i < byteString.length; i++) {
+          ab[i] = byteString.charCodeAt(i);
+        }
+        zip.file(sticker.filename, ab, { binary: true });
+      });
+
+      zip.generateAsync({ type: 'blob' }).then(blob => {
+        saveAs(blob, 'line_stickers.zip');
+      });
+    });
+  </script>
+</body>
+</html>

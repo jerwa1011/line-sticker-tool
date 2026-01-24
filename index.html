@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Line 貼圖切割 & 去背工具（輕量模型版）</title>
+  <title>Line 貼圖切割 & 去背工具（修復版）</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
   <style>
@@ -136,7 +136,7 @@
         <option value="rembg" selected>AI 自動去背 (u2netp)</option>
       </select>
       
-      <label>黑邊寬度 (px)</label>
+      <label>白邊寬度 (px)</label>
       <div class="range-wrapper">
         <input type="range" id="borderSize" min="0" max="10" value="0" step="1" />
         <span id="borderValue">0</span>
@@ -164,12 +164,16 @@
   </div>
 
   <script type="module">
-    import * as ort from 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/ort.min.js';
+    // 1. 修正匯入方式：將模組取名為 ortModule
+    import * as ortModule from 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/ort.min.js';
 
-    // 設定 WASM 路徑，避免部分環境找不到
+    // 2. 關鍵修正：檢查是否存在 default 屬性，解決 'wasm' undefined 錯誤
+    const ort = ortModule.default || ortModule;
+
+    // 3. 設定 WASM 路徑 (指向 CDN，避免在 GitHub Pages 找不到檔案)
     ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/";
 
-    const model_url = 'https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2netp.onnx';
+    const model_url = './u2netp.onnx';
     let session = null;
 
     // UI 綁定
@@ -180,7 +184,7 @@
       document.getElementById('borderValue').textContent = e.target.value;
     });
 
-    // 1. 初始化 AI 模型
+    // 初始化 AI 模型
     async function initRembg() {
       if (session) return session;
       
@@ -204,7 +208,7 @@
       }
     }
 
-    // 2. 圖片預處理：縮放 (效能優化關鍵)
+    // 圖片預處理：縮放 (效能優化關鍵)
     function resizeImage(img, maxDim = 1024) {
       const w = img.width;
       const h = img.height;
@@ -225,7 +229,7 @@
       });
     }
 
-    // 3. 去背核心邏輯
+    // 去背核心邏輯
     async function removeBackground(imgElement) {
       const session = await initRembg();
       
@@ -278,7 +282,7 @@
       return newCanvas.toDataURL('image/png');
     }
 
-    // 4. 工具函數
+    // 工具函數
     function loadImage(src) {
       return new Promise((resolve, reject) => {
         const img = new Image();
@@ -289,7 +293,7 @@
       });
     }
 
-    // 5. 主流程
+    // 主流程
     let fullBgRemovedImage = null;
     let processedStickers = [];
 
@@ -313,10 +317,10 @@
 
       try {
         let img = await loadImage(URL.createObjectURL(file));
-        const originalName = file.name.split('.')[0];
 
         // 步驟 1: 如果圖片太大，先縮小 (避免當機)
         statusEl.textContent = '🔍 正在最佳化圖片尺寸...';
+        // 這裡設定縮放到 1024，對去背品質影響很小但速度快很多
         img = await resizeImage(img, 1024);
 
         // 步驟 2: 去背 (如果需要)
@@ -389,14 +393,13 @@
 
           finalCtx.drawImage(tempImg, x, y, newW, newH);
 
-          // 修正後的邊框繪製邏輯
+          // 邊框繪製邏輯
           if (borderSize > 0) {
-            finalCtx.strokeStyle = 'white'; // 若圖較暗可改 white，通常 Line 貼圖用白邊
-            // 這裡為了通用，我們讓使用者如果去背了通常想要白邊，但原需求是黑邊？
-            // 假設原需求是黑邊 (使用者可自行修改顏色)
-            finalCtx.strokeStyle = 'black'; 
+            // Line 貼圖通常用白邊，這裡我預設改為白色
+            // 如果你堅持要黑邊，請把 'white' 改回 'black'
+            finalCtx.strokeStyle = 'white'; 
             
-            // 技巧：線寬設為 2倍，然後畫在邊緣，這樣一半在畫布外，一半在畫布內
+            // 技巧：線寬設為 2 倍，畫在邊緣
             finalCtx.lineWidth = borderSize * 2; 
             finalCtx.strokeRect(0, 0, 180, 180);
           }

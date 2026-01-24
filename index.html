@@ -7,229 +7,291 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
-    body { background: #f9f9f9; padding: 20px; color: #333; }
+    /* CSS 優化與響應式設計 */
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    body { background: #f0f2f5; padding: 20px; color: #333; line-height: 1.6; }
+    
     .container {
       display: flex;
       gap: 20px;
-      max-width: 1600px;
+      max-width: 1200px;
       margin: 0 auto;
+      align-items: flex-start;
     }
+
+    /* 手機版響應式：變為單欄垂直排列 */
+    @media (max-width: 768px) {
+      .container { flex-direction: column; }
+      .panel { width: 100%; }
+    }
+
     .panel {
       background: white;
-      border-radius: 10px;
-      padding: 20px;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
       flex: 1;
+      width: 50%; /* 桌面版預設 */
     }
-    h2 { margin-bottom: 15px; color: #2c3e50; }
-    h3 { font-size: 16px; margin: 10px 0; }
-    label { display: block; margin: 12px 0 5px; font-weight: 500; }
-    input[type="file"], input[type="number"], select, button {
+
+    h2 { margin-bottom: 20px; color: #1a1a1a; font-size: 1.4rem; display: flex; align-items: center; gap: 8px; }
+    h3 { font-size: 16px; margin: 15px 0 10px; color: #555; }
+    
+    label { display: block; margin: 15px 0 5px; font-weight: 600; font-size: 0.95rem; color: #444; }
+    
+    input[type="file"], input[type="number"], select {
       width: 100%;
-      padding: 9px;
-      margin-bottom: 12px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      font-size: 14px;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 15px;
+      background-color: #fff;
     }
-    input[type="range"] {
-      width: 80%;
-      margin-right: 10px;
-    }
+
+    /* 滑桿樣式優化 */
+    .range-wrapper { display: flex; align-items: center; gap: 10px; }
+    input[type="range"] { flex: 1; cursor: pointer; }
+    #borderValue { font-weight: bold; min-width: 30px; text-align: right; }
+
     button {
-      background: #27ae60;
-      color: white;
+      width: 100%;
+      padding: 12px;
       border: none;
+      border-radius: 8px;
       cursor: pointer;
-      font-weight: bold;
-      transition: background 0.2s;
+      font-weight: 600;
+      font-size: 15px;
+      transition: all 0.2s;
+      margin-top: 20px;
     }
-    button:hover { background: #219653; }
-    button:disabled { background: #bdc3c7; cursor: not-allowed; }
+
+    #processBtn { background: #00B900; color: white; } /* LINE Green */
+    #processBtn:hover { background: #009900; }
+    #processBtn:disabled { background: #ccc; cursor: not-allowed; }
+
+    #downloadFullBtn { background: #3498db; color: white; margin-top: 10px; }
+    #downloadFullBtn:hover { background: #2980b9; }
+
+    #downloadBtn { background: #2c3e50; color: white; margin-top: 10px; }
+    #downloadBtn:hover { background: #1a252f; }
+
+    .status {
+      margin-top: 15px;
+      padding: 12px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      color: #666;
+      border-left: 4px solid #ddd;
+    }
+    .status.error { border-left-color: #e74c3c; background: #fdedec; color: #c0392b; }
+    .status.success { border-left-color: #00B900; background: #e8f8e8; color: #27ae60; }
+
     #previewArea {
       display: grid;
-      gap: 12px;
-      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-      margin-top: 15px;
+      gap: 15px;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      margin-top: 20px;
     }
+
     .sticker-preview {
       border: 1px solid #eee;
       border-radius: 8px;
       overflow: hidden;
       aspect-ratio: 1;
-      background: #f8f9fa;
+      background-image: linear-gradient(45deg, #efefef 25%, transparent 25%), linear-gradient(-45deg, #efefef 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #efefef 75%), linear-gradient(-45deg, transparent 75%, #efefef 75%);
+      background-size: 20px 20px;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
     }
     .sticker-preview img {
-      max-width: 100%;
-      max-height: 100%;
+      width: 100%;
+      height: 100%;
       object-fit: contain;
-    }
-    .status {
-      margin-top: 10px;
-      padding: 8px;
-      background: #f1f1f1;
-      border-radius: 4px;
-      font-size: 0.95em;
-      color: #555;
-    }
-    .controls-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .btn-row {
-      display: flex;
-      gap: 10px;
-      margin-top: 15px;
-      flex-wrap: wrap;
-    }
-    .btn-row button {
-      flex: 1;
-      min-width: 120px;
     }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="panel">
-      <h2>📌 設定</h2>
+      <h2>📌 設定與上傳</h2>
       <input type="file" id="imageInput" accept="image/*" />
       
-      <label>列數（垂直）：</label>
-      <input type="number" id="rows" min="1" value="2" />
+      <div style="display: flex; gap: 15px;">
+        <div style="flex:1;">
+          <label>列數 (垂直)</label>
+          <input type="number" id="rows" min="1" value="2" />
+        </div>
+        <div style="flex:1;">
+          <label>行數 (水平)</label>
+          <input type="number" id="cols" min="1" value="2" />
+        </div>
+      </div>
       
-      <label>行數（水平）：</label>
-      <input type="number" id="cols" min="1" value="2" />
-      
-      <label>去背處理：</label>
+      <label>去背處理</label>
       <select id="removeBg">
-        <option value="none">不處理</option>
-        <option value="rembg" selected>使用 AI 去背（輕量模型 u2netp）</option>
+        <option value="none">不處理 (僅切割)</option>
+        <option value="rembg" selected>AI 自動去背 (u2netp)</option>
       </select>
       
-      <label>黑邊寬度（px）：</label>
-      <div class="controls-row">
-        <input type="range" id="borderSize" min="0" max="5" value="0" />
+      <label>黑邊寬度 (px)</label>
+      <div class="range-wrapper">
+        <input type="range" id="borderSize" min="0" max="10" value="0" step="1" />
         <span id="borderValue">0</span>
       </div>
       
-      <button id="processBtn">✂️ 開始切割與處理</button>
-      <div class="status" id="status">請上傳圖片並設定參數。</div>
+      <button id="processBtn">✂️ 開始製作貼圖</button>
+      
+      <div class="status" id="status">準備就緒，請上傳圖片。</div>
+      <div id="modelHelp" style="display:none; margin-top:10px; font-size:0.9em;">
+        <a href="https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2netp.onnx" target="_blank" style="color:#e74c3c;">
+          ⚠️ 模型載入失敗？點此下載 u2netp.onnx
+        </a><br>
+        下載後請務必放在與此網頁相同的資料夾中。
+      </div>
     </div>
 
     <div class="panel">
-      <h2>🖼️ 預覽（180×180）</h2>
+      <h2>🖼️ 預覽與下載</h2>
       <div id="previewArea"></div>
       <div class="btn-row">
-        <button id="downloadFullBtn" style="display: none; background: #3498db;">📥 下載完整去背圖</button>
-        <button id="downloadBtn" style="display: none;">📦 下載所有貼圖（ZIP）</button>
+        <button id="downloadFullBtn" style="display: none;">📥 下載完整去背圖</button>
+        <button id="downloadBtn" style="display: none;">📦 下載貼圖包 (ZIP)</button>
       </div>
     </div>
   </div>
 
   <script type="module">
-    // ========== 使用 u2netp.onnx（輕量模型）==========
     import * as ort from 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/ort.min.js';
 
-    // ✅ 已設定為 u2netp.onnx（4.36MB）
+    // 設定 WASM 路徑，避免部分環境找不到
+    ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/";
+
     const model_url = './u2netp.onnx';
     let session = null;
 
+    // UI 綁定
+    const statusEl = document.getElementById('status');
+    const modelHelpEl = document.getElementById('modelHelp');
+    
+    document.getElementById('borderSize').addEventListener('input', e => {
+      document.getElementById('borderValue').textContent = e.target.value;
+    });
+
+    // 1. 初始化 AI 模型
     async function initRembg() {
       if (session) return session;
-      const statusEl = document.getElementById('status');
-      statusEl.textContent = '正在載入本地 AI 去背模型（u2netp.onnx，4.36MB）...';
+      
+      statusEl.textContent = '🔄 正在載入 AI 模型 (首次需時較長)...';
+      statusEl.className = 'status';
+      modelHelpEl.style.display = 'none';
+
       try {
         session = await ort.InferenceSession.create(model_url, {
-          executionProviders: ['webgl'],
+          executionProviders: ['webgl', 'wasm'], // 優先使用 GPU
         });
-        statusEl.textContent = '✅ 輕量模型載入成功！';
+        statusEl.textContent = '✅ 模型載入成功！';
+        statusEl.className = 'status success';
         return session;
       } catch (e) {
         console.error('Model load error:', e);
-        throw new Error(
-          '無法載入 "u2netp.onnx"。\n' +
-          '請確認：\n' +
-          '1. 檔案存在於同目錄\n' +
-          '2. 檔名為 "u2netp.onnx"\n' +
-          '3. 使用 Chrome 或 Edge'
-        );
+        statusEl.textContent = '❌ 模型載入失敗，請確認 u2netp.onnx 是否存在。';
+        statusEl.className = 'status error';
+        modelHelpEl.style.display = 'block'; // 顯示下載提示
+        throw e;
       }
     }
 
-    // ========== 去背核心 ==========
-    async function removeBackground(imageDataUrl) {
-      const session = await initRembg();
-      const img = new Image();
-      await new Promise((resolve) => {
-        img.onload = resolve;
-        img.src = imageDataUrl;
-      });
+    // 2. 圖片預處理：縮放 (效能優化關鍵)
+    function resizeImage(img, maxDim = 1024) {
+      const w = img.width;
+      const h = img.height;
+      if (w <= maxDim && h <= maxDim) return img; // 不需要縮放
 
-      const width = img.width;
-      const height = img.height;
+      const scale = Math.min(maxDim / w, maxDim / h);
+      const canvas = document.createElement('canvas');
+      canvas.width = w * scale;
+      canvas.height = h * scale;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      
+      // 回傳一個新的 Image 物件
+      const newImg = new Image();
+      newImg.src = canvas.toDataURL();
+      return new Promise(resolve => {
+        newImg.onload = () => resolve(newImg);
+      });
+    }
+
+    // 3. 去背核心邏輯
+    async function removeBackground(imgElement) {
+      const session = await initRembg();
+      
+      // 確保輸入尺寸正確
+      const width = imgElement.width;
+      const height = imgElement.height;
+      
       const canvas = document.createElement('canvas');
       canvas.width = width;
       canvas.height = height;
       const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0);
+      ctx.drawImage(imgElement, 0, 0);
 
       const imageData = ctx.getImageData(0, 0, width, height);
       const data = imageData.data;
-      const tensor_data = new Float32Array(width * height * 3);
+      
+      // 正規化處理 (Standard ImageNet normalization)
+      const floatArr = new Float32Array(width * height * 3);
       for (let i = 0; i < data.length; i += 4) {
-        tensor_data[i / 4] = (data[i] - 0.485 * 255) / (0.229 * 255);
-        tensor_data[i / 4 + width * height] = (data[i + 1] - 0.456 * 255) / (0.224 * 255);
-        tensor_data[i / 4 + 2 * width * height] = (data[i + 2] - 0.406 * 255) / (0.225 * 255);
+        // R
+        floatArr[i / 4] = (data[i] / 255 - 0.485) / 0.229;
+        // G
+        floatArr[i / 4 + width * height] = (data[i + 1] / 255 - 0.456) / 0.224;
+        // B
+        floatArr[i / 4 + 2 * width * height] = (data[i + 2] / 255 - 0.406) / 0.225;
       }
 
-      const tensor = new ort.Tensor('float32', tensor_data, [1, 3, height, width]);
-      const feeds = { input: tensor };
-      const results = await session.run(feeds);
-      const output = results['output'];
+      const tensor = new ort.Tensor('float32', floatArr, [1, 3, height, width]);
+      const results = await session.run({ input: tensor });
+      const output = results['output'].data;
 
-      const mask = new Uint8ClampedArray(width * height * 4);
+      // 應用遮罩
+      const newCanvas = document.createElement('canvas');
+      newCanvas.width = width;
+      newCanvas.height = height;
+      const newCtx = newCanvas.getContext('2d');
+      const newImageData = newCtx.createImageData(width, height);
+      
       for (let i = 0; i < width * height; i++) {
-        const alpha = Math.max(0, Math.min(255, output.data[i] * 255));
-        mask[i * 4] = data[i * 4];
-        mask[i * 4 + 1] = data[i * 4 + 1];
-        mask[i * 4 + 2] = data[i * 4 + 2];
-        mask[i * 4 + 3] = alpha;
+        const maskVal = output[i];
+        // 簡單的閾值處理，讓邊緣稍微乾淨點
+        const alpha = Math.max(0, Math.min(255, maskVal * 255));
+        
+        newImageData.data[i * 4] = data[i * 4];         // R
+        newImageData.data[i * 4 + 1] = data[i * 4 + 1]; // G
+        newImageData.data[i * 4 + 2] = data[i * 4 + 2]; // B
+        newImageData.data[i * 4 + 3] = alpha;           // A
       }
-
-      const outCanvas = document.createElement('canvas');
-      outCanvas.width = width;
-      outCanvas.height = height;
-      const outCtx = outCanvas.getContext('2d');
-      const outImageData = new ImageData(mask, width, height);
-      outCtx.putImageData(outImageData, 0, 0);
-
-      return outCanvas.toDataURL('image/png');
+      newCtx.putImageData(newImageData, 0, 0);
+      return newCanvas.toDataURL('image/png');
     }
 
-    // ========== 工具函數 ==========
+    // 4. 工具函數
     function loadImage(src) {
       return new Promise((resolve, reject) => {
         const img = new Image();
         img.crossOrigin = "anonymous";
         img.onload = () => resolve(img);
-        img.onerror = () => reject(new Error('圖片載入失敗'));
+        img.onerror = () => reject(new Error('圖片讀取失敗'));
         img.src = src;
       });
     }
 
-    // ========== 主流程 ==========
+    // 5. 主流程
     let fullBgRemovedImage = null;
     let processedStickers = [];
-
-    document.getElementById('borderSize').addEventListener('input', e => {
-      document.getElementById('borderValue').textContent = e.target.value;
-    });
 
     document.getElementById('processBtn').addEventListener('click', async () => {
       const file = document.getElementById('imageInput').files[0];
@@ -238,87 +300,87 @@
         return;
       }
 
+      // 重置狀態
       fullBgRemovedImage = null;
       processedStickers = [];
-
-      const rows = parseInt(document.getElementById('rows').value) || 2;
-      const cols = parseInt(document.getElementById('cols').value) || 2;
-      const borderSize = parseInt(document.getElementById('borderSize').value) || 0;
-      const removeBgMode = document.getElementById('removeBg').value;
-
-      const statusEl = document.getElementById('status');
-      const processBtn = document.getElementById('processBtn');
-      const downloadFullBtn = document.getElementById('downloadFullBtn');
-      const downloadBtn = document.getElementById('downloadBtn');
-
-      downloadFullBtn.style.display = 'none';
-      downloadBtn.style.display = 'none';
-      processBtn.disabled = true;
+      document.getElementById('downloadFullBtn').style.display = 'none';
+      document.getElementById('downloadBtn').style.display = 'none';
+      document.getElementById('previewArea').innerHTML = '';
+      
+      const btn = document.getElementById('processBtn');
+      btn.disabled = true;
+      statusEl.className = 'status';
 
       try {
         let img = await loadImage(URL.createObjectURL(file));
+        const originalName = file.name.split('.')[0];
 
+        // 步驟 1: 如果圖片太大，先縮小 (避免當機)
+        statusEl.textContent = '🔍 正在最佳化圖片尺寸...';
+        img = await resizeImage(img, 1024);
+
+        // 步驟 2: 去背 (如果需要)
+        const removeBgMode = document.getElementById('removeBg').value;
         if (removeBgMode === 'rembg') {
-          statusEl.textContent = '正在對整張圖片進行 AI 去背...';
-          const originalCanvas = document.createElement('canvas');
-          originalCanvas.width = img.width;
-          originalCanvas.height = img.height;
-          const origCtx = originalCanvas.getContext('2d');
-          origCtx.drawImage(img, 0, 0);
-          const originalDataUrl = originalCanvas.toDataURL('image/png');
-
-          const nobgDataUrl = await removeBackground(originalDataUrl);
+          statusEl.textContent = '🤖 正在進行 AI 智慧去背...';
+          const nobgDataUrl = await removeBackground(img);
           fullBgRemovedImage = nobgDataUrl;
           img = await loadImage(nobgDataUrl);
         }
 
-        statusEl.textContent = '正在切割貼圖...';
+        // 步驟 3: 切割
+        statusEl.textContent = '✂️ 正在切割並加上邊框...';
+        const rows = parseInt(document.getElementById('rows').value) || 2;
+        const cols = parseInt(document.getElementById('cols').value) || 2;
+        const borderSize = parseInt(document.getElementById('borderSize').value) || 0;
+
         const stickers = await cutImage(img, rows, cols, borderSize);
         renderPreviews(stickers);
         processedStickers = stickers;
 
-        if (fullBgRemovedImage) {
-          downloadFullBtn.style.display = 'block';
-        }
-        downloadBtn.style.display = 'block';
+        // 完成
+        if (fullBgRemovedImage) document.getElementById('downloadFullBtn').style.display = 'block';
+        document.getElementById('downloadBtn').style.display = 'block';
+        statusEl.textContent = `✅ 成功！已產生 ${stickers.length} 張貼圖。`;
+        statusEl.className = 'status success';
 
-        statusEl.textContent = `✅ 處理完成！共 ${stickers.length} 張貼圖（180×180）。`;
       } catch (err) {
         console.error(err);
-        statusEl.textContent = `❌ 處理失敗：${err.message || '未知錯誤'}`;
+        statusEl.textContent = `❌ 錯誤：${err.message}`;
+        statusEl.className = 'status error';
       } finally {
-        processBtn.disabled = false;
+        btn.disabled = false;
       }
     });
 
     async function cutImage(img, rows, cols, borderSize) {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
-
+      
       const w = img.width;
       const h = img.height;
       const tileW = Math.floor(w / cols);
       const tileH = Math.floor(h / rows);
-
+      
       const stickers = [];
       let index = 1;
 
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
+          // 切割
           canvas.width = tileW;
           canvas.height = tileH;
           ctx.clearRect(0, 0, tileW, tileH);
           ctx.drawImage(img, c * tileW, r * tileH, tileW, tileH, 0, 0, tileW, tileH);
-
-          let imageData = canvas.toDataURL('image/png');
-
+          
+          // 縮放到 180x180 (Line 貼圖規格)
           const finalCanvas = document.createElement('canvas');
           finalCanvas.width = 180;
           finalCanvas.height = 180;
           const finalCtx = finalCanvas.getContext('2d');
-          finalCtx.clearRect(0, 0, 180, 180);
-
-          const tempImg = await loadImage(imageData);
+          
+          // 計算保持比例的縮放
+          const tempImg = await loadImage(canvas.toDataURL());
           const scale = Math.min(180 / tempImg.width, 180 / tempImg.height);
           const newW = tempImg.width * scale;
           const newH = tempImg.height * scale;
@@ -327,77 +389,60 @@
 
           finalCtx.drawImage(tempImg, x, y, newW, newH);
 
+          // 修正後的邊框繪製邏輯
           if (borderSize > 0) {
-            finalCtx.strokeStyle = 'black';
-            finalCtx.lineWidth = borderSize * 2;
-            finalCtx.strokeRect(borderSize, borderSize, 180 - borderSize * 2, 180 - borderSize * 2);
+            finalCtx.strokeStyle = 'white'; // 若圖較暗可改 white，通常 Line 貼圖用白邊
+            // 這裡為了通用，我們讓使用者如果去背了通常想要白邊，但原需求是黑邊？
+            // 假設原需求是黑邊 (使用者可自行修改顏色)
+            finalCtx.strokeStyle = 'black'; 
+            
+            // 技巧：線寬設為 2倍，然後畫在邊緣，這樣一半在畫布外，一半在畫布內
+            finalCtx.lineWidth = borderSize * 2; 
+            finalCtx.strokeRect(0, 0, 180, 180);
           }
 
-          const finalDataUrl = finalCanvas.toDataURL('image/png');
-          const filename = String(index).padStart(3, '0') + '.png';
-          stickers.push({ dataUrl: finalDataUrl, filename });
+          stickers.push({
+            dataUrl: finalCanvas.toDataURL('image/png'),
+            filename: String(index).padStart(3, '0') + '.png'
+          });
           index++;
         }
       }
-
       return stickers;
     }
 
     function renderPreviews(stickers) {
-      const previewArea = document.getElementById('previewArea');
-      previewArea.innerHTML = '';
-
+      const area = document.getElementById('previewArea');
+      
+      // 顯示完整去背圖預覽
       if (fullBgRemovedImage) {
-        const fullDiv = document.createElement('div');
-        fullDiv.style.gridColumn = '1 / -1';
-        fullDiv.innerHTML = '<h3>🖼️ 完整去背圖（未切割）</h3>';
-        
-        const fullImg = document.createElement('img');
-        fullImg.src = fullBgRemovedImage;
-        fullImg.style.maxWidth = '100%';
-        fullImg.style.border = '1px solid #eee';
-        fullImg.style.borderRadius = '6px';
-        fullImg.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
-        fullDiv.appendChild(fullImg);
-        previewArea.appendChild(fullDiv);
+        const div = document.createElement('div');
+        div.style.gridColumn = '1 / -1';
+        div.innerHTML = `<h3>🔍 完整去背結果</h3><img src="${fullBgRemovedImage}" style="max-height:200px; border:1px solid #ccc; background:url('data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'10\' height=\'10\'><rect width=\'10\' height=\'10\' fill=\'white\'/><rect x=\'0\' y=\'0\' width=\'5\' height=\'5\' fill=\'%23eee\'/><rect x=\'5\' y=\'5\' width=\'5\' height=\'5\' fill=\'%23eee\'/></svg>');">`;
+        area.appendChild(div);
       }
 
-      stickers.forEach(sticker => {
+      stickers.forEach(s => {
         const div = document.createElement('div');
         div.className = 'sticker-preview';
-        const img = document.createElement('img');
-        img.src = sticker.dataUrl;
-        img.alt = sticker.filename;
-        div.appendChild(img);
-        previewArea.appendChild(div);
+        div.innerHTML = `<img src="${s.dataUrl}">`;
+        area.appendChild(div);
       });
     }
 
-    // ========== 下載功能 ==========
+    // 下載功能
     document.getElementById('downloadFullBtn').addEventListener('click', () => {
-      if (!fullBgRemovedImage) return;
-      const byteString = atob(fullBgRemovedImage.split(',')[1]);
-      const ab = new Uint8Array(byteString.length);
-      for (let i = 0; i < byteString.length; i++) {
-        ab[i] = byteString.charCodeAt(i);
-      }
-      const blob = new Blob([ab], { type: 'image/png' });
-      saveAs(blob, 'full_image_nobg.png');
+      saveAs(fullBgRemovedImage, 'removed_bg_full.png');
     });
 
     document.getElementById('downloadBtn').addEventListener('click', () => {
       const zip = new JSZip();
-      processedStickers.forEach(sticker => {
-        const byteString = atob(sticker.dataUrl.split(',')[1]);
-        const ab = new Uint8Array(byteString.length);
-        for (let i = 0; i < byteString.length; i++) {
-          ab[i] = byteString.charCodeAt(i);
-        }
-        zip.file(sticker.filename, ab, { binary: true });
+      const timestamp = new Date().toISOString().slice(0,10).replace(/-/g,'');
+      processedStickers.forEach(s => {
+        zip.file(s.filename, s.dataUrl.split(',')[1], { base64: true });
       });
-
-      zip.generateAsync({ type: 'blob' }).then(blob => {
-        saveAs(blob, 'line_stickers.zip');
+      zip.generateAsync({ type: 'blob' }).then(content => {
+        saveAs(content, `line_stickers_${timestamp}.zip`);
       });
     });
   </script>

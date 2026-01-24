@@ -3,11 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Line 貼圖切割 & 去背工具（修復版）</title>
+  <title>Line 貼圖切割 & 去背工具（終極修復版）</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  
+  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/ort.min.js"></script>
+
   <style>
-    /* CSS 優化與響應式設計 */
+    /* CSS 樣式保持不變 */
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
     body { background: #f0f2f5; padding: 20px; color: #333; line-height: 1.6; }
     
@@ -19,7 +22,6 @@
       align-items: flex-start;
     }
 
-    /* 手機版響應式：變為單欄垂直排列 */
     @media (max-width: 768px) {
       .container { flex-direction: column; }
       .panel { width: 100%; }
@@ -31,7 +33,7 @@
       padding: 24px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.08);
       flex: 1;
-      width: 50%; /* 桌面版預設 */
+      width: 50%;
     }
 
     h2 { margin-bottom: 20px; color: #1a1a1a; font-size: 1.4rem; display: flex; align-items: center; gap: 8px; }
@@ -48,7 +50,6 @@
       background-color: #fff;
     }
 
-    /* 滑桿樣式優化 */
     .range-wrapper { display: flex; align-items: center; gap: 10px; }
     input[type="range"] { flex: 1; cursor: pointer; }
     #borderValue { font-weight: bold; min-width: 30px; text-align: right; }
@@ -65,7 +66,7 @@
       margin-top: 20px;
     }
 
-    #processBtn { background: #00B900; color: white; } /* LINE Green */
+    #processBtn { background: #00B900; color: white; }
     #processBtn:hover { background: #009900; }
     #processBtn:disabled { background: #ccc; cursor: not-allowed; }
 
@@ -163,17 +164,18 @@
     </div>
   </div>
 
-  <script type="module">
-    // 1. 修正匯入方式：將模組取名為 ortModule
-    import * as ortModule from 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/ort.min.js';
+  <script>
+    // ⚠️ 注意：這段 script 移除了 type="module"，改用傳統 JS 寫法
+    // 這樣可以直接使用上方載入的 'ort' 全域變數，避開 import 錯誤
 
-    // 2. 關鍵修正：檢查是否存在 default 屬性，解決 'wasm' undefined 錯誤
-    const ort = ortModule.default || ortModule;
+    // 設定 WASM 路徑 (指向 CDN)
+    if (typeof ort !== 'undefined') {
+      ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/";
+    } else {
+      console.error("Critical: onnxruntime not loaded!");
+    }
 
-    // 3. 設定 WASM 路徑 (指向 CDN，避免在 GitHub Pages 找不到檔案)
-    ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/";
-
-    const model_url = 'https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2netp.onnx';
+    const model_url = './u2netp.onnx';
     let session = null;
 
     // UI 綁定
@@ -193,8 +195,9 @@
       modelHelpEl.style.display = 'none';
 
       try {
+        // 使用全域 ort 變數
         session = await ort.InferenceSession.create(model_url, {
-          executionProviders: ['webgl', 'wasm'], // 優先使用 GPU
+          executionProviders: ['webgl', 'wasm'],
         });
         statusEl.textContent = '✅ 模型載入成功！';
         statusEl.className = 'status success';
@@ -203,16 +206,16 @@
         console.error('Model load error:', e);
         statusEl.textContent = '❌ 模型載入失敗，請確認 u2netp.onnx 是否存在。';
         statusEl.className = 'status error';
-        modelHelpEl.style.display = 'block'; // 顯示下載提示
+        modelHelpEl.style.display = 'block';
         throw e;
       }
     }
 
-    // 圖片預處理：縮放 (效能優化關鍵)
+    // 圖片預處理：縮放
     function resizeImage(img, maxDim = 1024) {
       const w = img.width;
       const h = img.height;
-      if (w <= maxDim && h <= maxDim) return img; // 不需要縮放
+      if (w <= maxDim && h <= maxDim) return img;
 
       const scale = Math.min(maxDim / w, maxDim / h);
       const canvas = document.createElement('canvas');
@@ -221,7 +224,6 @@
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
       
-      // 回傳一個新的 Image 物件
       const newImg = new Image();
       newImg.src = canvas.toDataURL();
       return new Promise(resolve => {
@@ -233,7 +235,6 @@
     async function removeBackground(imgElement) {
       const session = await initRembg();
       
-      // 確保輸入尺寸正確
       const width = imgElement.width;
       const height = imgElement.height;
       
@@ -246,14 +247,10 @@
       const imageData = ctx.getImageData(0, 0, width, height);
       const data = imageData.data;
       
-      // 正規化處理 (Standard ImageNet normalization)
       const floatArr = new Float32Array(width * height * 3);
       for (let i = 0; i < data.length; i += 4) {
-        // R
         floatArr[i / 4] = (data[i] / 255 - 0.485) / 0.229;
-        // G
         floatArr[i / 4 + width * height] = (data[i + 1] / 255 - 0.456) / 0.224;
-        // B
         floatArr[i / 4 + 2 * width * height] = (data[i + 2] / 255 - 0.406) / 0.225;
       }
 
@@ -261,7 +258,6 @@
       const results = await session.run({ input: tensor });
       const output = results['output'].data;
 
-      // 應用遮罩
       const newCanvas = document.createElement('canvas');
       newCanvas.width = width;
       newCanvas.height = height;
@@ -270,13 +266,12 @@
       
       for (let i = 0; i < width * height; i++) {
         const maskVal = output[i];
-        // 簡單的閾值處理，讓邊緣稍微乾淨點
         const alpha = Math.max(0, Math.min(255, maskVal * 255));
         
-        newImageData.data[i * 4] = data[i * 4];         // R
-        newImageData.data[i * 4 + 1] = data[i * 4 + 1]; // G
-        newImageData.data[i * 4 + 2] = data[i * 4 + 2]; // B
-        newImageData.data[i * 4 + 3] = alpha;           // A
+        newImageData.data[i * 4] = data[i * 4];
+        newImageData.data[i * 4 + 1] = data[i * 4 + 1];
+        newImageData.data[i * 4 + 2] = data[i * 4 + 2];
+        newImageData.data[i * 4 + 3] = alpha;
       }
       newCtx.putImageData(newImageData, 0, 0);
       return newCanvas.toDataURL('image/png');
@@ -304,7 +299,6 @@
         return;
       }
 
-      // 重置狀態
       fullBgRemovedImage = null;
       processedStickers = [];
       document.getElementById('downloadFullBtn').style.display = 'none';
@@ -318,12 +312,9 @@
       try {
         let img = await loadImage(URL.createObjectURL(file));
 
-        // 步驟 1: 如果圖片太大，先縮小 (避免當機)
         statusEl.textContent = '🔍 正在最佳化圖片尺寸...';
-        // 這裡設定縮放到 1024，對去背品質影響很小但速度快很多
         img = await resizeImage(img, 1024);
 
-        // 步驟 2: 去背 (如果需要)
         const removeBgMode = document.getElementById('removeBg').value;
         if (removeBgMode === 'rembg') {
           statusEl.textContent = '🤖 正在進行 AI 智慧去背...';
@@ -332,7 +323,6 @@
           img = await loadImage(nobgDataUrl);
         }
 
-        // 步驟 3: 切割
         statusEl.textContent = '✂️ 正在切割並加上邊框...';
         const rows = parseInt(document.getElementById('rows').value) || 2;
         const cols = parseInt(document.getElementById('cols').value) || 2;
@@ -342,7 +332,6 @@
         renderPreviews(stickers);
         processedStickers = stickers;
 
-        // 完成
         if (fullBgRemovedImage) document.getElementById('downloadFullBtn').style.display = 'block';
         document.getElementById('downloadBtn').style.display = 'block';
         statusEl.textContent = `✅ 成功！已產生 ${stickers.length} 張貼圖。`;
@@ -371,19 +360,16 @@
 
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
-          // 切割
           canvas.width = tileW;
           canvas.height = tileH;
           ctx.clearRect(0, 0, tileW, tileH);
           ctx.drawImage(img, c * tileW, r * tileH, tileW, tileH, 0, 0, tileW, tileH);
           
-          // 縮放到 180x180 (Line 貼圖規格)
           const finalCanvas = document.createElement('canvas');
           finalCanvas.width = 180;
           finalCanvas.height = 180;
           const finalCtx = finalCanvas.getContext('2d');
           
-          // 計算保持比例的縮放
           const tempImg = await loadImage(canvas.toDataURL());
           const scale = Math.min(180 / tempImg.width, 180 / tempImg.height);
           const newW = tempImg.width * scale;
@@ -393,13 +379,8 @@
 
           finalCtx.drawImage(tempImg, x, y, newW, newH);
 
-          // 邊框繪製邏輯
           if (borderSize > 0) {
-            // Line 貼圖通常用白邊，這裡我預設改為白色
-            // 如果你堅持要黑邊，請把 'white' 改回 'black'
             finalCtx.strokeStyle = 'white'; 
-            
-            // 技巧：線寬設為 2 倍，畫在邊緣
             finalCtx.lineWidth = borderSize * 2; 
             finalCtx.strokeRect(0, 0, 180, 180);
           }
@@ -417,7 +398,6 @@
     function renderPreviews(stickers) {
       const area = document.getElementById('previewArea');
       
-      // 顯示完整去背圖預覽
       if (fullBgRemovedImage) {
         const div = document.createElement('div');
         div.style.gridColumn = '1 / -1';
@@ -433,7 +413,6 @@
       });
     }
 
-    // 下載功能
     document.getElementById('downloadFullBtn').addEventListener('click', () => {
       saveAs(fullBgRemovedImage, 'removed_bg_full.png');
     });

@@ -173,7 +173,7 @@
     // 3. 設定 WASM 路徑 (指向 CDN，避免在 GitHub Pages 找不到檔案)
     ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/";
 
-    const model_url = './u2netp.onnx';
+    const model_url = 'https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2netp.onnx';
     let session = null;
 
     // UI 綁定

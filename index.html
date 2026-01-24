@@ -3,451 +3,151 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LINE 貼圖製作大師 (終極保險版)</title>
+    <title>LINE 貼圖製作大師 (除錯版 v2)</title>
     
-    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/ort.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 
     <style>
-        :root {
-            --primary-color: #06C755;
-            --primary-hover: #05a546;
-            --bg-color: #f5f7fa;
-            --card-bg: #ffffff;
-            --error-bg: #fff5f5;
-            --error-border: #fc8181;
-        }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; outline: none; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-            background-color: var(--bg-color);
-            padding: 20px;
-            color: #333;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            display: grid;
-            grid-template-columns: 350px 1fr;
-            gap: 24px;
-            align-items: start;
-        }
-
-        @media (max-width: 850px) {
-            .container { grid-template-columns: 1fr; }
-        }
-
-        .card {
-            background: var(--card-bg);
-            border-radius: 16px;
-            padding: 24px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-        }
+        body { font-family: sans-serif; padding: 20px; background: #f0f2f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 16px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        h1 { color: #333; text-align: center; }
         
-        h1 { grid-column: 1 / -1; text-align: center; margin-bottom: 10px; font-size: 1.8rem; }
-        h2 { font-size: 1.2rem; margin-bottom: 16px; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px; }
+        .box { border: 2px dashed #ccc; padding: 20px; text-align: center; margin-bottom: 20px; border-radius: 10px; background: #fafafa; }
+        .btn { background: #06C755; color: white; border: none; padding: 15px 30px; font-size: 16px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; }
+        .btn:disabled { background: #ccc; }
+        .btn-red { background: #e74c3c; margin-top: 10px; }
         
-        /* 上傳區 */
-        .upload-zone {
-            border: 2px dashed #ddd;
-            border-radius: 12px;
-            padding: 30px 20px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s;
-            background: #fafafa;
-            position: relative;
+        #errorLog {
+            display: none; background: #2d2d2d; color: #f8f8f2; padding: 15px; 
+            border-radius: 8px; font-family: monospace; margin-top: 20px; white-space: pre-wrap; text-align: left;
         }
-        .upload-zone:hover { border-color: var(--primary-color); background: #effff5; }
-        #imageInput { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
-
-        /* 表單元素 */
-        .form-group { margin-bottom: 16px; }
-        label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 0.9rem; }
-        .row { display: flex; gap: 10px; }
-        .col { flex: 1; }
-        input[type="number"], select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; }
-        .range-wrap { display: flex; align-items: center; gap: 10px; }
-        input[type="range"] { flex: 1; accent-color: var(--primary-color); }
-
-        /* 按鈕 */
-        .btn {
-            width: 100%; padding: 14px; border: none; border-radius: 10px;
-            font-weight: bold; font-size: 1rem; cursor: pointer; transition: 0.2s;
-            display: flex; align-items: center; justify-content: center; gap: 8px;
-        }
-        .btn-primary { background: var(--primary-color); color: white; margin-top: 10px; }
-        .btn-primary:hover { background: var(--primary-hover); }
-        .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
-        
-        .btn-secondary { background: #f0f0f0; color: #333; margin-top: 10px; }
-        .btn-download { background: #333; color: white; }
-
-        /* 錯誤處理區塊 (關鍵樣式) */
-        #manualLoadArea {
-            display: none; /* 預設隱藏 */
-            margin-top: 20px;
-            padding: 15px;
-            background: var(--error-bg);
-            border: 1px solid var(--error-border);
-            border-radius: 12px;
-            animation: fadeIn 0.5s;
-        }
-        .error-title { color: #c53030; font-weight: bold; display: flex; align-items: center; gap: 5px; margin-bottom: 10px; }
-        .manual-btn {
-            background: #e53e3e; color: white; padding: 8px 16px; border-radius: 6px; 
-            text-decoration: none; display: inline-block; font-size: 0.9rem; cursor: pointer; border: none;
-        }
-        
-        /* 預覽網格 */
-        #previewGrid {
-            display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 15px;
-        }
-        .sticker-item {
-            aspect-ratio: 1; background: #fff; border-radius: 12px; border: 1px solid #eee;
-            overflow: hidden; display: flex; align-items: center; justify-content: center;
-            background-image: linear-gradient(45deg, #eee 25%, transparent 25%), linear-gradient(-45deg, #eee 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #eee 75%), linear-gradient(-45deg, transparent 75%, #eee 75%);
-            background-size: 20px 20px;
-        }
-        .sticker-item img { max-width: 100%; max-height: 100%; object-fit: contain; }
-
-        .status-box { margin-top: 20px; padding: 12px; border-radius: 8px; font-size: 0.9rem; background: #f8f9fa; color: #666; }
-        .status-box.success { background: #e8f5e9; color: #2e7d32; }
-        
-        .spinner {
-            width: 18px; height: 18px; border: 2px solid currentColor; border-top-color: transparent;
-            border-radius: 50%; animation: spin 0.8s linear infinite; display: none;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h1>LINE 貼圖製作大師 <span style="font-size: 0.6em; color: #888;">終極保險版</span></h1>
-
-        <div class="card">
-            <h2>⚙️ 步驟 1：模型檢查</h2>
-            
-            <div id="statusBox" class="status-box">🔄 正在嘗試載入 AI 模型...</div>
-
-            <div id="manualLoadArea">
-                <div class="error-title">⚠️ 自動載入失敗 (404 或 網路問題)</div>
-                <p style="font-size: 0.9rem; margin-bottom: 10px; color: #555;">
-                    別擔心！請手動選取您電腦裡的 <b>u2netp.onnx</b> 檔案即可。
-                </p>
-                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                    <a href="https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2netp.onnx" target="_blank" class="btn btn-secondary" style="flex:1; font-size:0.85rem;">📥 1. 下載模型 (若沒有)</a>
-                    <button class="manual-btn" onclick="document.getElementById('modelInput').click()" style="flex:1;">📂 2. 選取模型檔案</button>
-                    <input type="file" id="modelInput" accept=".onnx" style="display: none;" />
-                </div>
-            </div>
-
-            <h2 style="margin-top: 30px;">⚙️ 步驟 2：上傳圖片</h2>
-            <div class="form-group">
-                <div class="upload-zone" id="dropZone">
-                    <span class="upload-icon">📁</span>
-                    <div class="upload-text">點擊選擇圖片 或 拖放至此</div>
-                    <div id="fileName" style="margin-top: 5px; font-weight: bold; color: var(--primary-color);"></div>
-                    <input type="file" id="imageInput" accept="image/*" disabled />
-                </div>
-            </div>
-
-            <div class="row">
-                <div class="col"><label>垂直列數</label><input type="number" id="rows" min="1" value="2"></div>
-                <div class="col"><label>水平行數</label><input type="number" id="cols" min="1" value="2"></div>
-            </div>
-
-            <div class="form-group" style="margin-top: 15px;">
-                <label>AI 模式</label>
-                <select id="removeBg">
-                    <option value="rembg" selected>🚀 自動去背 (需載入模型)</option>
-                    <option value="none">⚡ 僅切割 (不處理背景)</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label>白邊寬度 (px)</label>
-                <div class="range-wrap">
-                    <input type="range" id="borderSize" min="0" max="15" value="0" step="1">
-                    <span id="borderValue" class="range-val">0</span>
-                </div>
-            </div>
-
-            <button id="processBtn" class="btn btn-primary" disabled>
-                <div class="spinner" id="btnSpinner"></div>
-                <span id="btnText">等待模型載入...</span>
-            </button>
-        </div>
-
-        <div class="card">
-            <h2>🖼️ 預覽結果</h2>
-            <div id="previewGrid">
-                <div style="grid-column: 1/-1; text-align: center; color: #ccc; padding: 40px;">預覽圖將顯示於此</div>
-            </div>
-            <div id="actionButtons" style="display: none; margin-top: 20px;">
-                <button id="downloadBtn" class="btn btn-download">📦 下載貼圖包 (ZIP)</button>
-                <button id="downloadFullBtn" class="btn btn-secondary">📥 下載完整去背原圖</button>
-            </div>
-        </div>
+<div class="container">
+    <h1>🛠️ 模型載入診斷工具</h1>
+    
+    <div class="box" style="border-color: #06C755; background: #e8f5e9;">
+        <h3>第一步：載入模型</h3>
+        <p>請點擊下方按鈕，選取你下載的 <b>u2netp.onnx</b> (必須約 4.4MB)</p>
+        <button class="btn" onclick="document.getElementById('modelFile').click()">📂 選取模型檔案</button>
+        <input type="file" id="modelFile" accept=".onnx" style="display:none">
+        <div id="modelStatus" style="margin-top:10px; font-weight:bold; color:#555;">等待選取...</div>
     </div>
 
-    <script>
-        // 設定環境
-        if (typeof ort !== 'undefined') {
-            ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/";
+    <div class="box">
+        <h3>第二步：上傳圖片測試</h3>
+        <input type="file" id="imgFile" accept="image/*" disabled>
+        <br><br>
+        <button id="runBtn" class="btn" disabled>🚀 執行測試</button>
+    </div>
+
+    <div id="resultArea" style="text-align: center;"></div>
+    
+    <div id="errorLog"></div>
+</div>
+
+<script>
+    // 設定 WASM 路徑 (使用最新版)
+    ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/";
+
+    let session = null;
+    const els = {
+        modelFile: document.getElementById('modelFile'),
+        modelStatus: document.getElementById('modelStatus'),
+        imgFile: document.getElementById('imgFile'),
+        runBtn: document.getElementById('runBtn'),
+        result: document.getElementById('resultArea'),
+        log: document.getElementById('errorLog')
+    };
+
+    // 1. 載入模型並顯示詳細錯誤
+    els.modelFile.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // 檢查檔案大小
+        const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+        els.modelStatus.innerHTML = `正在讀取: ${file.name} (${sizeMB} MB)...`;
+        
+        if (file.size < 1000000) { // 小於 1MB
+            showError(`❌ 檔案太小 (${sizeMB} MB)！\n這絕對不是正確的模型檔。\n請重新下載 4.4MB 的版本。`);
+            return;
         }
 
-        let session = null;
-        let fullBgRemovedImage = null;
-        let processedStickers = [];
-
-        const els = {
-            input: document.getElementById('imageInput'),
-            modelInput: document.getElementById('modelInput'),
-            dropZone: document.getElementById('dropZone'),
-            fileName: document.getElementById('fileName'),
-            processBtn: document.getElementById('processBtn'),
-            btnText: document.getElementById('btnText'),
-            spinner: document.getElementById('btnSpinner'),
-            status: document.getElementById('statusBox'),
-            manualArea: document.getElementById('manualLoadArea'),
-            previewGrid: document.getElementById('previewGrid'),
-            borderInput: document.getElementById('borderSize'),
-            borderVal: document.getElementById('borderValue'),
-            dlBtn: document.getElementById('downloadBtn'),
-            dlFullBtn: document.getElementById('downloadFullBtn'),
-            actions: document.getElementById('actionButtons')
-        };
-
-        // 1. 嘗試自動載入 (本地相對路徑)
-        async function initModel(url = './u2netp.onnx') {
-            try {
-                els.status.textContent = '🔄 正在載入模型...';
-                session = await ort.InferenceSession.create(url, {
-                    executionProviders: ['webgl', 'wasm']
-                });
-                onModelLoaded();
-            } catch (e) {
-                console.warn("Auto load failed:", e);
-                els.status.innerHTML = '❌ 自動載入失敗，請在下方手動選取模型檔案。';
-                els.status.style.color = '#c53030';
-                els.status.style.background = '#fff5f5';
-                els.manualArea.style.display = 'block'; // 顯示手動上傳區
-            }
-        }
-
-        // 2. 手動選取模型 (終極解法)
-        els.modelInput.addEventListener('change', async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            
-            els.manualArea.style.opacity = '0.5';
-            els.status.textContent = '🔄 正在讀取選取的檔案...';
-            
-            try {
-                const objectUrl = URL.createObjectURL(file);
-                session = await ort.InferenceSession.create(objectUrl, {
-                    executionProviders: ['webgl', 'wasm']
-                });
-                onModelLoaded();
-                els.manualArea.style.display = 'none'; // 成功後隱藏
-            } catch (err) {
-                alert("模型載入失敗，請確認您選取的是正確的 u2netp.onnx 檔案！");
-                els.manualArea.style.opacity = '1';
-            }
-        });
-
-        function onModelLoaded() {
-            els.status.textContent = '✅ AI 模型就緒！請上傳圖片。';
-            els.status.className = 'status-box success';
-            els.input.disabled = false;
-            els.btnText.textContent = '開始製作貼圖';
-        }
-
-        // 頁面載入時先嘗試自動載入
-        initModel();
-
-        // 圖片上傳互動
-        els.input.addEventListener('change', (e) => {
-            if (e.target.files[0]) {
-                els.fileName.textContent = e.target.files[0].name;
-                if (session) els.processBtn.disabled = false;
-            }
-        });
-
-        // 拖放功能
-        els.dropZone.addEventListener('dragover', (e) => { e.preventDefault(); els.dropZone.classList.add('dragover'); });
-        els.dropZone.addEventListener('dragleave', () => els.dropZone.classList.remove('dragover'));
-        els.dropZone.addEventListener('drop', (e) => {
-            e.preventDefault(); els.dropZone.classList.remove('dragover');
-            if (e.dataTransfer.files[0]) {
-                els.input.files = e.dataTransfer.files;
-                els.input.dispatchEvent(new Event('change'));
-            }
-        });
-
-        els.borderInput.addEventListener('input', (e) => els.borderVal.textContent = e.target.value);
-
-        // 主流程
-        els.processBtn.addEventListener('click', async () => {
-            const file = els.input.files[0];
-            if (!file) return;
-
-            setLoading(true);
-            els.actions.style.display = 'none';
-            els.previewGrid.innerHTML = '';
-            processedStickers = [];
-
-            try {
-                let img = await loadImage(URL.createObjectURL(file));
-                img = await resizeImage(img, 1024);
-
-                const mode = document.getElementById('removeBg').value;
-                if (mode === 'rembg') {
-                    if (!session) throw new Error("模型尚未載入");
-                    els.status.textContent = '🤖 AI 去背運算中...';
-                    const noBgUrl = await runAiRemoveBackground(img);
-                    fullBgRemovedImage = noBgUrl;
-                    img = await loadImage(noBgUrl);
-                } else {
-                    fullBgRemovedImage = null;
-                }
-
-                els.status.textContent = '✂️ 切割圖片中...';
-                const rows = parseInt(document.getElementById('rows').value) || 2;
-                const cols = parseInt(document.getElementById('cols').value) || 2;
-                const border = parseInt(els.borderInput.value) || 0;
-
-                const stickers = await cutAndStroke(img, rows, cols, border);
-                
-                renderPreview(stickers);
-                processedStickers = stickers;
-                els.actions.style.display = 'block';
-                els.dlFullBtn.style.display = fullBgRemovedImage ? 'inline-block' : 'none';
-                els.status.textContent = `✅ 完成！產生 ${stickers.length} 張貼圖。`;
-
-            } catch (err) {
-                console.error(err);
-                alert("處理發生錯誤：" + err.message);
-            } finally {
-                setLoading(false);
-            }
-        });
-
-        // AI 核心邏輯
-        async function runAiRemoveBackground(img) {
-            const w = img.width; const h = img.height;
-            const cvs = document.createElement('canvas');
-            cvs.width = w; cvs.height = h;
-            const ctx = cvs.getContext('2d');
-            ctx.drawImage(img, 0, 0);
-            const imageData = ctx.getImageData(0, 0, w, h);
-            
-            const inputData = preprocess(imageData.data, w, h);
-            const tensor = new ort.Tensor('float32', inputData, [1, 3, h, w]);
-            const results = await session.run({ input: tensor });
-            const outputData = results.output.data;
-
-            return applyMask(imageData, outputData, w, h);
-        }
-
-        function preprocess(data, w, h) {
-            const floatArr = new Float32Array(w * h * 3);
-            for (let i = 0; i < data.length; i += 4) {
-                floatArr[(i/4)] = (data[i] / 255 - 0.485) / 0.229;
-                floatArr[(i/4) + w*h] = (data[i+1] / 255 - 0.456) / 0.224;
-                floatArr[(i/4) + 2*w*h] = (data[i+2] / 255 - 0.406) / 0.225;
-            }
-            return floatArr;
-        }
-
-        function applyMask(source, mask, w, h) {
-            const resultCvs = document.createElement('canvas'); resultCvs.width = w; resultCvs.height = h;
-            const ctx = resultCvs.getContext('2d');
-            const newImgData = ctx.createImageData(w, h);
-            for (let i = 0; i < w * h; i++) {
-                const alpha = Math.max(0, Math.min(255, mask[i] * 255));
-                newImgData.data[i*4] = source.data[i*4];
-                newImgData.data[i*4+1] = source.data[i*4+1];
-                newImgData.data[i*4+2] = source.data[i*4+2];
-                newImgData.data[i*4+3] = alpha;
-            }
-            ctx.putImageData(newImgData, 0, 0);
-            return resultCvs.toDataURL('image/png');
-        }
-
-        async function cutAndStroke(img, rows, cols, border) {
-            const w = img.width; const h = img.height;
-            const tileW = Math.floor(w / cols); const tileH = Math.floor(h / rows);
-            const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d');
-            const results = []; let idx = 1;
-
-            for (let r = 0; r < rows; r++) {
-                for (let c = 0; c < cols; c++) {
-                    canvas.width = tileW; canvas.height = tileH;
-                    ctx.clearRect(0,0,tileW,tileH);
-                    ctx.drawImage(img, c*tileW, r*tileH, tileW, tileH, 0, 0, tileW, tileH);
-                    
-                    const sCanvas = document.createElement('canvas'); sCanvas.width = 180; sCanvas.height = 180;
-                    const sCtx = sCanvas.getContext('2d');
-                    const tempImg = await loadImage(canvas.toDataURL());
-                    const scale = Math.min(180/tempImg.width, 180/tempImg.height);
-                    const drawW = tempImg.width * scale; const drawH = tempImg.height * scale;
-                    
-                    sCtx.drawImage(tempImg, (180-drawW)/2, (180-drawH)/2, drawW, drawH);
-                    if (border > 0) {
-                        sCtx.strokeStyle = 'white'; sCtx.lineWidth = border * 2; sCtx.lineJoin = 'round';
-                        sCtx.strokeRect(0, 0, 180, 180);
-                    }
-                    results.push({ url: sCanvas.toDataURL('image/png'), name: `${String(idx).padStart(3,'0')}.png` });
-                    idx++;
-                }
-            }
-            return results;
-        }
-
-        function resizeImage(img, max) {
-            if (img.width <= max && img.height <= max) return img;
-            const scale = Math.min(max/img.width, max/img.height);
-            const cvs = document.createElement('canvas');
-            cvs.width = img.width * scale; cvs.height = img.height * scale;
-            cvs.getContext('2d').drawImage(img, 0, 0, cvs.width, cvs.height);
-            return loadImage(cvs.toDataURL());
-        }
-
-        function loadImage(src) {
-            return new Promise((r, j) => { const i = new Image(); i.onload=()=>r(i); i.onerror=j; i.src=src; });
-        }
-
-        function setLoading(b) {
-            els.processBtn.disabled = b;
-            els.spinner.style.display = b ? 'inline-block' : 'none';
-            els.btnText.textContent = b ? '處理中...' : '開始製作貼圖';
-            els.input.disabled = b;
-        }
-
-        function renderPreview(stickers) {
-            const frag = document.createDocumentFragment();
-            stickers.forEach(s => {
-                const div = document.createElement('div'); div.className = 'sticker-item';
-                div.innerHTML = `<img src="${s.url}">`; frag.appendChild(div);
+        try {
+            const url = URL.createObjectURL(file);
+            // 嘗試建立 Session
+            session = await ort.InferenceSession.create(url, {
+                executionProviders: ['wasm', 'webgl'] // 嘗試兩種模式
             });
-            els.previewGrid.appendChild(frag);
+            
+            els.modelStatus.innerHTML = `✅ 模型載入成功！(核心: ${session.handler ? session.handler.backendName : 'unknown'})`;
+            els.modelStatus.style.color = 'green';
+            els.imgFile.disabled = false;
+            els.runBtn.disabled = false;
+            hideError();
+        } catch (err) {
+            console.error(err);
+            // 顯示最詳細的錯誤訊息
+            showError(`❌ 模型載入失敗\n\n錯誤代碼: ${err.name}\n錯誤訊息: ${err.message}\n\nStack:\n${err.stack}`);
         }
+    });
 
-        els.dlBtn.addEventListener('click', () => {
-            const zip = new JSZip();
-            processedStickers.forEach(s => zip.file(s.name, s.url.split(',')[1], {base64: true}));
-            zip.generateAsync({type:"blob"}).then(b => saveAs(b, `LineStickers_${Date.now()}.zip`));
-        });
-        els.dlFullBtn.addEventListener('click', () => {
-            if(fullBgRemovedImage) saveAs(fullBgRemovedImage, 'full_nobg.png');
-        });
-    </script>
+    // 2. 執行簡單測試
+    els.runBtn.addEventListener('click', async () => {
+        if (!els.imgFile.files[0] || !session) return;
+        
+        try {
+            els.runBtn.textContent = "處理中...";
+            const img = await loadImage(URL.createObjectURL(els.imgFile.files[0]));
+            
+            // 簡單縮放與預處理
+            const canvas = document.createElement('canvas');
+            canvas.width = 320; canvas.height = 320; // 測試用固定大小
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, 320, 320);
+            
+            const imgData = ctx.getImageData(0,0,320,320);
+            const input = preprocess(imgData.data, 320, 320);
+            
+            const tensor = new ort.Tensor('float32', input, [1, 3, 320, 320]);
+            const results = await session.run({ input: tensor });
+            
+            els.result.innerHTML = `<h3 style="color:green">🎉 測試成功！運算正常。</h3><p>現在你可以確認模型沒問題，可以回去用原本那個漂亮的介面了！</p>`;
+            els.runBtn.textContent = "測試完成";
+        } catch (err) {
+            showError(`❌ 圖片處理失敗\n\n${err.message}`);
+            els.runBtn.textContent = "執行測試";
+        }
+    });
+
+    // 輔助函式
+    function showError(msg) {
+        els.log.style.display = 'block';
+        els.log.innerText = msg;
+        els.modelStatus.innerHTML = "❌ 發生錯誤 (詳見下方)";
+        els.modelStatus.style.color = "red";
+    }
+    function hideError() { els.log.style.display = 'none'; }
+    
+    function loadImage(src) {
+        return new Promise(r => { const i=new Image(); i.onload=()=>r(i); i.src=src; });
+    }
+    
+    function preprocess(data, w, h) {
+        const floatArr = new Float32Array(w*h*3);
+        for(let i=0; i<data.length; i+=4) {
+            floatArr[i/4] = (data[i]/255 - 0.485)/0.229;
+            floatArr[i/4+w*h] = (data[i+1]/255 - 0.456)/0.224;
+            floatArr[i/4+2*w*h] = (data[i+2]/255 - 0.406)/0.225;
+        }
+        return floatArr;
+    }
+</script>
+
 </body>
 </html>

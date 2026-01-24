@@ -3,37 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LINE 貼圖製作大師 (靈敏度可調版)</title>
+    <title>LINE 貼圖製作大師 (V4: 防變形+雙模型版)</title>
     
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 
     <style>
-        :root { --primary: #06C755; --bg: #f4f6f9; }
+        :root { --primary: #06C755; --bg: #f0f2f5; }
         body { font-family: "Segoe UI", sans-serif; background: var(--bg); padding: 20px; color: #333; }
-        .container { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: 350px 1fr; gap: 20px; }
-        @media (max-width: 800px) { .container { grid-template-columns: 1fr; } }
+        .container { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: 380px 1fr; gap: 20px; }
+        @media (max-width: 850px) { .container { grid-template-columns: 1fr; } }
         
-        .card { background: white; padding: 25px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .card { background: white; padding: 25px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
+        h1 { grid-column: 1/-1; text-align: center; margin-bottom: 20px; color: #444; }
         
         .upload-box { 
-            border: 2px dashed #ddd; border-radius: 12px; padding: 30px; text-align: center; 
-            cursor: pointer; background: #fafafa; transition: 0.3s;
+            border: 2px dashed #ccc; border-radius: 12px; padding: 40px 20px; text-align: center; 
+            cursor: pointer; background: #fafafa; transition: 0.3s; position: relative;
         }
         .upload-box:hover { border-color: var(--primary); background: #f0fff4; }
         
         .btn { 
-            width: 100%; padding: 12px; border: none; border-radius: 8px; font-weight: bold; 
-            cursor: pointer; font-size: 16px; margin-top: 15px; 
+            width: 100%; padding: 14px; border: none; border-radius: 8px; font-weight: bold; 
+            cursor: pointer; font-size: 16px; margin-top: 15px; transition: 0.2s;
         }
-        .btn-green { background: var(--primary); color: white; }
-        .btn-green:disabled { background: #ccc; cursor: not-allowed; }
-        .btn-outline { background: #eee; color: #333; margin-top: 5px; }
+        .btn-green { background: var(--primary); color: white; box-shadow: 0 4px 6px rgba(6,199,85,0.2); }
+        .btn-green:hover { background: #05b34c; transform: translateY(-1px); }
+        .btn-green:disabled { background: #ccc; cursor: not-allowed; transform: none; box-shadow: none; }
+        .btn-outline { background: white; border: 2px solid #eee; color: #555; }
+        .btn-outline:hover { border-color: #ddd; background: #f9f9f9; }
 
-        .status-bar { margin-top: 15px; padding: 10px; border-radius: 6px; font-size: 0.9em; background: #e3f2fd; color: #0d47a1; }
+        .status-bar { 
+            margin-top: 15px; padding: 12px; border-radius: 8px; font-size: 0.9em; 
+            background: #e3f2fd; color: #0d47a1; display: flex; align-items: center; gap: 8px;
+        }
         .status-error { background: #ffebee; color: #c62828; }
         .status-success { background: #e8f5e9; color: #2e7d32; }
+
+        /* 模型選擇器 */
+        .model-selector {
+            background: #fff8e1; border: 1px solid #ffecb3; padding: 15px; border-radius: 8px; margin-bottom: 20px;
+        }
+        select { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #ddd; margin-top: 5px; font-size: 1rem; }
 
         #manualLoad { display: none; margin-top: 15px; padding: 15px; border: 1px solid #fab1a0; background: #fff5f5; border-radius: 8px; }
         
@@ -41,61 +53,63 @@
         .sticker { aspect-ratio: 1; border: 1px solid #eee; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><rect width="10" height="10" fill="white"/><rect x="10" width="10" height="10" fill="%23eee"/><rect y="10" width="10" height="10" fill="%23eee"/><rect x="10" y="10" width="10" height="10" fill="white"/></svg>'); }
         .sticker img { max-width: 100%; max-height: 100%; }
 
-        .control-group { margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 8px; border: 1px solid #eee; }
-        .slider-label { display: flex; justify-content: space-between; font-size: 0.9em; font-weight: bold; margin-bottom: 5px; }
-        
-        input[type="number"] { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+        .control-group { margin-top: 20px; }
+        .slider-label { display: flex; justify-content: space-between; font-size: 0.85em; color: #666; margin-bottom: 5px; }
         input[type="range"] { width: 100%; accent-color: var(--primary); cursor: pointer; }
         .row { display: flex; gap: 10px; } .col { flex: 1; }
+        label { font-weight: 600; font-size: 0.9em; color: #444; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:#888;">AI 可調控版</span></h1>
+    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:#888;">V4 防變形版</span></h1>
 
     <div class="card">
-        <h2>🛠️ 製作設定</h2>
-        
-        <div id="status" class="status-bar">🔄 系統初始化中...</div>
+        <div class="model-selector">
+            <label>🧠 選擇 AI 模型</label>
+            <select id="modelSelect">
+                <option value="u2netp">🚀 輕量版 (u2netp, 4.4MB) - 速度快</option>
+                <option value="u2net">💪 專業完整版 (u2net, 176MB) - 畫質最強</option>
+            </select>
+            <div style="font-size:0.8em; color:#856404; margin-top:5px;">
+                * 完整版約需下載 1-3 分鐘，請使用 WiFi。<br>
+                * 若輕量版去背不乾淨，請切換至完整版。
+            </div>
+        </div>
+
+        <div id="status" class="status-bar">🔄 準備中...</div>
 
         <div id="manualLoad">
             <strong style="color:#d63031">⚠️ 無法自動載入模型</strong>
-            <p style="font-size:0.85em; margin:5px 0;">請手動選取 <b>u2netp.onnx</b></p>
-            <button class="btn btn-outline" onclick="document.getElementById('modelInput').click()">📂 選取模型檔案</button>
+            <p style="font-size:0.85em; margin:5px 0;">請手動選取對應的 .onnx 檔案</p>
+            <button class="btn btn-outline" onclick="document.getElementById('modelInput').click()">📂 選取 ONNX 檔案</button>
             <input type="file" id="modelInput" accept=".onnx" style="display:none">
         </div>
 
         <div style="margin-top:20px;">
             <label><b>1. 上傳圖片</b></label>
             <div class="upload-box" id="dropZone" onclick="document.getElementById('imgInput').click()">
-                <span id="fileName">📷 點擊選取圖片</span>
+                <span style="font-size:2em">📷</span><br>
+                <span id="fileName">點擊或拖放圖片</span>
                 <input type="file" id="imgInput" accept="image/*" style="display:none">
             </div>
         </div>
 
         <div class="control-group">
-            <label><b>2. AI 去背靈敏度 (重要!)</b></label>
-            <div class="slider-label">
-                <span>保留更多 (圖案消失請往左)</span>
-                <span id="threshVal" style="color:var(--primary)">0.2</span>
-                <span>去得更乾淨</span>
-            </div>
+            <label><b>2. AI 靈敏度調整</b></label>
+            <div class="slider-label"><span>保留細節</span><span id="threshVal" style="color:var(--primary); font-weight:bold;">0.2</span><span>去除背景</span></div>
             <input type="range" id="threshold" min="0.05" max="0.95" step="0.05" value="0.2">
-            
-            <div style="margin-top:10px; font-size:0.85em; color:#666;">
-                <input type="checkbox" id="showMask"> 顯示黑白遮罩 (偵錯用)
-            </div>
         </div>
 
         <div class="row" style="margin-top:15px;">
-            <div class="col"><label>垂直列數</label><input type="number" id="rows" value="2"></div>
-            <div class="col"><label>水平行數</label><input type="number" id="cols" value="2"></div>
+            <div class="col"><label>垂直列數</label><input type="number" id="rows" value="2" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:4px;"></div>
+            <div class="col"><label>水平行數</label><input type="number" id="cols" value="2" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:4px;"></div>
         </div>
 
         <div style="margin-top:15px;">
             <label>白邊寬度: <span id="borderVal">0</span></label>
-            <input type="range" id="borderSize" min="0" max="15" value="0" style="width:100%">
+            <input type="range" id="borderSize" min="0" max="15" value="0">
         </div>
 
         <button id="runBtn" class="btn btn-green" disabled>等待模型載入...</button>
@@ -116,57 +130,83 @@
     ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/";
     
     let session = null;
-    let originalImageObj = null; // 暫存原圖
+    let currentModelName = 'u2netp'; // 當前模型
     let processedStickers = [];
+    
+    // 模型網址
+    const MODELS = {
+        'u2netp': 'https://huggingface.co/schyy/u2netp.onnx/resolve/main/u2netp.onnx', // 4MB
+        'u2net': 'https://huggingface.co/schyy/u2net-onnx/resolve/main/u2net.onnx'     // 176MB
+    };
 
     const els = {
         status: document.getElementById('status'),
         manual: document.getElementById('manualLoad'),
         modelIn: document.getElementById('modelInput'),
+        modelSel: document.getElementById('modelSelect'),
         imgIn: document.getElementById('imgInput'),
         runBtn: document.getElementById('runBtn'),
         preview: document.getElementById('previewGrid'),
         dlBtn: document.getElementById('dlBtn'),
         thresh: document.getElementById('threshold'),
-        threshVal: document.getElementById('threshVal'),
-        showMask: document.getElementById('showMask')
+        threshVal: document.getElementById('threshVal')
     };
 
-    // 1. 模型載入
-    async function initModel(url = './u2netp.onnx') {
+    // 1. 初始化模型
+    async function loadSelectedModel() {
+        const modelKey = els.modelSel.value;
+        currentModelName = modelKey;
+        const url = MODELS[modelKey];
+        
+        // 如果是本地測試，優先找本地檔案
+        const localUrl = `./${modelKey}.onnx`;
+
+        els.runBtn.disabled = true;
+        els.runBtn.textContent = "載入模型中...";
+        els.status.className = "status-bar";
+        els.status.textContent = `🔄 正在下載 ${modelKey} 模型...請稍候`;
+        els.manual.style.display = 'none';
+
         try {
-            els.status.textContent = "🔄 正在載入模型...";
-            session = await ort.InferenceSession.create(url, { executionProviders: ['wasm', 'webgl'] });
+            // 嘗試載入
+            try {
+                // 先試本地
+                session = await ort.InferenceSession.create(localUrl, { executionProviders: ['wasm', 'webgl'] });
+            } catch {
+                // 本地失敗則試網路
+                session = await ort.InferenceSession.create(url, { executionProviders: ['wasm', 'webgl'] });
+            }
             onModelReady();
         } catch (e) {
-            console.warn("Auto load failed");
+            console.error(e);
             els.status.className = "status-bar status-error";
-            els.status.textContent = "❌ 自動載入失敗，請手動選取模型";
+            els.status.textContent = `❌ 無法載入 ${modelKey}。請手動選取 .onnx 檔案`;
             els.manual.style.display = "block";
         }
     }
 
+    els.modelSel.addEventListener('change', loadSelectedModel);
+    
+    // 手動載入
     els.modelIn.addEventListener('change', async (e) => {
         if(!e.target.files[0]) return;
+        els.status.textContent = "🔄 讀取檔案中...";
         try {
             const url = URL.createObjectURL(e.target.files[0]);
-            els.status.textContent = "🔄 讀取檔案中...";
             session = await ort.InferenceSession.create(url, { executionProviders: ['wasm', 'webgl'] });
             els.manual.style.display = "none";
             onModelReady();
-        } catch (err) {
-            alert("模型檔案錯誤！");
-        }
+        } catch(err) { alert("模型檔案無效！"); }
     });
 
     function onModelReady() {
         els.status.className = "status-bar status-success";
-        els.status.textContent = `✅ AI 就緒！`;
+        els.status.textContent = `✅ ${currentModelName} 模型就緒！`;
         if(els.imgIn.files[0]) els.runBtn.disabled = false;
         els.runBtn.textContent = "開始製作";
     }
 
-    // 2. UI 事件
+    // 2. 圖片處理
     els.imgIn.addEventListener('change', (e) => {
         if(e.target.files[0]) {
             document.getElementById('fileName').textContent = e.target.files[0].name;
@@ -177,25 +217,23 @@
     els.thresh.addEventListener('input', (e) => els.threshVal.textContent = e.target.value);
     document.getElementById('borderSize').addEventListener('input', e => document.getElementById('borderVal').textContent = e.target.value);
 
-    // 3. 執行按鈕
+    // 執行
     els.runBtn.addEventListener('click', async () => {
-        const file = els.imgIn.files[0];
-        if(!file) return;
-
+        if(!els.imgIn.files[0] || !session) return;
         els.runBtn.disabled = true;
         els.runBtn.textContent = "處理中...";
         els.preview.innerHTML = "";
         
         try {
-            // 只載入一次圖片
-            originalImageObj = await loadImage(URL.createObjectURL(file));
-
-            // 執行 AI
-            els.status.textContent = "🤖 AI 分析中...";
-            const noBgImg = await runInference(originalImageObj);
+            const img = await loadImage(URL.createObjectURL(els.imgIn.files[0]));
+            
+            // AI 去背
+            els.status.textContent = "🤖 AI 運算中 (大圖需較長時間)...";
+            // 使用「防變形」縮放
+            const noBgImg = await runInferenceWithLetterbox(img);
             
             // 切割
-            els.status.textContent = "✂️ 製作貼圖中...";
+            els.status.textContent = "✂️ 切割中...";
             const rows = +document.getElementById('rows').value;
             const cols = +document.getElementById('cols').value;
             const border = +document.getElementById('borderSize').value;
@@ -204,117 +242,96 @@
             
             render(processedStickers);
             els.dlBtn.style.display = "block";
-            els.status.textContent = "✅ 完成！如果不滿意，請調整靈敏度後重試。";
+            els.status.textContent = "✅ 完成！";
 
         } catch (err) {
             console.error(err);
             alert("錯誤: " + err.message);
         } finally {
             els.runBtn.disabled = false;
-            els.runBtn.textContent = "重新製作";
+            els.runBtn.textContent = "再次製作";
         }
     });
 
-    // ========== 核心：AI 去背邏輯 ==========
-    async function runInference(img) {
-        // 1. 強制縮放到 320x320 進行推論
-        const aiSize = 320;
-        const aiCvs = document.createElement('canvas');
-        aiCvs.width = aiSize; aiCvs.height = aiSize;
-        const aiCtx = aiCvs.getContext('2d');
-        aiCtx.drawImage(img, 0, 0, aiSize, aiSize);
-
-        const imgData = aiCtx.getImageData(0, 0, aiSize, aiSize);
-        const inputData = new Float32Array(aiSize * aiSize * 3);
+    // ========== 核心：Letterbox (補黑邊) 預處理 ==========
+    // 解決長方形圖片被壓扁導致 AI 失敗的問題
+    async function runInferenceWithLetterbox(img) {
+        const size = 320; // 模型輸入尺寸
+        const cvs = document.createElement('canvas'); 
+        cvs.width = size; cvs.height = size;
+        const ctx = cvs.getContext('2d');
         
-        // 正規化
+        // 1. 計算縮放比例 (保持長寬比)
+        const scale = Math.min(size / img.width, size / img.height);
+        const newW = img.width * scale;
+        const newH = img.height * scale;
+        const offsetX = (size - newW) / 2;
+        const offsetY = (size - newH) / 2;
+
+        // 2. 填滿黑色背景 (Padding)
+        ctx.fillStyle = "black";
+        ctx.fillRect(0, 0, size, size);
+        
+        // 3. 畫上縮放後的圖 (置中)
+        ctx.drawImage(img, offsetX, offsetY, newW, newH);
+        
+        // 4. 取得像素資料進行推論
+        const imgData = ctx.getImageData(0, 0, size, size);
+        const inputData = new Float32Array(size * size * 3);
+        
         for(let i=0; i<imgData.data.length; i+=4) {
             inputData[i/4] = (imgData.data[i]/255 - 0.485)/0.229;
-            inputData[i/4 + aiSize*aiSize] = (imgData.data[i+1]/255 - 0.456)/0.224;
-            inputData[i/4 + 2*aiSize*aiSize] = (imgData.data[i+2]/255 - 0.406)/0.225;
+            inputData[i/4 + size*size] = (imgData.data[i+1]/255 - 0.456)/0.224;
+            inputData[i/4 + 2*size*size] = (imgData.data[i+2]/255 - 0.406)/0.225;
         }
 
-        const tensor = new ort.Tensor('float32', inputData, [1, 3, aiSize, aiSize]);
-        const inputName = session.inputNames[0];
-        const outputName = session.outputNames[0];
-        
-        const results = await session.run({ [inputName]: tensor });
-        const outputData = results[outputName].data;
+        const tensor = new ort.Tensor('float32', inputData, [1, 3, size, size]);
+        const results = await session.run({ [session.inputNames[0]]: tensor });
+        const outputData = results[session.outputNames[0]].data;
 
-        // 2. 找出 AI 輸出的最大值 (用於自動增強)
-        let maxVal = 0;
-        for(let i=0; i<outputData.length; i++) {
-            if(outputData[i] > maxVal) maxVal = outputData[i];
-        }
-        // 如果最大值很小（例如 0.1），代表 AI 看不太到東西，我們需要放大訊號
-        const scaleFactor = maxVal > 0 ? (1 / maxVal) : 1;
-        
-        // 3. 建立遮罩
-        const maskCvs = document.createElement('canvas');
-        maskCvs.width = aiSize; maskCvs.height = aiSize;
+        // 5. 處理遮罩
+        const maskCvs = document.createElement('canvas'); maskCvs.width = size; maskCvs.height = size;
         const maskCtx = maskCvs.getContext('2d');
-        const maskImgData = maskCtx.createImageData(aiSize, aiSize);
+        const maskImgData = maskCtx.createImageData(size, size);
         
-        const threshold = parseFloat(els.thresh.value); // 使用者設定的門檻
-        const showMask = els.showMask.checked;
+        // 自動增強
+        let maxVal = 0;
+        for(let i=0; i<outputData.length; i++) if(outputData[i] > maxVal) maxVal = outputData[i];
+        const boost = maxVal > 0 ? (1/maxVal) : 1;
+        const thresh = parseFloat(els.thresh.value);
 
         for(let i=0; i<outputData.length; i++) {
-            // 原始機率
-            let prob = outputData[i];
-            
-            // 自動增強: 讓微弱訊號變強
-            prob = prob * scaleFactor;
-
-            // 門檻過濾
+            let val = outputData[i] * boost;
             let alpha = 0;
-            if (prob > threshold) {
-                // 超過門檻就顯示，並做平滑過渡
-                alpha = Math.min(255, (prob - threshold) / (1 - threshold) * 255 * 1.5); 
-                // *1.5 是為了讓主體更實一點
-                if(alpha > 255) alpha = 255;
-            }
-
-            if (showMask) {
-                // 如果勾選顯示遮罩：畫黑白圖
-                const c = alpha; 
-                maskImgData.data[i*4] = c;
-                maskImgData.data[i*4+1] = c;
-                maskImgData.data[i*4+2] = c;
-                maskImgData.data[i*4+3] = 255;
-            } else {
-                // 正常去背模式：只存 Alpha
-                maskImgData.data[i*4] = 0;
-                maskImgData.data[i*4+1] = 0;
-                maskImgData.data[i*4+2] = 0;
-                maskImgData.data[i*4+3] = alpha;
-            }
+            if(val > thresh) alpha = Math.min(255, (val - thresh) / (1 - thresh) * 255);
+            maskImgData.data[i*4+3] = alpha;
         }
         maskCtx.putImageData(maskImgData, 0, 0);
 
-        if (showMask) {
-            // 如果是看遮罩，直接回傳黑白圖
-            return maskCvs.toDataURL();
-        }
-
-        // 4. 將遮罩應用回原圖
+        // 6. 還原回原圖尺寸 (Remove Padding)
         const finalCvs = document.createElement('canvas');
-        finalCvs.width = img.width;
-        finalCvs.height = img.height;
+        finalCvs.width = img.width; finalCvs.height = img.height;
         const finalCtx = finalCvs.getContext('2d');
         
+        // 畫原圖
         finalCtx.drawImage(img, 0, 0);
-        finalCtx.globalCompositeOperation = 'destination-in';
-        finalCtx.drawImage(maskCvs, 0, 0, aiSize, aiSize, 0, 0, img.width, img.height);
         
+        // 應用遮罩 (需將遮罩中的有效區域切出來，放大回原圖大小)
+        finalCtx.globalCompositeOperation = 'destination-in';
+        finalCtx.drawImage(
+            maskCvs, 
+            offsetX, offsetY, newW, newH, // 來源：只取有效區域
+            0, 0, img.width, img.height   // 目的：填滿原圖
+        );
+
         return finalCvs.toDataURL();
     }
 
-    // 切割功能 (保持不變)
+    // 切割與加框 (保持不變)
     async function cutAndSticker(img, rows, cols, border) {
         const w = img.width; const h = img.height;
         const tileW = Math.floor(w/cols); const tileH = Math.floor(h/rows);
         const res = [];
-        
         const cvs = document.createElement('canvas'); const ctx = cvs.getContext('2d');
         const sCvs = document.createElement('canvas'); sCvs.width=180; sCvs.height=180; const sCtx = sCvs.getContext('2d');
 
@@ -323,17 +340,13 @@
                 cvs.width=tileW; cvs.height=tileH;
                 ctx.clearRect(0,0,tileW,tileH);
                 ctx.drawImage(img, c*tileW, r*tileH, tileW, tileH, 0, 0, tileW, tileH);
-                
                 sCtx.clearRect(0,0,180,180);
                 const tImg = await loadImage(cvs.toDataURL());
                 const scale = Math.min(180/tImg.width, 180/tImg.height);
                 const dw = tImg.width*scale; const dh = tImg.height*scale;
-                
                 sCtx.drawImage(tImg, (180-dw)/2, (180-dh)/2, dw, dh);
-                
                 if(border > 0) {
-                    sCtx.strokeStyle="white"; sCtx.lineWidth=border*2; 
-                    sCtx.strokeRect(0,0,180,180);
+                    sCtx.strokeStyle="white"; sCtx.lineWidth=border*2; sCtx.strokeRect(0,0,180,180);
                 }
                 res.push({ url: sCvs.toDataURL(), name: `${res.length+1}.png` });
             }
@@ -341,19 +354,17 @@
         return res;
     }
 
-    function render(list) {
-        els.preview.innerHTML = list.map(s => `<div class="sticker"><img src="${s.url}"></div>`).join('');
-    }
-
+    function render(list) { els.preview.innerHTML = list.map(s => `<div class="sticker"><img src="${s.url}"></div>`).join(''); }
+    
     els.dlBtn.onclick = () => {
         const zip = new JSZip();
         processedStickers.forEach(s => zip.file(s.name, s.url.split(',')[1], {base64:true}));
         zip.generateAsync({type:"blob"}).then(b => saveAs(b, "LineStickers.zip"));
     };
-
     function loadImage(src) { return new Promise(r => { const i=new Image(); i.onload=()=>r(i); i.src=src; }); }
 
-    initModel();
+    // 預設載入輕量版
+    loadSelectedModel();
 </script>
 
 </body>

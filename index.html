@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LINE 貼圖製作大師 (完美修復版)</title>
+    <title>LINE 貼圖製作大師 (320px 修正版)</title>
     
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -39,7 +39,6 @@
         .status-error { background: #ffebee; color: #c62828; }
         .status-success { background: #e8f5e9; color: #2e7d32; }
 
-        /* 錯誤手動修復區 */
         #manualLoad { display: none; margin-top: 15px; padding: 15px; border: 1px solid #fab1a0; background: #fff5f5; border-radius: 8px; }
         
         #previewGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; margin-top: 15px; }
@@ -53,7 +52,7 @@
 <body>
 
 <div class="container">
-    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:#888;">AI 去背修復版</span></h1>
+    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:#888;">v3.0 最終修正</span></h1>
 
     <div class="card">
         <h2>🛠️ 製作設定</h2>
@@ -101,7 +100,6 @@
 </div>
 
 <script>
-    // 0. 初始化環境
     ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/";
     
     let session = null;
@@ -117,7 +115,7 @@
         dlBtn: document.getElementById('dlBtn')
     };
 
-    // 1. 模型載入邏輯
+    // 1. 模型載入
     async function initModel(url = './u2netp.onnx') {
         try {
             els.status.textContent = "🔄 正在載入模型...";
@@ -140,13 +138,13 @@
             els.manual.style.display = "none";
             onModelReady();
         } catch (err) {
-            alert("模型檔案錯誤！請確認是 4.4MB 的 u2netp.onnx");
+            alert("模型檔案錯誤！請確認檔案正確。");
         }
     });
 
     function onModelReady() {
         els.status.className = "status-bar status-success";
-        els.status.textContent = `✅ 模型就緒！(輸入接點: ${session.inputNames[0]})`;
+        els.status.textContent = `✅ 模型就緒！`;
         if(els.imgIn.files[0]) els.runBtn.disabled = false;
         els.runBtn.textContent = "開始製作";
     }
@@ -170,13 +168,12 @@
         els.preview.innerHTML = "";
         
         try {
-            // A. 圖片前處理
+            // A. 載入原圖
             const img = await loadImage(URL.createObjectURL(file));
-            const resizedImg = await resizeImage(img, 1024); // 縮小以防當機
 
-            // B. AI 去背 (關鍵修復點)
+            // B. AI 去背 (關鍵：強制縮放到 320x320 進行運算，再放大回原圖)
             els.status.textContent = "🤖 AI 去背運算中...";
-            const noBgImg = await runInference(resizedImg);
+            const noBgImg = await runInference(img);
             
             // C. 切割與加框
             els.status.textContent = "✂️ 切割貼圖...";
@@ -186,7 +183,6 @@
             
             processedStickers = await cutAndSticker(await loadImage(noBgImg), rows, cols, border);
             
-            // D. 顯示結果
             render(processedStickers);
             els.dlBtn.style.display = "block";
             els.status.textContent = "✅ 完成！";
@@ -200,45 +196,66 @@
         }
     });
 
-    // ========== 關鍵核心修復區 ==========
-    async function runInference(img) {
-        const w = img.width; const h = img.height;
-        const cvs = document.createElement('canvas'); cvs.width = w; cvs.height = h;
-        const ctx = cvs.getContext('2d'); ctx.drawImage(img, 0, 0);
-        const imgData = ctx.getImageData(0, 0, w, h);
+    // ========== 核心修復：強制 320x320 ==========
+    async function runInference(originalImg) {
+        // 1. 建立一個 320x320 的畫布給 AI 看 (解決 Error: Expected 320)
+        const aiSize = 320;
+        const aiCvs = document.createElement('canvas');
+        aiCvs.width = aiSize; aiCvs.height = aiSize;
+        const aiCtx = aiCvs.getContext('2d');
+        aiCtx.drawImage(originalImg, 0, 0, aiSize, aiSize); // 強制縮放
 
-        // 1. 轉換數據
-        const inputData = new Float32Array(w * h * 3);
+        const imgData = aiCtx.getImageData(0, 0, aiSize, aiSize);
+
+        // 2. 轉換數據
+        const inputData = new Float32Array(aiSize * aiSize * 3);
         for(let i=0; i<imgData.data.length; i+=4) {
-            inputData[i/4] = (imgData.data[i]/255 - 0.485)/0.229;         // R
-            inputData[i/4 + w*h] = (imgData.data[i+1]/255 - 0.456)/0.224; // G
-            inputData[i/4 + 2*w*h] = (imgData.data[i+2]/255 - 0.406)/0.225; // B
+            inputData[i/4] = (imgData.data[i]/255 - 0.485)/0.229;
+            inputData[i/4 + aiSize*aiSize] = (imgData.data[i+1]/255 - 0.456)/0.224;
+            inputData[i/4 + 2*aiSize*aiSize] = (imgData.data[i+2]/255 - 0.406)/0.225;
         }
 
-        const tensor = new ort.Tensor('float32', inputData, [1, 3, h, w]);
+        const tensor = new ort.Tensor('float32', inputData, [1, 3, aiSize, aiSize]);
         
-        // 🚨 關鍵修復：動態取得模型真正的輸入與輸出名稱 🚨
-        const inputName = session.inputNames[0];  // 自動抓取 'input.1' 或 'input'
-        const outputName = session.outputNames[0]; // 自動抓取 '1959' 或 'output'
-        
-        const feeds = {};
-        feeds[inputName] = tensor; // 使用正確的 Key
+        // 自動偵測入口名稱
+        const inputName = session.inputNames[0];
+        const outputName = session.outputNames[0];
+        const feeds = {}; feeds[inputName] = tensor;
 
-        // 執行推論
+        // 推論
         const results = await session.run(feeds);
-        const outputData = results[outputName].data; // 使用正確的 Key 讀取輸出
+        const outputData = results[outputName].data;
 
-        // 2. 應用遮罩
-        const newImgData = ctx.createImageData(w, h);
-        for(let i=0; i<w*h; i++) {
+        // 3. 處理 320x320 的遮罩
+        const maskCvs = document.createElement('canvas');
+        maskCvs.width = aiSize; maskCvs.height = aiSize;
+        const maskCtx = maskCvs.getContext('2d');
+        const maskImgData = maskCtx.createImageData(aiSize, aiSize);
+        
+        for(let i=0; i<outputData.length; i++) {
             const alpha = Math.max(0, Math.min(255, outputData[i] * 255));
-            newImgData.data[i*4] = imgData.data[i*4];
-            newImgData.data[i*4+1] = imgData.data[i*4+1];
-            newImgData.data[i*4+2] = imgData.data[i*4+2];
-            newImgData.data[i*4+3] = alpha;
+            maskImgData.data[i*4] = 0;   // R (不重要)
+            maskImgData.data[i*4+1] = 0; // G (不重要)
+            maskImgData.data[i*4+2] = 0; // B (不重要)
+            maskImgData.data[i*4+3] = alpha; // Alpha 才是重點
         }
-        ctx.putImageData(newImgData, 0, 0);
-        return cvs.toDataURL();
+        maskCtx.putImageData(maskImgData, 0, 0);
+
+        // 4. 將 320x320 的遮罩「放大」回原圖尺寸並應用
+        const finalCvs = document.createElement('canvas');
+        finalCvs.width = originalImg.width;
+        finalCvs.height = originalImg.height;
+        const finalCtx = finalCvs.getContext('2d');
+        
+        // 畫原圖
+        finalCtx.drawImage(originalImg, 0, 0);
+        
+        // 使用 composite operation 來應用遮罩
+        finalCtx.globalCompositeOperation = 'destination-in';
+        // 畫上放大後的遮罩 (平滑縮放)
+        finalCtx.drawImage(maskCvs, 0, 0, aiSize, aiSize, 0, 0, originalImg.width, originalImg.height);
+        
+        return finalCvs.toDataURL();
     }
     // ===================================
 
@@ -284,16 +301,7 @@
     };
 
     function loadImage(src) { return new Promise(r => { const i=new Image(); i.onload=()=>r(i); i.src=src; }); }
-    async function resizeImage(img, max) {
-        if(img.width<=max && img.height<=max) return img;
-        const cvs = document.createElement('canvas');
-        const sc = Math.min(max/img.width, max/img.height);
-        cvs.width=img.width*sc; cvs.height=img.height*sc;
-        cvs.getContext('2d').drawImage(img,0,0,cvs.width,cvs.height);
-        return loadImage(cvs.toDataURL());
-    }
 
-    // 啟動
     initModel();
 </script>
 

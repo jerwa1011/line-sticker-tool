@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LINE 貼圖製作大師 (AI 去背版)</title>
+    <title>LINE 貼圖製作大師 (免模型上傳版)</title>
     
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/ort.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -11,7 +11,7 @@
 
     <style>
         :root {
-            --primary-color: #06C755; /* LINE Green */
+            --primary-color: #06C755;
             --primary-hover: #05a546;
             --bg-color: #f5f7fa;
             --card-bg: #ffffff;
@@ -38,12 +38,10 @@
             align-items: start;
         }
 
-        /* 響應式：手機變單欄 */
         @media (max-width: 850px) {
             .container { grid-template-columns: 1fr; }
         }
 
-        /* 卡片樣式 */
         .card {
             background: var(--card-bg);
             border-radius: var(--border-radius);
@@ -55,7 +53,6 @@
         h1 { grid-column: 1 / -1; text-align: center; margin-bottom: 10px; color: var(--text-main); font-size: 1.8rem; }
         h2 { font-size: 1.2rem; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px; }
         
-        /* 上傳區塊 */
         .upload-zone {
             border: 2px dashed #ddd;
             border-radius: 12px;
@@ -77,7 +74,6 @@
             opacity: 0; cursor: pointer; 
         }
 
-        /* 表單控制 */
         .form-group { margin-bottom: 16px; }
         label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 0.9rem; }
         
@@ -88,14 +84,11 @@
             width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem;
             background: #fff;
         }
-        input[type="number"]:focus, select:focus { border-color: var(--primary-color); }
-
-        /* 滑桿 */
+        
         .range-wrap { display: flex; align-items: center; gap: 10px; }
         input[type="range"] { flex: 1; accent-color: var(--primary-color); }
         .range-val { font-weight: bold; color: var(--primary-color); min-width: 24px; }
 
-        /* 按鈕 */
         .btn {
             width: 100%; padding: 14px; border: none; border-radius: 10px;
             font-weight: bold; font-size: 1rem; cursor: pointer; transition: 0.2s;
@@ -107,11 +100,8 @@
         
         .btn-secondary { background: #f0f0f0; color: #333; margin-top: 10px; }
         .btn-secondary:hover { background: #e0e0e0; }
-
         .btn-download { background: #333; color: white; }
-        .btn-download:hover { background: #000; }
-
-        /* 預覽區 */
+        
         #previewGrid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
@@ -125,14 +115,12 @@
             overflow: hidden;
             display: flex; align-items: center; justify-content: center;
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-            /* 透明背景格紋 */
             background-image: linear-gradient(45deg, #eee 25%, transparent 25%), linear-gradient(-45deg, #eee 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #eee 75%), linear-gradient(-45deg, transparent 75%, #eee 75%);
             background-size: 20px 20px;
             background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
         }
         .sticker-item img { max-width: 100%; max-height: 100%; object-fit: contain; }
 
-        /* 狀態列 */
         .status-box {
             margin-top: 20px; padding: 12px; border-radius: 8px; font-size: 0.9rem;
             display: flex; align-items: center; gap: 8px;
@@ -142,24 +130,17 @@
         .status-box.success { background: #e8f5e9; color: #2e7d32; }
         .status-box.error { background: #ffebee; color: #c62828; }
 
-        /* 載入動畫 */
         .spinner {
             width: 18px; height: 18px; border: 2px solid currentColor; border-top-color: transparent;
             border-radius: 50%; animation: spin 0.8s linear infinite; display: none;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
-
-        /* 錯誤提示區 */
-        #modelError {
-            display: none; margin-top: 15px; padding: 15px; background: #fff3cd; 
-            border: 1px solid #ffeeba; border-radius: 8px; color: #856404; font-size: 0.9rem;
-        }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h1>LINE 貼圖製作大師 <span style="font-size: 0.6em; color: #888; font-weight: normal;">Web AI 版</span></h1>
+        <h1>LINE 貼圖製作大師 <span style="font-size: 0.6em; color: #888; font-weight: normal;">(網路模型版)</span></h1>
 
         <div class="card">
             <h2>⚙️ 參數設定</h2>
@@ -175,11 +156,11 @@
 
             <div class="row">
                 <div class="col">
-                    <label>垂直列數 (Rows)</label>
+                    <label>垂直列數</label>
                     <input type="number" id="rows" min="1" value="2">
                 </div>
                 <div class="col">
-                    <label>水平行數 (Cols)</label>
+                    <label>水平行數</label>
                     <input type="number" id="cols" min="1" value="2">
                 </div>
             </div>
@@ -208,19 +189,13 @@
             <div class="status-box" id="statusBox">
                 <span>👋 請先上傳圖片</span>
             </div>
-
-            <div id="modelError">
-                <strong>⚠️ 找不到模型檔案！</strong><br>
-                請下載 `u2netp.onnx` 並放入 GitHub 的根目錄。<br>
-                <a href="https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2netp.onnx" target="_blank" class="btn btn-secondary" style="margin-top:8px; text-decoration:none; text-align:center;">📥 下載模型 (4.4MB)</a>
-            </div>
         </div>
 
         <div class="card">
-            <h2>🖼️ 貼圖預覽 (180x180)</h2>
+            <h2>🖼️ 貼圖預覽</h2>
             <div id="previewGrid">
                 <div style="grid-column: 1/-1; text-align: center; color: #ccc; padding: 40px;">
-                    等待處理...
+                    預覽圖會顯示在這裡
                 </div>
             </div>
 
@@ -233,26 +208,24 @@
 
     <script>
         // ==========================================
-        // 1. 環境設定與全域變數
+        // 1. 重要修改：直接使用網路上穩定的模型庫
         // ==========================================
         
-        // 強制設定 WASM 路徑，避免在 GitHub Pages 找不到 .wasm 檔案
-        // 使用 window.ort 確保抓到全域物件
+        // 使用 jsDelivr CDN 加速讀取模型 (完全不需要本地上傳檔案)
+        const MODEL_PATH = 'https://cdn.jsdelivr.net/gh/danielgatis/rembg@master/u2netp.onnx';
+
+        // 設定 WASM 路徑
         if (typeof ort !== 'undefined') {
             ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/";
         } else {
-            alert("❌ 嚴重錯誤：無法載入 onnxruntime，請檢查網路連線。");
+            alert("❌ 嚴重錯誤：無法載入 AI 引擎，請檢查網路連線。");
         }
 
-        const MODEL_PATH = './u2netp.onnx'; // 模型必須在同目錄
         let session = null;
         let fullBgRemovedImage = null;
         let processedStickers = [];
 
-        // ==========================================
-        // 2. UI 互動邏輯
-        // ==========================================
-        
+        // UI 綁定
         const els = {
             input: document.getElementById('imageInput'),
             dropZone: document.getElementById('dropZone'),
@@ -261,7 +234,6 @@
             btnText: document.getElementById('btnText'),
             spinner: document.getElementById('btnSpinner'),
             status: document.getElementById('statusBox'),
-            modelError: document.getElementById('modelError'),
             previewGrid: document.getElementById('previewGrid'),
             borderInput: document.getElementById('borderSize'),
             borderVal: document.getElementById('borderValue'),
@@ -270,22 +242,18 @@
             actions: document.getElementById('actionButtons')
         };
 
-        // 顯示檔案名稱
+        // UI 事件監聽
         els.input.addEventListener('change', (e) => {
             if (e.target.files[0]) {
                 els.fileName.textContent = e.target.files[0].name;
                 els.processBtn.disabled = false;
-                updateStatus('ready', '圖片已就緒，點擊按鈕開始製作！');
+                updateStatus('ready', '圖片已就緒，請點擊按鈕開始！');
             }
         });
-
-        // 滑桿數值顯示
         els.borderInput.addEventListener('input', (e) => els.borderVal.textContent = e.target.value);
-
-        // 拖放效果
-        els.dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault(); els.dropZone.classList.add('dragover');
-        });
+        
+        // 拖放功能
+        els.dropZone.addEventListener('dragover', (e) => { e.preventDefault(); els.dropZone.classList.add('dragover'); });
         els.dropZone.addEventListener('dragleave', () => els.dropZone.classList.remove('dragover'));
         els.dropZone.addEventListener('drop', (e) => {
             e.preventDefault(); els.dropZone.classList.remove('dragover');
@@ -296,7 +264,7 @@
         });
 
         // ==========================================
-        // 3. 核心功能
+        // 2. 主程式邏輯
         // ==========================================
 
         els.processBtn.addEventListener('click', async () => {
@@ -304,74 +272,71 @@
             if (!file) return;
 
             setLoading(true);
-            els.modelError.style.display = 'none';
             els.actions.style.display = 'none';
             els.previewGrid.innerHTML = '';
             processedStickers = [];
 
             try {
-                // 步驟 A: 載入並縮放圖片 (避免大圖當機)
-                updateStatus('loading', '📷 正在最佳化圖片尺寸...');
+                // A. 圖片縮放
+                updateStatus('loading', '📷 正在調整圖片尺寸...');
                 let img = await loadImage(URL.createObjectURL(file));
-                img = await resizeImage(img, 1024); // 限制最大邊長 1024px
+                img = await resizeImage(img, 1024);
 
-                // 步驟 B: 執行 AI 去背
+                // B. AI 去背
                 const mode = document.getElementById('removeBg').value;
                 if (mode === 'rembg') {
-                    updateStatus('loading', '🤖 正在啟動 AI 模型 (首次需時較長)...');
+                    updateStatus('loading', '☁️ 正在從雲端載入 AI 模型並去背 (首次約需 10-30 秒)...');
                     const noBgUrl = await runAiRemoveBackground(img);
                     fullBgRemovedImage = noBgUrl;
-                    img = await loadImage(noBgUrl); // 更新為去背後的圖
+                    img = await loadImage(noBgUrl);
                 } else {
                     fullBgRemovedImage = null;
                 }
 
-                // 步驟 C: 切割並加框
-                updateStatus('loading', '✂️ 正在切割並加上白邊...');
+                // C. 切割
+                updateStatus('loading', '✂️ 正在切割貼圖...');
                 const rows = parseInt(document.getElementById('rows').value) || 2;
                 const cols = parseInt(document.getElementById('cols').value) || 2;
                 const border = parseInt(els.borderInput.value) || 0;
 
                 const stickers = await cutAndStroke(img, rows, cols, border);
                 
-                // 步驟 D: 顯示結果
+                // D. 顯示
                 renderPreview(stickers);
                 processedStickers = stickers;
                 els.actions.style.display = 'block';
-                if (!fullBgRemovedImage) els.dlFullBtn.style.display = 'none';
-                else els.dlFullBtn.style.display = 'inline-block';
-
-                updateStatus('success', `✅ 完成！共產生 ${stickers.length} 張貼圖。`);
+                els.dlFullBtn.style.display = fullBgRemovedImage ? 'inline-block' : 'none';
+                updateStatus('success', `✅ 完成！產生 ${stickers.length} 張貼圖。`);
 
             } catch (err) {
                 console.error(err);
                 updateStatus('error', '❌ 發生錯誤：' + err.message);
-                if (err.message.includes('fetch')) {
-                    els.modelError.style.display = 'block';
+                if(err.message.includes('fetch') || err.message.includes('network')) {
+                    alert("網路連線問題：無法從雲端下載模型。請確保網路暢通。");
                 }
             } finally {
                 setLoading(false);
             }
         });
 
-        // --- AI 模型載入與執行 ---
+        // AI 核心
         async function getSession() {
             if (session) return session;
             try {
-                // 這裡使用全域 ort 物件
+                // 這裡會直接從 jsDelivr 下載模型，不用本地檔案
                 session = await ort.InferenceSession.create(MODEL_PATH, {
-                    executionProviders: ['webgl', 'wasm'] // 優先使用 GPU
+                    executionProviders: ['webgl', 'wasm']
                 });
                 return session;
             } catch (e) {
-                throw new Error("無法載入模型檔 (u2netp.onnx)。請確認檔案已上傳。");
+                console.error(e);
+                throw new Error("無法從網路載入模型。請檢查網路連線是否正常。");
             }
         }
 
         async function runAiRemoveBackground(img) {
             const session = await getSession();
             
-            // 準備 Canvas 讀取像素
             const w = img.width;
             const h = img.height;
             const cvs = document.createElement('canvas');
@@ -380,25 +345,20 @@
             ctx.drawImage(img, 0, 0);
             const imageData = ctx.getImageData(0, 0, w, h);
             
-            // 影像前處理 (Preprocessing)
             const inputData = preprocess(imageData.data, w, h);
-            
-            // 推論 (Inference)
             const tensor = new ort.Tensor('float32', inputData, [1, 3, h, w]);
             const results = await session.run({ input: tensor });
             const outputData = results.output.data;
 
-            // 影像後處理 (Postprocessing - Apply Mask)
             return applyMask(imageData, outputData, w, h);
         }
 
         function preprocess(data, w, h) {
             const floatArr = new Float32Array(w * h * 3);
-            // ImageNet Normalization
             for (let i = 0; i < data.length; i += 4) {
-                floatArr[(i/4)] = (data[i] / 255 - 0.485) / 0.229;           // R
-                floatArr[(i/4) + w*h] = (data[i+1] / 255 - 0.456) / 0.224;   // G
-                floatArr[(i/4) + 2*w*h] = (data[i+2] / 255 - 0.406) / 0.225; // B
+                floatArr[(i/4)] = (data[i] / 255 - 0.485) / 0.229;
+                floatArr[(i/4) + w*h] = (data[i+1] / 255 - 0.456) / 0.224;
+                floatArr[(i/4) + 2*w*h] = (data[i+2] / 255 - 0.406) / 0.225;
             }
             return floatArr;
         }
@@ -414,13 +374,13 @@
                 newImgData.data[i*4] = sourceImageData.data[i*4];
                 newImgData.data[i*4+1] = sourceImageData.data[i*4+1];
                 newImgData.data[i*4+2] = sourceImageData.data[i*4+2];
-                newImgData.data[i*4+3] = alpha; // 應用 AI 算出的透明度
+                newImgData.data[i*4+3] = alpha;
             }
             ctx.putImageData(newImgData, 0, 0);
             return resultCvs.toDataURL('image/png');
         }
 
-        // --- 圖片處理工具 ---
+        // 圖片切割與加框
         async function cutAndStroke(img, rows, cols, border) {
             const w = img.width;
             const h = img.height;
@@ -434,17 +394,14 @@
 
             for (let r = 0; r < rows; r++) {
                 for (let c = 0; c < cols; c++) {
-                    // 1. 切割出小區塊
                     canvas.width = tileW; canvas.height = tileH;
                     ctx.clearRect(0,0,tileW,tileH);
                     ctx.drawImage(img, c*tileW, r*tileH, tileW, tileH, 0, 0, tileW, tileH);
                     
-                    // 2. 縮放到 180x180
                     const stickerCanvas = document.createElement('canvas');
                     stickerCanvas.width = 180; stickerCanvas.height = 180;
                     const sCtx = stickerCanvas.getContext('2d');
                     
-                    // 保持比例置中
                     const tempImg = await loadImage(canvas.toDataURL());
                     const scale = Math.min(180/tempImg.width, 180/tempImg.height);
                     const drawW = tempImg.width * scale;
@@ -454,12 +411,11 @@
 
                     sCtx.drawImage(tempImg, offsetX, offsetY, drawW, drawH);
 
-                    // 3. 畫邊框 (如果有的話)
                     if (border > 0) {
                         sCtx.strokeStyle = 'white'; 
-                        sCtx.lineWidth = border * 2; // 技巧：畫在邊緣，一半被遮住
+                        sCtx.lineWidth = border * 2;
                         sCtx.lineJoin = 'round';
-                        sCtx.strokeRect(0, 0, 180, 180); // 這裡簡單畫框，如果要沿著圖案畫需要更複雜演算法
+                        sCtx.strokeRect(0, 0, 180, 180);
                     }
                     
                     results.push({
@@ -485,19 +441,17 @@
         function loadImage(src) {
             return new Promise((resolve, reject) => {
                 const i = new Image();
+                i.crossOrigin = "anonymous";
                 i.onload = () => resolve(i);
                 i.onerror = reject;
                 i.src = src;
             });
         }
 
-        // --- 介面更新 ---
         function setLoading(isLoading) {
             els.processBtn.disabled = isLoading;
             els.spinner.style.display = isLoading ? 'inline-block' : 'none';
             els.btnText.textContent = isLoading ? '處理中...' : '開始製作貼圖';
-            if(isLoading) els.input.disabled = true;
-            else els.input.disabled = false;
         }
 
         function updateStatus(type, msg) {
@@ -516,7 +470,6 @@
             els.previewGrid.appendChild(frag);
         }
 
-        // --- 下載功能 ---
         els.dlBtn.addEventListener('click', () => {
             const zip = new JSZip();
             processedStickers.forEach(s => {
@@ -530,7 +483,6 @@
         els.dlFullBtn.addEventListener('click', () => {
             if(fullBgRemovedImage) saveAs(fullBgRemovedImage, 'full_nobg.png');
         });
-
     </script>
 </body>
 </html>

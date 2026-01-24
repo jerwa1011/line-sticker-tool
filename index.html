@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LINE 貼圖製作大師 (320px 修正版)</title>
+    <title>LINE 貼圖製作大師 (靈敏度可調版)</title>
     
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -16,11 +16,10 @@
         @media (max-width: 800px) { .container { grid-template-columns: 1fr; } }
         
         .card { background: white; padding: 25px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        h1 { grid-column: 1/-1; text-align: center; margin-bottom: 10px; }
         
         .upload-box { 
             border: 2px dashed #ddd; border-radius: 12px; padding: 30px; text-align: center; 
-            cursor: pointer; background: #fafafa; transition: 0.3s; position: relative;
+            cursor: pointer; background: #fafafa; transition: 0.3s;
         }
         .upload-box:hover { border-color: var(--primary); background: #f0fff4; }
         
@@ -32,10 +31,7 @@
         .btn-green:disabled { background: #ccc; cursor: not-allowed; }
         .btn-outline { background: #eee; color: #333; margin-top: 5px; }
 
-        .status-bar { 
-            margin-top: 15px; padding: 10px; border-radius: 6px; font-size: 0.9em; 
-            background: #e3f2fd; color: #0d47a1; display: flex; align-items: center; gap: 8px;
-        }
+        .status-bar { margin-top: 15px; padding: 10px; border-radius: 6px; font-size: 0.9em; background: #e3f2fd; color: #0d47a1; }
         .status-error { background: #ffebee; color: #c62828; }
         .status-success { background: #e8f5e9; color: #2e7d32; }
 
@@ -45,14 +41,18 @@
         .sticker { aspect-ratio: 1; border: 1px solid #eee; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><rect width="10" height="10" fill="white"/><rect x="10" width="10" height="10" fill="%23eee"/><rect y="10" width="10" height="10" fill="%23eee"/><rect x="10" y="10" width="10" height="10" fill="white"/></svg>'); }
         .sticker img { max-width: 100%; max-height: 100%; }
 
+        .control-group { margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 8px; border: 1px solid #eee; }
+        .slider-label { display: flex; justify-content: space-between; font-size: 0.9em; font-weight: bold; margin-bottom: 5px; }
+        
         input[type="number"] { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+        input[type="range"] { width: 100%; accent-color: var(--primary); cursor: pointer; }
         .row { display: flex; gap: 10px; } .col { flex: 1; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:#888;">v3.0 最終修正</span></h1>
+    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:#888;">AI 可調控版</span></h1>
 
     <div class="card">
         <h2>🛠️ 製作設定</h2>
@@ -61,17 +61,30 @@
 
         <div id="manualLoad">
             <strong style="color:#d63031">⚠️ 無法自動載入模型</strong>
-            <p style="font-size:0.85em; margin:5px 0;">請手動選取您下載的 <b>u2netp.onnx</b> (4.4MB)</p>
+            <p style="font-size:0.85em; margin:5px 0;">請手動選取 <b>u2netp.onnx</b></p>
             <button class="btn btn-outline" onclick="document.getElementById('modelInput').click()">📂 選取模型檔案</button>
             <input type="file" id="modelInput" accept=".onnx" style="display:none">
         </div>
 
         <div style="margin-top:20px;">
-            <label><b>上傳圖片</b></label>
+            <label><b>1. 上傳圖片</b></label>
             <div class="upload-box" id="dropZone" onclick="document.getElementById('imgInput').click()">
-                <span style="font-size:2em">📷</span><br>
-                <span id="fileName">點擊或拖放圖片</span>
+                <span id="fileName">📷 點擊選取圖片</span>
                 <input type="file" id="imgInput" accept="image/*" style="display:none">
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label><b>2. AI 去背靈敏度 (重要!)</b></label>
+            <div class="slider-label">
+                <span>保留更多 (圖案消失請往左)</span>
+                <span id="threshVal" style="color:var(--primary)">0.2</span>
+                <span>去得更乾淨</span>
+            </div>
+            <input type="range" id="threshold" min="0.05" max="0.95" step="0.05" value="0.2">
+            
+            <div style="margin-top:10px; font-size:0.85em; color:#666;">
+                <input type="checkbox" id="showMask"> 顯示黑白遮罩 (偵錯用)
             </div>
         </div>
 
@@ -81,7 +94,7 @@
         </div>
 
         <div style="margin-top:15px;">
-            <label>白邊寬度 (px): <span id="borderVal">0</span></label>
+            <label>白邊寬度: <span id="borderVal">0</span></label>
             <input type="range" id="borderSize" min="0" max="15" value="0" style="width:100%">
         </div>
 
@@ -103,6 +116,7 @@
     ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/";
     
     let session = null;
+    let originalImageObj = null; // 暫存原圖
     let processedStickers = [];
 
     const els = {
@@ -112,7 +126,10 @@
         imgIn: document.getElementById('imgInput'),
         runBtn: document.getElementById('runBtn'),
         preview: document.getElementById('previewGrid'),
-        dlBtn: document.getElementById('dlBtn')
+        dlBtn: document.getElementById('dlBtn'),
+        thresh: document.getElementById('threshold'),
+        threshVal: document.getElementById('threshVal'),
+        showMask: document.getElementById('showMask')
     };
 
     // 1. 模型載入
@@ -122,7 +139,7 @@
             session = await ort.InferenceSession.create(url, { executionProviders: ['wasm', 'webgl'] });
             onModelReady();
         } catch (e) {
-            console.warn("Auto load failed:", e);
+            console.warn("Auto load failed");
             els.status.className = "status-bar status-error";
             els.status.textContent = "❌ 自動載入失敗，請手動選取模型";
             els.manual.style.display = "block";
@@ -138,18 +155,18 @@
             els.manual.style.display = "none";
             onModelReady();
         } catch (err) {
-            alert("模型檔案錯誤！請確認檔案正確。");
+            alert("模型檔案錯誤！");
         }
     });
 
     function onModelReady() {
         els.status.className = "status-bar status-success";
-        els.status.textContent = `✅ 模型就緒！`;
+        els.status.textContent = `✅ AI 就緒！`;
         if(els.imgIn.files[0]) els.runBtn.disabled = false;
         els.runBtn.textContent = "開始製作";
     }
 
-    // 2. 圖片處理
+    // 2. UI 事件
     els.imgIn.addEventListener('change', (e) => {
         if(e.target.files[0]) {
             document.getElementById('fileName').textContent = e.target.files[0].name;
@@ -157,8 +174,10 @@
         }
     });
 
+    els.thresh.addEventListener('input', (e) => els.threshVal.textContent = e.target.value);
     document.getElementById('borderSize').addEventListener('input', e => document.getElementById('borderVal').textContent = e.target.value);
 
+    // 3. 執行按鈕
     els.runBtn.addEventListener('click', async () => {
         const file = els.imgIn.files[0];
         if(!file) return;
@@ -168,15 +187,15 @@
         els.preview.innerHTML = "";
         
         try {
-            // A. 載入原圖
-            const img = await loadImage(URL.createObjectURL(file));
+            // 只載入一次圖片
+            originalImageObj = await loadImage(URL.createObjectURL(file));
 
-            // B. AI 去背 (關鍵：強制縮放到 320x320 進行運算，再放大回原圖)
-            els.status.textContent = "🤖 AI 去背運算中...";
-            const noBgImg = await runInference(img);
+            // 執行 AI
+            els.status.textContent = "🤖 AI 分析中...";
+            const noBgImg = await runInference(originalImageObj);
             
-            // C. 切割與加框
-            els.status.textContent = "✂️ 切割貼圖...";
+            // 切割
+            els.status.textContent = "✂️ 製作貼圖中...";
             const rows = +document.getElementById('rows').value;
             const cols = +document.getElementById('cols').value;
             const border = +document.getElementById('borderSize').value;
@@ -185,30 +204,30 @@
             
             render(processedStickers);
             els.dlBtn.style.display = "block";
-            els.status.textContent = "✅ 完成！";
+            els.status.textContent = "✅ 完成！如果不滿意，請調整靈敏度後重試。";
 
         } catch (err) {
             console.error(err);
             alert("錯誤: " + err.message);
         } finally {
             els.runBtn.disabled = false;
-            els.runBtn.textContent = "再次製作";
+            els.runBtn.textContent = "重新製作";
         }
     });
 
-    // ========== 核心修復：強制 320x320 ==========
-    async function runInference(originalImg) {
-        // 1. 建立一個 320x320 的畫布給 AI 看 (解決 Error: Expected 320)
+    // ========== 核心：AI 去背邏輯 ==========
+    async function runInference(img) {
+        // 1. 強制縮放到 320x320 進行推論
         const aiSize = 320;
         const aiCvs = document.createElement('canvas');
         aiCvs.width = aiSize; aiCvs.height = aiSize;
         const aiCtx = aiCvs.getContext('2d');
-        aiCtx.drawImage(originalImg, 0, 0, aiSize, aiSize); // 強制縮放
+        aiCtx.drawImage(img, 0, 0, aiSize, aiSize);
 
         const imgData = aiCtx.getImageData(0, 0, aiSize, aiSize);
-
-        // 2. 轉換數據
         const inputData = new Float32Array(aiSize * aiSize * 3);
+        
+        // 正規化
         for(let i=0; i<imgData.data.length; i+=4) {
             inputData[i/4] = (imgData.data[i]/255 - 0.485)/0.229;
             inputData[i/4 + aiSize*aiSize] = (imgData.data[i+1]/255 - 0.456)/0.224;
@@ -216,49 +235,81 @@
         }
 
         const tensor = new ort.Tensor('float32', inputData, [1, 3, aiSize, aiSize]);
-        
-        // 自動偵測入口名稱
         const inputName = session.inputNames[0];
         const outputName = session.outputNames[0];
-        const feeds = {}; feeds[inputName] = tensor;
-
-        // 推論
-        const results = await session.run(feeds);
+        
+        const results = await session.run({ [inputName]: tensor });
         const outputData = results[outputName].data;
 
-        // 3. 處理 320x320 的遮罩
+        // 2. 找出 AI 輸出的最大值 (用於自動增強)
+        let maxVal = 0;
+        for(let i=0; i<outputData.length; i++) {
+            if(outputData[i] > maxVal) maxVal = outputData[i];
+        }
+        // 如果最大值很小（例如 0.1），代表 AI 看不太到東西，我們需要放大訊號
+        const scaleFactor = maxVal > 0 ? (1 / maxVal) : 1;
+        
+        // 3. 建立遮罩
         const maskCvs = document.createElement('canvas');
         maskCvs.width = aiSize; maskCvs.height = aiSize;
         const maskCtx = maskCvs.getContext('2d');
         const maskImgData = maskCtx.createImageData(aiSize, aiSize);
         
+        const threshold = parseFloat(els.thresh.value); // 使用者設定的門檻
+        const showMask = els.showMask.checked;
+
         for(let i=0; i<outputData.length; i++) {
-            const alpha = Math.max(0, Math.min(255, outputData[i] * 255));
-            maskImgData.data[i*4] = 0;   // R (不重要)
-            maskImgData.data[i*4+1] = 0; // G (不重要)
-            maskImgData.data[i*4+2] = 0; // B (不重要)
-            maskImgData.data[i*4+3] = alpha; // Alpha 才是重點
+            // 原始機率
+            let prob = outputData[i];
+            
+            // 自動增強: 讓微弱訊號變強
+            prob = prob * scaleFactor;
+
+            // 門檻過濾
+            let alpha = 0;
+            if (prob > threshold) {
+                // 超過門檻就顯示，並做平滑過渡
+                alpha = Math.min(255, (prob - threshold) / (1 - threshold) * 255 * 1.5); 
+                // *1.5 是為了讓主體更實一點
+                if(alpha > 255) alpha = 255;
+            }
+
+            if (showMask) {
+                // 如果勾選顯示遮罩：畫黑白圖
+                const c = alpha; 
+                maskImgData.data[i*4] = c;
+                maskImgData.data[i*4+1] = c;
+                maskImgData.data[i*4+2] = c;
+                maskImgData.data[i*4+3] = 255;
+            } else {
+                // 正常去背模式：只存 Alpha
+                maskImgData.data[i*4] = 0;
+                maskImgData.data[i*4+1] = 0;
+                maskImgData.data[i*4+2] = 0;
+                maskImgData.data[i*4+3] = alpha;
+            }
         }
         maskCtx.putImageData(maskImgData, 0, 0);
 
-        // 4. 將 320x320 的遮罩「放大」回原圖尺寸並應用
+        if (showMask) {
+            // 如果是看遮罩，直接回傳黑白圖
+            return maskCvs.toDataURL();
+        }
+
+        // 4. 將遮罩應用回原圖
         const finalCvs = document.createElement('canvas');
-        finalCvs.width = originalImg.width;
-        finalCvs.height = originalImg.height;
+        finalCvs.width = img.width;
+        finalCvs.height = img.height;
         const finalCtx = finalCvs.getContext('2d');
         
-        // 畫原圖
-        finalCtx.drawImage(originalImg, 0, 0);
-        
-        // 使用 composite operation 來應用遮罩
+        finalCtx.drawImage(img, 0, 0);
         finalCtx.globalCompositeOperation = 'destination-in';
-        // 畫上放大後的遮罩 (平滑縮放)
-        finalCtx.drawImage(maskCvs, 0, 0, aiSize, aiSize, 0, 0, originalImg.width, originalImg.height);
+        finalCtx.drawImage(maskCvs, 0, 0, aiSize, aiSize, 0, 0, img.width, img.height);
         
         return finalCvs.toDataURL();
     }
-    // ===================================
 
+    // 切割功能 (保持不變)
     async function cutAndSticker(img, rows, cols, border) {
         const w = img.width; const h = img.height;
         const tileW = Math.floor(w/cols); const tileH = Math.floor(h/rows);

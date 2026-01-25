@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LINE 貼圖製作大師 (V16: 極致體驗版)</title>
+    <title>LINE 貼圖製作大師 (V17: 貼心修正版)</title>
     
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -66,29 +66,37 @@
 
         h1 { margin: 0; font-size: 1.5rem; color: var(--text-main); }
         
-        /* 上傳區 (新增 Drag & Drop 效果) */
         .upload-box { 
             border: 2px dashed var(--border); border-radius: 8px; padding: 15px; text-align: center; 
             cursor: pointer; background: var(--input-bg); transition: 0.3s;
         }
-        .upload-box:hover, .upload-box.dragover { 
-            border-color: var(--primary); background: rgba(6, 199, 85, 0.1); transform: scale(1.01);
-        }
-        .upload-box span { color: var(--text-sub); font-size: 0.9rem; pointer-events: none; }
+        .upload-box:hover { border-color: var(--primary); background: rgba(6, 199, 85, 0.05); }
+        .upload-box span { color: var(--text-sub); font-size: 0.9rem; }
 
         /* 輸入控制 */
         .row { display: flex; gap: 10px; align-items: center; margin-bottom: 5px; } 
         .col { flex: 1; }
-        label { display: block; font-weight: 600; margin-bottom: 3px; font-size: 0.8rem; color: var(--text-main); }
+        
+        label { display: flex; align-items: center; font-weight: 600; margin-bottom: 3px; font-size: 0.8rem; color: var(--text-main); }
+        
+        /* 問號按鈕樣式 */
+        .help-btn {
+            display: inline-flex; justify-content: center; align-items: center;
+            width: 16px; height: 16px; border-radius: 50%;
+            background-color: var(--primary); color: white;
+            font-size: 10px; font-weight: bold; cursor: pointer;
+            margin-left: 5px; user-select: none;
+        }
+        .help-btn:hover { background-color: #05b34c; transform: scale(1.1); }
+
         input[type="number"], input[type="text"], select { 
             padding: 5px 8px; border: 1px solid var(--border); border-radius: 4px; 
             font-size: 0.9rem; background: var(--input-bg); color: var(--text-main);
         }
         input:disabled { opacity: 0.6; cursor: not-allowed; background: rgba(0,0,0,0.1); }
         
-        /* 欄位寬度控制 */
         .input-mini { width: 60px !important; text-align: center; }
-        .input-short { width: 80px !important; text-align: center; } /* 修正：起始檔名專用 */
+        .input-short { width: 80px !important; text-align: center; }
         
         input[type="range"] { width: 100%; accent-color: var(--primary); height: 15px; }
         input[type="color"] { width: 100%; height: 30px; border: none; cursor: pointer; padding: 0; border-radius: 4px; }
@@ -101,7 +109,7 @@
         .tab-content.active { display: block; }
 
         .btn { width: 100%; padding: 10px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.95rem; transition: 0.2s; }
-        .btn-green { background: var(--primary); color: white; }
+        .btn-green { background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; gap: 8px; }
         .btn-green:hover { background: #05b34c; }
         .btn-green:disabled { background: #555; color: #888; cursor: not-allowed; }
         .theme-btn { 
@@ -119,7 +127,6 @@
 
         /* 貼圖卡片 */
         .sticker-card { display: flex; flex-direction: column; gap: 6px; }
-        
         .sticker-img-box {
             position: relative; width: 100%; aspect-ratio: 1;
             border: 1px solid #444; border-radius: 8px;
@@ -131,7 +138,6 @@
         .sticker-img-box:hover { border-color: var(--primary); }
         .sticker-img-box img { max-width: 100%; max-height: 100%; object-fit: contain; }
         
-        /* 獨立下載按鈕 */
         .dl-icon-btn {
             position: absolute; bottom: 5px; right: 5px;
             width: 30px; height: 30px;
@@ -140,8 +146,7 @@
             display: flex; justify-content: center; align-items: center;
             font-size: 1.2rem; cursor: pointer;
             box-shadow: 0 2px 5px rgba(0,0,0,0.5);
-            transition: transform 0.2s, background 0.2s;
-            z-index: 10;
+            transition: transform 0.2s, background 0.2s; z-index: 10;
         }
         .dl-icon-btn:hover { background: #05b34c; transform: scale(1.1); }
         .dl-icon-btn:active { transform: scale(0.95); }
@@ -151,25 +156,20 @@
         .tags-row { display: flex; justify-content: center; gap: 8px; }
         .tag-btn {
             border: 1px solid var(--border); background: var(--input-bg); color: var(--text-sub);
-            padding: 4px 10px; /* 加大一點點點擊範圍 */
-            border-radius: 4px; font-size: 0.75rem; cursor: pointer;
+            padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer;
             transition: 0.2s; font-weight: bold;
         }
         .tag-btn:hover { border-color: var(--text-main); }
         .tag-btn.active-main { background: var(--main-color); border-color: var(--main-color); color: white; }
         .tag-btn.active-tab { background: var(--tab-color); border-color: var(--tab-color); color: white; }
 
-        /* 匯出設定區 (優化版) */
         .export-bar { 
             background: var(--panel-bg); border: 1px solid var(--border); 
             padding: 12px; border-radius: 10px; margin-bottom: 15px; 
             display: flex; gap: 15px; flex-wrap: wrap; align-items: stretch;
         }
-        
-        /* 獨立區塊樣式 */
         .export-group-box {
-            background: var(--group-bg); 
-            border: 1px solid var(--border);
+            background: var(--group-bg); border: 1px solid var(--border);
             border-radius: 8px; padding: 8px 12px;
             display: flex; flex-direction: column; justify-content: center;
         }
@@ -183,6 +183,7 @@
         
         .footer { text-align: center; margin-top: 40px; color: var(--text-sub); font-size: 0.85rem; border-top: 1px solid var(--border); padding-top: 20px; }
 
+        /* Modal */
         .modal {
             display: none; position: fixed; z-index: 1000; left: 0; top: 0;
             width: 100%; height: 100%; overflow: auto;
@@ -198,13 +199,25 @@
         .modal-close {
             position: absolute; top: 20px; right: 35px; color: #f1f1f1; font-size: 40px; font-weight: bold; cursor: pointer;
         }
+        
+        /* 說明視窗 Modal (Help) */
+        .help-modal-content {
+            background: var(--card-bg); color: var(--text-main);
+            padding: 20px; border-radius: 12px; width: 300px;
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            text-align: left;
+        }
+        .help-title { color: var(--primary); font-size: 1.1rem; font-weight: bold; margin-bottom: 10px; display: flex; align-items: center; gap: 5px; }
+        .help-text { font-size: 0.95rem; line-height: 1.5; color: var(--text-main); }
+
         @keyframes fadeIn { from {opacity: 0} to {opacity: 1} }
     </style>
 </head>
 <body class="">
 
 <div class="header">
-    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V16 極致體驗版</span></h1>
+    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V17 貼心修正版</span></h1>
     <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️ 切換明亮</button>
 </div>
 
@@ -223,7 +236,10 @@
         </div>
 
         <div class="section">
-            <span class="section-title">2. 裁切分割</span>
+            <span class="section-title">
+                2. 裁切分割
+                <span class="help-btn" onclick="showHelp('crop')">?</span>
+            </span>
             <div class="row">
                 <div class="col" style="display:flex; align-items:center; gap:5px;">
                     <label style="margin:0;">垂直</label>
@@ -277,7 +293,10 @@
                     <button class="btn btn-outline" style="flex:1; padding:5px; background:var(--input-bg); color:var(--text-main); border:1px solid var(--border);" onclick="setColor('#00FF00')">綠</button>
                 </div>
                 <div class="row">
-                    <label style="width:60px;">寬容度</label>
+                    <label style="width:60px;">
+                        寬容度
+                        <span class="help-btn" onclick="showHelp('tolerance')">?</span>
+                    </label>
                     <input type="range" id="tolerance" min="0" max="100" value="40">
                     <span class="input-mini" id="val-tolerance" style="text-align:right;">40%</span>
                 </div>
@@ -286,29 +305,41 @@
             <hr style="border:0; border-top:1px dashed var(--border); margin:10px 0;">
 
             <div class="row">
-                <label style="width:60px;">柔化</label>
+                <label style="width:60px;">
+                    柔化
+                    <span class="help-btn" onclick="showHelp('smoothness')">?</span>
+                </label>
                 <input type="range" id="smoothness" min="0" max="10" step="0.5" value="0">
                 <span class="input-mini" id="val-smoothness" style="text-align:right;">0</span>
             </div>
             <div class="row">
-                <label style="width:60px;">除溢色</label>
+                <label style="width:60px;">
+                    除溢色
+                    <span class="help-btn" onclick="showHelp('despill')">?</span>
+                </label>
                 <input type="range" id="despill" min="0" max="10" step="0.5" value="0">
                 <span class="input-mini" id="val-despill" style="text-align:right;">0</span>
             </div>
             <div class="row">
-                <label style="width:60px;">描邊</label>
+                <label style="width:60px;">
+                    描邊
+                    <span class="help-btn" onclick="showHelp('contour')">?</span>
+                </label>
                 <input type="range" id="contour" min="0" max="10" step="1" value="5">
                 <span class="input-mini" id="val-contour" style="text-align:right;">5</span>
             </div>
             
             <div class="row">
-                <label style="width:60px;">留白(%)</label>
+                <label style="width:60px;">
+                    留白
+                    <span class="help-btn" onclick="showHelp('padding')">?</span>
+                </label>
                 <input type="range" id="padding" min="0" max="20" step="1" value="0">
                 <span class="input-mini" id="val-padding" style="text-align:right;">0%</span>
             </div>
         </div>
 
-        <button id="runBtn" class="btn btn-green">開始製作 (預覽)</button>
+        <button id="runBtn" class="btn btn-green" disabled>請先上傳圖片</button>
     </div>
 
     <div class="card">
@@ -316,12 +347,18 @@
         
         <div class="export-bar">
             <div class="export-group-box" style="min-width: 100px; flex: 0 0 auto;">
-                <label>📂 起始檔名</label>
+                <label>
+                    起始檔名
+                    <span class="help-btn" onclick="showHelp('startNum')">?</span>
+                </label>
                 <input type="text" id="startNum" value="001" class="input-short" placeholder="001">
             </div>
             
             <div class="export-group-box" style="flex:1;">
-                <label>📏 尺寸模式</label>
+                <label>
+                    尺寸模式
+                    <span class="help-btn" onclick="showHelp('sizeMode')">?</span>
+                </label>
                 <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                     <select id="sizePreset" style="flex:1; min-width:80px;">
                         <option value="custom">✍️ 自訂</option>
@@ -337,7 +374,13 @@
             </div>
 
             <div style="display:flex; align-items:center;">
-                <button id="dlBtn" class="btn btn-green" style="height:100%; padding:0 20px; white-space:nowrap;">下載全部 ZIP</button>
+                <button id="dlBtn" class="btn btn-green" style="height:100%; padding:0 20px; white-space:nowrap;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+                        <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
+                    </svg>
+                    下載全部 ZIP
+                </button>
             </div>
         </div>
 
@@ -356,6 +399,14 @@
     <img class="modal-content" id="modalImg">
 </div>
 
+<div id="helpModal" class="modal" onclick="closeHelp()">
+    <div class="help-modal-content" onclick="event.stopPropagation()">
+        <div class="help-title">💡 功能說明</div>
+        <div id="helpText" class="help-text"></div>
+        <button class="btn btn-green" style="margin-top:15px; width:100%;" onclick="closeHelp()">知道了</button>
+    </div>
+</div>
+
 <script>
     const MODELS = {
         'u2netp': 'https://cdn.jsdelivr.net/gh/danielgatis/rembg@master/u2netp.onnx',
@@ -363,12 +414,24 @@
     };
     ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/";
 
-    let currentMode = 'color'; // 預設顏色模式
+    let currentMode = 'color'; // Default color
     let session = null;
     let rawStickers = [];
     let isDark = true;
     let selectedMainIdx = -1;
     let selectedTabIdx = -1;
+
+    // Help Text Dictionary
+    const HELP_TEXTS = {
+        'crop': '決定將圖片切成幾塊。例如垂直 2 列、水平 5 行，就會切成 2x5 = 10 張貼圖。',
+        'tolerance': '決定顏色去背的強度。數值越大，會去除越多與背景相似的顏色；數值越小，只去除完全一樣的顏色。',
+        'smoothness': '讓去背後的邊緣變平滑，消除鋸齒狀，讓貼圖看起來更圓潤自然。',
+        'despill': '消除物體邊緣殘留的背景色（例如綠幕的綠邊或白底的白邊），讓邊緣更乾淨。',
+        'contour': '在圖案最外圍加上白框，像貼紙一樣的效果。數值代表白框的粗細 (px)。',
+        'padding': '縮小圖案，讓圖案與邊框之間保持距離，避免圖案太滿被切到。',
+        'startNum': '設定第一張貼圖的檔名編號。例如輸入 "001"，產生的檔案就會是 001.png, 002.png...',
+        'sizeMode': '設定下載圖片的大小。"貼圖"固定 370px，"表情貼"固定 270px，"自訂"則可以自由輸入。'
+    };
 
     const els = {
         imgIn: document.getElementById('imgInput'),
@@ -400,30 +463,59 @@
         tabColor: document.getElementById('tab-color'),
         footer: document.getElementById('footerText'),
         modal: document.getElementById('imageModal'),
-        modalImg: document.getElementById('modalImg')
+        modalImg: document.getElementById('modalImg'),
+        helpModal: document.getElementById('helpModal'),
+        helpText: document.getElementById('helpText')
     };
 
     const today = new Date().toISOString().slice(0, 10);
     els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool 1.0.0 | ${today}`;
 
-    // Drag & Drop UX
-    els.dropZone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        els.dropZone.classList.add('dragover');
-    });
-    els.dropZone.addEventListener('dragleave', () => {
-        els.dropZone.classList.remove('dragover');
-    });
+    // --- UX Functions ---
+    window.showHelp = (key) => {
+        els.helpText.textContent = HELP_TEXTS[key];
+        els.helpModal.style.display = "block";
+    };
+    window.closeHelp = () => {
+        els.helpModal.style.display = "none";
+    };
+
+    // Update Button State Logic (Fix for Color Mode)
+    function updateButtonState() {
+        const hasFile = !!els.imgIn.files[0];
+        
+        if (!hasFile) {
+            els.runBtn.disabled = true;
+            els.runBtn.textContent = "請先上傳圖片";
+            return;
+        }
+
+        if (currentMode === 'ai') {
+            if (session) {
+                els.runBtn.disabled = false;
+                els.runBtn.textContent = "開始製作 (預覽)";
+            } else {
+                els.runBtn.disabled = true;
+                els.runBtn.textContent = "等待模型載入...";
+            }
+        } else {
+            // Color mode only needs file
+            els.runBtn.disabled = false;
+            els.runBtn.textContent = "開始製作 (預覽)";
+        }
+    }
+
+    // Drag & Drop
+    els.dropZone.addEventListener('dragover', (e) => { e.preventDefault(); els.dropZone.classList.add('dragover'); });
+    els.dropZone.addEventListener('dragleave', () => { els.dropZone.classList.remove('dragover'); });
     els.dropZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        els.dropZone.classList.remove('dragover');
+        e.preventDefault(); els.dropZone.classList.remove('dragover');
         if (e.dataTransfer.files[0]) {
             els.imgIn.files = e.dataTransfer.files;
             els.imgIn.dispatchEvent(new Event('change'));
         }
     });
 
-    // 尺寸防呆
     els.sizePreset.addEventListener('change', () => {
         const val = els.sizePreset.value;
         if (val === 'sticker') {
@@ -463,11 +555,7 @@
         els.contentAi.classList.toggle('active', mode === 'ai');
         els.contentColor.classList.toggle('active', mode === 'color');
         
-        if(mode === 'ai') {
-            checkAIReady();
-        } else {
-            els.runBtn.disabled = false;
-        }
+        updateButtonState(); // Check button state on switch
     };
 
     window.setColor = (hex) => els.targetColor.value = hex;
@@ -485,21 +573,25 @@
     async function loadAIModel() {
         const key = els.aiModel.value;
         const url = MODELS[key];
-        els.runBtn.disabled = true;
+        
+        // Update UI but don't disable if in color mode
         els.status.className = 'status-bar';
         els.status.textContent = `🔄 下載 ${key}...`;
         els.manual.style.display = 'none';
+        session = null; 
+        updateButtonState();
 
         try {
             session = await ort.InferenceSession.create(url, { executionProviders: ['wasm', 'webgl'] });
             els.status.className = 'status-bar status-success';
             els.status.textContent = `✅ ${key} 就緒`;
-            checkAIReady();
+            updateButtonState();
         } catch(e) {
             console.warn("Error", e);
             els.status.className = 'status-bar status-error';
             els.status.textContent = "❌ 下載失敗";
             els.manual.style.display = 'block';
+            updateButtonState();
         }
     }
     
@@ -512,14 +604,11 @@
             els.status.className = 'status-bar status-success';
             els.status.textContent = "✅ 模型已載入";
             els.manual.style.display = 'none';
-            checkAIReady();
+            updateButtonState();
         } catch(err) { alert("模型檔案無效"); }
     });
 
     els.aiModel.addEventListener('change', loadAIModel);
-    function checkAIReady() {
-        if(currentMode === 'ai' && session && els.imgIn.files[0]) els.runBtn.disabled = false;
-    }
 
     els.imgIn.addEventListener('change', (e) => {
         const file = e.target.files[0];
@@ -528,13 +617,13 @@
             els.origPrev.src = URL.createObjectURL(file);
             els.origBox.style.display = 'block';
             
-            // 自動重置邏輯 (UX優化)
+            // UX Reset
             els.preview.innerHTML = "<div style='grid-column:1/-1;text-align:center;color:#666;padding:50px;'>請點擊左側「開始製作」</div>";
             rawStickers = [];
             selectedMainIdx = -1;
             selectedTabIdx = -1;
             
-            if(currentMode === 'ai') checkAIReady();
+            updateButtonState();
         }
     });
 
@@ -567,7 +656,7 @@
 
     els.runBtn.addEventListener('click', async () => {
         const file = els.imgIn.files[0];
-        if(!file) { alert("請先上傳圖片"); return; }
+        if(!file) return;
         
         els.runBtn.disabled = true;
         els.runBtn.textContent = "處理中...";
@@ -600,8 +689,7 @@
             console.error(e);
             alert("錯誤: " + e.message);
         } finally {
-            els.runBtn.disabled = false;
-            els.runBtn.textContent = "開始製作 (預覽)";
+            updateButtonState();
         }
     });
 

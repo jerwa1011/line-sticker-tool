@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LINE 貼圖製作大師 (V14: 尺寸防呆版)</title>
+    <title>LINE 貼圖製作大師 (V15: 介面優化版)</title>
     
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -14,6 +14,7 @@
         :root {
             --primary: #06C755;
             --tab-color: #3498db;
+            --main-color: #ff5252; /* 改為淺紅色 */
             --bg: #181818;
             --card-bg: #252525;
             --panel-bg: #2f2f2f;
@@ -23,6 +24,7 @@
             --input-bg: #333333;
             --preview-bg: #1a1a1a;
             --shadow: rgba(0,0,0,0.3);
+            --group-bg: rgba(255,255,255,0.05); /* 群組背景 */
         }
 
         body.light-mode {
@@ -35,6 +37,7 @@
             --input-bg: #ffffff;
             --preview-bg: #2b2b2b;
             --shadow: rgba(0,0,0,0.08);
+            --group-bg: rgba(0,0,0,0.03);
         }
 
         body { 
@@ -149,10 +152,28 @@
             transition: 0.2s; font-weight: bold;
         }
         .tag-btn:hover { border-color: var(--text-main); }
-        .tag-btn.active-main { background: var(--primary); border-color: var(--primary); color: white; }
+        
+        /* 修改 Main 顏色為淺紅色 */
+        .tag-btn.active-main { background: var(--main-color); border-color: var(--main-color); color: white; }
         .tag-btn.active-tab { background: var(--tab-color); border-color: var(--tab-color); color: white; }
 
-        .export-bar { background: rgba(6,199,85,0.05); border: 1px solid var(--primary); padding: 10px; border-radius: 8px; margin-bottom: 10px; }
+        /* 匯出設定區 (優化版) */
+        .export-bar { 
+            background: var(--panel-bg); border: 1px solid var(--border); 
+            padding: 12px; border-radius: 10px; margin-bottom: 15px; 
+            display: flex; gap: 15px; flex-wrap: wrap; align-items: stretch;
+        }
+        
+        /* 獨立區塊樣式 */
+        .export-group-box {
+            flex: 1; min-width: 140px;
+            background: var(--group-bg); 
+            border: 1px solid var(--border);
+            border-radius: 8px; padding: 8px 12px;
+            display: flex; flex-direction: column; justify-content: center;
+        }
+        .export-group-box label { font-size: 0.85rem; color: var(--primary); margin-bottom: 6px; }
+
         .status-bar { padding: 8px; border-radius: 6px; font-size: 0.85em; background: #e3f2fd; color: #0d47a1; margin-top: 5px; }
         .status-error { background: #ffebee; color: #c62828; }
         .status-success { background: #e8f5e9; color: #2e7d32; }
@@ -182,7 +203,7 @@
 <body class="">
 
 <div class="header">
-    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V14 尺寸防呆版</span></h1>
+    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V15 介面優化版</span></h1>
     <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️ 切換明亮</button>
 </div>
 
@@ -205,12 +226,12 @@
             <div class="row">
                 <div class="col" style="display:flex; align-items:center; gap:5px;">
                     <label style="margin:0;">垂直</label>
-                    <input type="number" id="rows" value="2" min="1" class="input-mini" onchange="resetSelections()">
+                    <input type="number" id="rows" value="4" min="1" class="input-mini" onchange="resetSelections()">
                     <span style="font-size:0.8rem; color:var(--text-sub);">列</span>
                 </div>
                 <div class="col" style="display:flex; align-items:center; gap:5px;">
                     <label style="margin:0;">水平</label>
-                    <input type="number" id="cols" value="2" min="1" class="input-mini" onchange="resetSelections()">
+                    <input type="number" id="cols" value="5" min="1" class="input-mini" onchange="resetSelections()">
                     <span style="font-size:0.8rem; color:var(--text-sub);">行</span>
                 </div>
             </div>
@@ -219,11 +240,11 @@
         <div class="section">
             <span class="section-title">3. 去背與後製</span>
             <div class="mode-tabs">
-                <div class="mode-tab active" onclick="switchMode('ai')" id="tab-ai">🤖 AI 模式</div>
-                <div class="mode-tab" onclick="switchMode('color')" id="tab-color">🎨 顏色模式</div>
+                <div class="mode-tab" onclick="switchMode('ai')" id="tab-ai">🤖 AI 模式</div>
+                <div class="mode-tab active" onclick="switchMode('color')" id="tab-color">🎨 顏色模式</div>
             </div>
 
-            <div id="content-ai" class="tab-content active">
+            <div id="content-ai" class="tab-content">
                 <div class="row">
                     <label style="width:60px;">模型</label>
                     <select id="aiModelSel">
@@ -248,7 +269,7 @@
                 </div>
             </div>
 
-            <div id="content-color" class="tab-content">
+            <div id="content-color" class="tab-content active">
                 <div class="row">
                     <input type="color" id="targetColor" value="#FFFFFF" style="flex:1;">
                     <button class="btn btn-outline" style="flex:1; padding:5px; background:var(--input-bg); color:var(--text-main); border:1px solid var(--border);" onclick="setColor('#FFFFFF')">白</button>
@@ -256,8 +277,8 @@
                 </div>
                 <div class="row">
                     <label style="width:60px;">寬容度</label>
-                    <input type="range" id="tolerance" min="0" max="100" value="15">
-                    <span class="input-mini" id="val-tolerance" style="text-align:right;">15%</span>
+                    <input type="range" id="tolerance" min="0" max="100" value="40">
+                    <span class="input-mini" id="val-tolerance" style="text-align:right;">40%</span>
                 </div>
             </div>
 
@@ -275,8 +296,8 @@
             </div>
             <div class="row">
                 <label style="width:60px;">描邊</label>
-                <input type="range" id="contour" min="0" max="10" step="1" value="0">
-                <span class="input-mini" id="val-contour" style="text-align:right;">0</span>
+                <input type="range" id="contour" min="0" max="10" step="1" value="5">
+                <span class="input-mini" id="val-contour" style="text-align:right;">5</span>
             </div>
             
             <div class="row">
@@ -293,32 +314,29 @@
         <h2>🖼️ 匯出與預覽</h2>
         
         <div class="export-bar">
-            <div class="row" style="margin-bottom:8px;">
-                <div style="display:flex; gap:10px; align-items:center;">
-                    <label style="margin:0;">起始檔名</label>
-                    <input type="text" id="startNum" value="001" class="input-small">
-                </div>
+            <div class="export-group-box">
+                <label>📂 起始檔名</label>
+                <input type="text" id="startNum" value="001" class="input-small" placeholder="001" style="width:100% !important;">
             </div>
             
-            <div class="row" style="margin-bottom:0; justify-content:space-between; align-items:center;">
-                <div style="flex:1;">
-                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                        <label style="margin:0; font-size:0.85rem;">尺寸模式</label>
-                        <select id="sizePreset" style="width:auto; padding:2px 5px; font-size:0.8rem; border-color:var(--primary);">
-                            <option value="custom">✍️ 自定義</option>
-                            <option value="sticker">😃 貼圖 (370x320)</option>
-                            <option value="emoji">😘 表情貼 (270x270)</option>
-                        </select>
-                    </div>
+            <div class="export-group-box" style="flex:2;">
+                <label>📏 尺寸模式</label>
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <select id="sizePreset" style="flex:1;">
+                        <option value="custom">✍️ 自訂</option>
+                        <option value="sticker">😃 貼圖</option>
+                        <option value="emoji">😘 表情</option>
+                    </select>
                     <div style="display:flex; gap:5px; align-items:center;">
-                        <input type="number" id="outW" value="370" class="input-small">
+                        <input type="number" id="outW" value="370" class="input-mini">
                         <span>x</span>
-                        <input type="number" id="outH" value="320" class="input-small">
-                        <span>px</span>
+                        <input type="number" id="outH" value="320" class="input-mini">
                     </div>
                 </div>
+            </div>
 
-                <button id="dlBtn" class="btn btn-green" style="width:auto; padding:8px 15px; font-size:0.9rem; margin-left:15px;">下載全部 ZIP</button>
+            <div style="display:flex; align-items:center;">
+                <button id="dlBtn" class="btn btn-green" style="height:100%; padding:0 20px;">下載全部 ZIP</button>
             </div>
         </div>
 
@@ -344,7 +362,8 @@
     };
     ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/";
 
-    let currentMode = 'ai';
+    // 預設改成 Color 模式
+    let currentMode = 'color';
     let session = null;
     let rawStickers = [];
     let isDark = true;
@@ -372,7 +391,7 @@
         startNum: document.getElementById('startNum'),
         outW: document.getElementById('outW'),
         outH: document.getElementById('outH'),
-        sizePreset: document.getElementById('sizePreset'), // New
+        sizePreset: document.getElementById('sizePreset'),
         dlBtn: document.getElementById('dlBtn'),
         contentAi: document.getElementById('content-ai'),
         contentColor: document.getElementById('content-color'),
@@ -386,7 +405,7 @@
     const today = new Date().toISOString().slice(0, 10);
     els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool 1.0.0 | ${today}`;
 
-    // --- 尺寸防呆邏輯 ---
+    // 尺寸防呆
     els.sizePreset.addEventListener('change', () => {
         const val = els.sizePreset.value;
         if (val === 'sticker') {
@@ -425,8 +444,14 @@
         els.tabColor.classList.toggle('active', mode === 'color');
         els.contentAi.classList.toggle('active', mode === 'ai');
         els.contentColor.classList.toggle('active', mode === 'color');
-        if(mode === 'ai') checkAIReady();
-        else els.runBtn.disabled = false;
+        
+        // 模式切換時，按鈕文字更新
+        if(mode === 'ai') {
+            checkAIReady();
+        } else {
+            els.runBtn.disabled = false;
+            // 由於預設是 Color，這裡不用等 AI
+        }
     };
 
     window.setColor = (hex) => els.targetColor.value = hex;
@@ -788,6 +813,7 @@
     }
     function loadImage(s){return new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.src=s;});}
     
+    // 初始化載入模型
     loadAIModel();
 </script>
 </body>

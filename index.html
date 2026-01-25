@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LINE 貼圖製作大師 (V13: 檢視增強版)</title>
+    <title>LINE 貼圖製作大師 (V14: 尺寸防呆版)</title>
     
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -48,13 +48,26 @@
         .container { max-width: 1300px; margin: 0 auto; display: grid; grid-template-columns: 360px 1fr; gap: 20px; }
         @media (max-width: 900px) { .container { grid-template-columns: 1fr; } }
         
-        .card { background: var(--card-bg); padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px var(--shadow); display: flex; flex-direction: column; gap: 15px; }
-        .section { border: 1px solid var(--border); border-radius: 8px; padding: 12px; background: var(--panel-bg); position: relative; margin-bottom: 10px; }
-        .section-title { font-size: 0.9rem; font-weight: bold; color: var(--primary); margin-bottom: 8px; display: block; border-left: 3px solid var(--primary); padding-left: 6px; }
+        .card { 
+            background: var(--card-bg); padding: 20px; border-radius: 12px; 
+            box-shadow: 0 4px 15px var(--shadow); display: flex; flex-direction: column; gap: 15px; 
+        }
+        .section { 
+            border: 1px solid var(--border); border-radius: 8px; padding: 12px; 
+            background: var(--panel-bg); position: relative; margin-bottom: 10px;
+        }
+        .section-title { 
+            font-size: 0.9rem; font-weight: bold; color: var(--primary); 
+            margin-bottom: 8px; display: block; border-left: 3px solid var(--primary); padding-left: 6px; 
+        }
 
         h1 { margin: 0; font-size: 1.5rem; color: var(--text-main); }
         
-        .upload-box { border: 2px dashed var(--border); border-radius: 8px; padding: 15px; text-align: center; cursor: pointer; background: var(--input-bg); transition: 0.3s; }
+        /* 上傳區 */
+        .upload-box { 
+            border: 2px dashed var(--border); border-radius: 8px; padding: 15px; text-align: center; 
+            cursor: pointer; background: var(--input-bg); transition: 0.3s;
+        }
         .upload-box:hover { border-color: var(--primary); background: rgba(6, 199, 85, 0.05); }
         .upload-box span { color: var(--text-sub); font-size: 0.9rem; }
 
@@ -62,12 +75,18 @@
         .row { display: flex; gap: 10px; align-items: center; margin-bottom: 5px; } 
         .col { flex: 1; }
         label { display: block; font-weight: 600; margin-bottom: 3px; font-size: 0.8rem; color: var(--text-main); }
-        input[type="number"], input[type="text"], select { padding: 5px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.9rem; background: var(--input-bg); color: var(--text-main); }
+        input[type="number"], input[type="text"], select { 
+            padding: 5px 8px; border: 1px solid var(--border); border-radius: 4px; 
+            font-size: 0.9rem; background: var(--input-bg); color: var(--text-main);
+        }
+        input:disabled { opacity: 0.6; cursor: not-allowed; background: rgba(0,0,0,0.1); }
+        
         .input-mini { width: 60px !important; text-align: center; }
         .input-small { width: 80px !important; text-align: center; }
         input[type="range"] { width: 100%; accent-color: var(--primary); height: 15px; }
         input[type="color"] { width: 100%; height: 30px; border: none; cursor: pointer; padding: 0; border-radius: 4px; }
 
+        /* Tabs */
         .mode-tabs { display: flex; gap: 5px; background: var(--border); padding: 3px; border-radius: 6px; margin-bottom: 8px; }
         .mode-tab { flex: 1; padding: 6px; text-align: center; cursor: pointer; border-radius: 4px; font-size: 0.85rem; font-weight: bold; color: var(--text-sub); }
         .mode-tab.active { background: var(--card-bg); color: var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
@@ -78,14 +97,20 @@
         .btn-green { background: var(--primary); color: white; }
         .btn-green:hover { background: #05b34c; }
         .btn-green:disabled { background: #555; color: #888; cursor: not-allowed; }
-        .theme-btn { background: transparent; border: 1px solid var(--border); color: var(--text-main); padding: 5px 12px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; }
+        .theme-btn { 
+            background: transparent; border: 1px solid var(--border); color: var(--text-main); 
+            padding: 5px 12px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; 
+        }
 
         #origPreviewBox { text-align: center; margin-bottom: 10px; display: none; background: var(--input-bg); padding: 5px; border-radius: 6px; }
         #origPreviewBox img { max-height: 120px; object-fit: contain; }
         
-        #previewContainer { background: var(--preview-bg); padding: 15px; border-radius: 10px; min-height: 400px; display: grid; gap: 15px; align-content: start; }
+        #previewContainer {
+            background: var(--preview-bg); padding: 15px; border-radius: 10px; min-height: 400px;
+            display: grid; gap: 15px; align-content: start;
+        }
 
-        /* 貼圖卡片 (修改版) */
+        /* 貼圖卡片 */
         .sticker-card { display: flex; flex-direction: column; gap: 6px; }
         
         .sticker-img-box {
@@ -94,13 +119,13 @@
             display: flex; align-items: center; justify-content: center; overflow: hidden;
             background-image: linear-gradient(45deg, #333 25%, transparent 25%), linear-gradient(-45deg, #333 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #333 75%), linear-gradient(-45deg, transparent 75%, #333 75%);
             background-size: 20px 20px; background-color: #222;
-            cursor: zoom-in; /* 提示可點擊放大 */
+            cursor: zoom-in;
             transition: 0.2s;
         }
         .sticker-img-box:hover { border-color: var(--primary); }
         .sticker-img-box img { max-width: 100%; max-height: 100%; object-fit: contain; }
         
-        /* 獨立下載按鈕 (固定右下角) */
+        /* 獨立下載按鈕 */
         .dl-icon-btn {
             position: absolute; bottom: 5px; right: 5px;
             width: 30px; height: 30px;
@@ -136,12 +161,10 @@
         
         .footer { text-align: center; margin-top: 40px; color: var(--text-sub); font-size: 0.85rem; border-top: 1px solid var(--border); padding-top: 20px; }
 
-        /* 圖片檢視 Modal (Lightbox) */
         .modal {
             display: none; position: fixed; z-index: 1000; left: 0; top: 0;
             width: 100%; height: 100%; overflow: auto;
-            background-color: rgba(0,0,0,0.9);
-            animation: fadeIn 0.3s;
+            background-color: rgba(0,0,0,0.9); animation: fadeIn 0.3s;
         }
         .modal-content {
             margin: auto; display: block; max-width: 90%; max-height: 90vh;
@@ -151,18 +174,15 @@
             background-size: 20px 20px; background-color: #222;
         }
         .modal-close {
-            position: absolute; top: 20px; right: 35px;
-            color: #f1f1f1; font-size: 40px; font-weight: bold;
-            transition: 0.3s; cursor: pointer;
+            position: absolute; top: 20px; right: 35px; color: #f1f1f1; font-size: 40px; font-weight: bold; cursor: pointer;
         }
-        .modal-close:hover, .modal-close:focus { color: #bbb; text-decoration: none; cursor: pointer; }
         @keyframes fadeIn { from {opacity: 0} to {opacity: 1} }
     </style>
 </head>
 <body class="">
 
 <div class="header">
-    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V13 檢視增強版</span></h1>
+    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V14 尺寸防呆版</span></h1>
     <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️ 切換明亮</button>
 </div>
 
@@ -273,20 +293,32 @@
         <h2>🖼️ 匯出與預覽</h2>
         
         <div class="export-bar">
-            <div class="row" style="margin-bottom:0; justify-content:space-between;">
+            <div class="row" style="margin-bottom:8px;">
                 <div style="display:flex; gap:10px; align-items:center;">
                     <label style="margin:0;">起始檔名</label>
                     <input type="text" id="startNum" value="001" class="input-small">
                 </div>
-                
-                <div style="display:flex; gap:10px; align-items:center;">
-                    <label style="margin:0;">尺寸</label>
-                    <input type="number" id="outW" value="370" class="input-mini">
-                    <span>x</span>
-                    <input type="number" id="outH" value="320" class="input-mini">
+            </div>
+            
+            <div class="row" style="margin-bottom:0; justify-content:space-between; align-items:center;">
+                <div style="flex:1;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                        <label style="margin:0; font-size:0.85rem;">尺寸模式</label>
+                        <select id="sizePreset" style="width:auto; padding:2px 5px; font-size:0.8rem; border-color:var(--primary);">
+                            <option value="custom">✍️ 自定義</option>
+                            <option value="sticker">😃 貼圖 (370x320)</option>
+                            <option value="emoji">😘 表情貼 (270x270)</option>
+                        </select>
+                    </div>
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <input type="number" id="outW" value="370" class="input-small">
+                        <span>x</span>
+                        <input type="number" id="outH" value="320" class="input-small">
+                        <span>px</span>
+                    </div>
                 </div>
 
-                <button id="dlBtn" class="btn btn-green" style="width:auto; padding:6px 15px; font-size:0.9rem;">下載全部 ZIP</button>
+                <button id="dlBtn" class="btn btn-green" style="width:auto; padding:8px 15px; font-size:0.9rem; margin-left:15px;">下載全部 ZIP</button>
             </div>
         </div>
 
@@ -340,6 +372,7 @@
         startNum: document.getElementById('startNum'),
         outW: document.getElementById('outW'),
         outH: document.getElementById('outH'),
+        sizePreset: document.getElementById('sizePreset'), // New
         dlBtn: document.getElementById('dlBtn'),
         contentAi: document.getElementById('content-ai'),
         contentColor: document.getElementById('content-color'),
@@ -352,6 +385,20 @@
 
     const today = new Date().toISOString().slice(0, 10);
     els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool 1.0.0 | ${today}`;
+
+    // --- 尺寸防呆邏輯 ---
+    els.sizePreset.addEventListener('change', () => {
+        const val = els.sizePreset.value;
+        if (val === 'sticker') {
+            els.outW.value = 370; els.outH.value = 320;
+            els.outW.disabled = true; els.outH.disabled = true;
+        } else if (val === 'emoji') {
+            els.outW.value = 270; els.outH.value = 270;
+            els.outW.disabled = true; els.outH.disabled = true;
+        } else {
+            els.outW.disabled = false; els.outH.disabled = false;
+        }
+    });
 
     ['aiThreshold', 'tolerance', 'smoothness', 'despill', 'contour', 'padding'].forEach(id => {
         document.getElementById(id).addEventListener('input', (e) => {
@@ -723,7 +770,6 @@
         saveAs(dataURLtoBlob(url), getFilename(i));
     };
 
-    // Modal Viewer
     window.viewImage = (url) => {
         els.modalImg.src = url;
         els.modal.style.display = "block";
@@ -732,7 +778,6 @@
         els.modal.style.display = "none";
     };
     
-    // Close modal on escape key
     document.addEventListener('keydown', (e) => {
         if (e.key === "Escape") closeModal();
     });

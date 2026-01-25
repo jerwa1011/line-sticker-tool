@@ -848,58 +848,111 @@
         }, 50);
     });
 
-    // --- AI Inference Logic ---
+// --- AI Inference Logic (修正版) ---
     async function generateAIMask(img) {
-        const size = session.imgSize || 320; 
+        const key = els.aiModel.value;
+        // 1. 決定推論尺寸：RMBG 必須要大才準，U2Net 維持 320 即可
+        const size = (key === 'rmbg14') ? 1024 : 320; 
+        
         const cvs = document.createElement('canvas'); 
         cvs.width = size; cvs.height = size;
         const ctx = cvs.getContext('2d');
-        const scale = Math.min(size/img.width, size/img.height);
-        const nw = img.width * scale; const nh = img.height * scale;
-        const ox = (size - nw) / 2; const oy = (size - nh) / 2;
         
-        ctx.fillStyle = "black"; ctx.fillRect(0, 0, size, size);
-        ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+        // 保持比例縮放，置中
+        const scale = Math.min(size/img.width, size/img.height);
+        const nw = img.width * scale; 
+        const nh = img.height * scale;
+        const ox = (size - nw) / 2; 
+        const oy = (size - nh) / 2;
+        
+        // 背景填中性灰 (對於某些模型，黑色或中性灰背景干擾較小)
+        ctx.fillStyle = "#808080"; 
+        ctx.fillRect(0, 0, size, size);
+        
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(img, ox, oy, nw, nh);
 
         const imgData = ctx.getImageData(0, 0, size, size);
         const input = new Float32Array(size * size * 3);
         
-        for(let i=0; i<imgData.data.length; i+=4) {
-            input[i/4] = (imgData.data[i]/255 - 0.485)/0.229;
-            input[i/4+size*size] = (imgData.data[i+1]/255 - 0.456)/0.224;
-            input[i/4+2*size*size] = (imgData.data[i+2]/255 - 0.406)/0.225;
+        // 2. 預處理 (Preprocessing) 分流
+        if (key === 'rmbg14') {
+            // RMBG-1.4 專用預處理：通常只需要歸一化到 0-1，不需要 ImageNet mean/std 偏移
+            // (注意：不同轉出的 onnx 版本可能略有不同，但 0-1 是最通用的)
+            for(let i=0; i<imgData.data.length; i+=4) {
+                input[i/4] = imgData.data[i] / 255.0;            // R
+                input[i/4+size*size] = imgData.data[i+1] / 255.0;// G
+                input[i/4+2*size*size] = imgData.data[i+2] / 255.0;// B
+            }
+        } else {
+            // U2Net / U2Netp 標準預處理 (ImageNet mean/std)
+            for(let i=0; i<imgData.data.length; i+=4) {
+                input[i/4] = (imgData.data[i]/255 - 0.485)/0.229;
+                input[i/4+size*size] = (imgData.data[i+1]/255 - 0.456)/0.224;
+                input[i/4+2*size*size] = (imgData.data[i+2]/255 - 0.406)/0.225;
+            }
         }
 
         const tensor = new ort.Tensor('float32', input, [1, 3, size, size]);
+        
+        // 執行推論
         const res = await session.run({ [session.inputNames[0]]: tensor });
         const out = res[session.outputNames[0]].data;
 
+        // 處理輸出遮罩
         const maskCvs = document.createElement('canvas'); 
         maskCvs.width = size; maskCvs.height = size;
         const mCtx = maskCvs.getContext('2d');
         const mDat = mCtx.createImageData(size, size);
         
-        let maxVal = -Infinity; let minVal = Infinity; 
+        // 找出最大值/最小值做正規化 (有些模型輸出範圍不一定是 0-1)
+        let maxVal = -Infinity; 
+        let minVal = Infinity; 
         for(let v of out) {
             if(v > maxVal) maxVal = v;
             if(v < minVal) minVal = v;
         }
         
-        const boost = (maxVal - minVal) > 0 ? (1 / (maxVal - minVal)) : 1;
+        const range = maxVal - minVal;
+        const boost = range > 0.00001 ? (1 / range) : 1;
         const thresh = parseFloat(els.aiThresh.value);
 
         for(let i=0; i<out.length; i++) {
+            // 將數值歸一化到 0~1
             let val = (out[i] - minVal) * boost;
-            let a = val > thresh ? 255 : 0; 
-            mDat.data[i*4+3] = a;
+            
+            let a = 0;
+            if (key === 'rmbg14') {
+                // RMBG 策略：保留半透明漸層，讓邊緣更自然
+                // 使用 sigmoid 曲線或是直接線性映射，這裡用簡單的線性
+                // 如果 val < 靈敏度，則視為背景；否則保留原始透明度
+                if (val > thresh) {
+                    a = Math.min(255, val * 255);
+                    // 稍微增強不透明度，避免主體太透
+                    a = Math.min(255, a * 1.2); 
+                } else {
+                    a = 0;
+                }
+            } else {
+                // U2Net 策略：硬切 (二值化)，比較適合簡單貼圖
+                a = val > thresh ? 255 : 0; 
+            }
+            
+            mDat.data[i*4+3] = a; // 只修改 Alpha 通道
         }
         mCtx.putImageData(mDat, 0, 0);
 
+        // 將遮罩放大回原始尺寸
         const fullMask = document.createElement('canvas'); 
-        fullMask.width = img.width; fullMask.height = img.height;
+        fullMask.width = img.width; 
+        fullMask.height = img.height;
         const fCtx = fullMask.getContext('2d');
-        fCtx.imageSmoothingEnabled = true; fCtx.imageSmoothingQuality = 'high';
+        
+        fCtx.imageSmoothingEnabled = true;
+        fCtx.imageSmoothingQuality = 'high';
+        
+        // 把 maskCvs 中，當初畫圖的區域 (ox, oy, nw, nh) 畫回 fullMask 的 (0, 0, w, h)
         fCtx.drawImage(maskCvs, ox, oy, nw, nh, 0, 0, img.width, img.height);
         
         return fullMask;
@@ -1115,3 +1168,4 @@
 </script>
 </body>
 </html>
+

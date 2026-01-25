@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LINE 貼圖製作大師 (V12: 完美體驗版)</title>
+    <title>LINE 貼圖製作大師 (V13: 檢視增強版)</title>
     
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -48,26 +48,13 @@
         .container { max-width: 1300px; margin: 0 auto; display: grid; grid-template-columns: 360px 1fr; gap: 20px; }
         @media (max-width: 900px) { .container { grid-template-columns: 1fr; } }
         
-        .card { 
-            background: var(--card-bg); padding: 20px; border-radius: 12px; 
-            box-shadow: 0 4px 15px var(--shadow); display: flex; flex-direction: column; gap: 15px; 
-        }
-        .section { 
-            border: 1px solid var(--border); border-radius: 8px; padding: 12px; 
-            background: var(--panel-bg); position: relative; margin-bottom: 10px;
-        }
-        .section-title { 
-            font-size: 0.9rem; font-weight: bold; color: var(--primary); 
-            margin-bottom: 8px; display: block; border-left: 3px solid var(--primary); padding-left: 6px; 
-        }
+        .card { background: var(--card-bg); padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px var(--shadow); display: flex; flex-direction: column; gap: 15px; }
+        .section { border: 1px solid var(--border); border-radius: 8px; padding: 12px; background: var(--panel-bg); position: relative; margin-bottom: 10px; }
+        .section-title { font-size: 0.9rem; font-weight: bold; color: var(--primary); margin-bottom: 8px; display: block; border-left: 3px solid var(--primary); padding-left: 6px; }
 
         h1 { margin: 0; font-size: 1.5rem; color: var(--text-main); }
         
-        /* 上傳區 */
-        .upload-box { 
-            border: 2px dashed var(--border); border-radius: 8px; padding: 15px; text-align: center; 
-            cursor: pointer; background: var(--input-bg); transition: 0.3s;
-        }
+        .upload-box { border: 2px dashed var(--border); border-radius: 8px; padding: 15px; text-align: center; cursor: pointer; background: var(--input-bg); transition: 0.3s; }
         .upload-box:hover { border-color: var(--primary); background: rgba(6, 199, 85, 0.05); }
         .upload-box span { color: var(--text-sub); font-size: 0.9rem; }
 
@@ -75,16 +62,12 @@
         .row { display: flex; gap: 10px; align-items: center; margin-bottom: 5px; } 
         .col { flex: 1; }
         label { display: block; font-weight: 600; margin-bottom: 3px; font-size: 0.8rem; color: var(--text-main); }
-        input[type="number"], input[type="text"], select { 
-            padding: 5px 8px; border: 1px solid var(--border); border-radius: 4px; 
-            font-size: 0.9rem; background: var(--input-bg); color: var(--text-main);
-        }
+        input[type="number"], input[type="text"], select { padding: 5px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.9rem; background: var(--input-bg); color: var(--text-main); }
         .input-mini { width: 60px !important; text-align: center; }
         .input-small { width: 80px !important; text-align: center; }
         input[type="range"] { width: 100%; accent-color: var(--primary); height: 15px; }
         input[type="color"] { width: 100%; height: 30px; border: none; cursor: pointer; padding: 0; border-radius: 4px; }
 
-        /* Tabs */
         .mode-tabs { display: flex; gap: 5px; background: var(--border); padding: 3px; border-radius: 6px; margin-bottom: 8px; }
         .mode-tab { flex: 1; padding: 6px; text-align: center; cursor: pointer; border-radius: 4px; font-size: 0.85rem; font-weight: bold; color: var(--text-sub); }
         .mode-tab.active { background: var(--card-bg); color: var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
@@ -95,20 +78,14 @@
         .btn-green { background: var(--primary); color: white; }
         .btn-green:hover { background: #05b34c; }
         .btn-green:disabled { background: #555; color: #888; cursor: not-allowed; }
-        .theme-btn { 
-            background: transparent; border: 1px solid var(--border); color: var(--text-main); 
-            padding: 5px 12px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; 
-        }
+        .theme-btn { background: transparent; border: 1px solid var(--border); color: var(--text-main); padding: 5px 12px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; }
 
         #origPreviewBox { text-align: center; margin-bottom: 10px; display: none; background: var(--input-bg); padding: 5px; border-radius: 6px; }
         #origPreviewBox img { max-height: 120px; object-fit: contain; }
         
-        #previewContainer {
-            background: var(--preview-bg); padding: 15px; border-radius: 10px; min-height: 400px;
-            display: grid; gap: 15px; align-content: start;
-        }
+        #previewContainer { background: var(--preview-bg); padding: 15px; border-radius: 10px; min-height: 400px; display: grid; gap: 15px; align-content: start; }
 
-        /* 貼圖卡片 */
+        /* 貼圖卡片 (修改版) */
         .sticker-card { display: flex; flex-direction: column; gap: 6px; }
         
         .sticker-img-box {
@@ -117,26 +94,26 @@
             display: flex; align-items: center; justify-content: center; overflow: hidden;
             background-image: linear-gradient(45deg, #333 25%, transparent 25%), linear-gradient(-45deg, #333 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #333 75%), linear-gradient(-45deg, transparent 75%, #333 75%);
             background-size: 20px 20px; background-color: #222;
-            cursor: pointer; transition: 0.2s;
+            cursor: zoom-in; /* 提示可點擊放大 */
+            transition: 0.2s;
         }
         .sticker-img-box:hover { border-color: var(--primary); }
         .sticker-img-box img { max-width: 100%; max-height: 100%; object-fit: contain; }
         
-        /* 下載提示 (電腦版 Hover) */
-        .download-hint {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(6, 199, 85, 0.9);
-            color: white;
+        /* 獨立下載按鈕 (固定右下角) */
+        .dl-icon-btn {
+            position: absolute; bottom: 5px; right: 5px;
+            width: 30px; height: 30px;
+            background: var(--primary); color: white;
+            border-radius: 50%;
             display: flex; justify-content: center; align-items: center;
-            font-size: 1.2rem; font-weight: bold;
-            opacity: 0; transition: opacity 0.2s;
-            pointer-events: none;
+            font-size: 1.2rem; cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+            transition: transform 0.2s, background 0.2s;
+            z-index: 10;
         }
-        
-        /* 手機版修正：Hover 無效時，隱藏遮罩，改用下方按鈕 (如果需要可加，但這裡採用點擊邏輯優化) */
-        @media (hover: hover) {
-            .sticker-img-box:hover .download-hint { opacity: 1; }
-        }
+        .dl-icon-btn:hover { background: #05b34c; transform: scale(1.1); }
+        .dl-icon-btn:active { transform: scale(0.95); }
 
         .sticker-name { text-align: center; color: #888; font-size: 0.75rem; font-family: monospace; }
 
@@ -158,12 +135,34 @@
         #manualLoad { display: none; margin-top: 8px; padding: 8px; border: 1px solid #fab1a0; background: #fff5f5; border-radius: 6px; font-size: 0.85rem; color: #333; }
         
         .footer { text-align: center; margin-top: 40px; color: var(--text-sub); font-size: 0.85rem; border-top: 1px solid var(--border); padding-top: 20px; }
+
+        /* 圖片檢視 Modal (Lightbox) */
+        .modal {
+            display: none; position: fixed; z-index: 1000; left: 0; top: 0;
+            width: 100%; height: 100%; overflow: auto;
+            background-color: rgba(0,0,0,0.9);
+            animation: fadeIn 0.3s;
+        }
+        .modal-content {
+            margin: auto; display: block; max-width: 90%; max-height: 90vh;
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            border-radius: 8px; border: 2px solid #444;
+            background-image: linear-gradient(45deg, #333 25%, transparent 25%), linear-gradient(-45deg, #333 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #333 75%), linear-gradient(-45deg, transparent 75%, #333 75%);
+            background-size: 20px 20px; background-color: #222;
+        }
+        .modal-close {
+            position: absolute; top: 20px; right: 35px;
+            color: #f1f1f1; font-size: 40px; font-weight: bold;
+            transition: 0.3s; cursor: pointer;
+        }
+        .modal-close:hover, .modal-close:focus { color: #bbb; text-decoration: none; cursor: pointer; }
+        @keyframes fadeIn { from {opacity: 0} to {opacity: 1} }
     </style>
 </head>
 <body class="">
 
 <div class="header">
-    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V12 完美體驗版</span></h1>
+    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V13 檢視增強版</span></h1>
     <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️ 切換明亮</button>
 </div>
 
@@ -265,7 +264,6 @@
                 <input type="range" id="padding" min="0" max="20" step="1" value="0">
                 <span class="input-mini" id="val-padding" style="text-align:right;">0%</span>
             </div>
-            <div style="font-size:0.7em; color:var(--text-sub); text-align:right;">*安全邊距，避免貼邊</div>
         </div>
 
         <button id="runBtn" class="btn btn-green">開始製作 (預覽)</button>
@@ -301,6 +299,11 @@
 </div>
 
 <div class="footer" id="footerText"></div>
+
+<div id="imageModal" class="modal" onclick="closeModal()">
+    <span class="modal-close">&times;</span>
+    <img class="modal-content" id="modalImg">
+</div>
 
 <script>
     const MODELS = {
@@ -342,7 +345,9 @@
         contentColor: document.getElementById('content-color'),
         tabAi: document.getElementById('tab-ai'),
         tabColor: document.getElementById('tab-color'),
-        footer: document.getElementById('footerText')
+        footer: document.getElementById('footerText'),
+        modal: document.getElementById('imageModal'),
+        modalImg: document.getElementById('modalImg')
     };
 
     const today = new Date().toISOString().slice(0, 10);
@@ -379,11 +384,9 @@
 
     window.setColor = (hex) => els.targetColor.value = hex;
 
-    // 當行列改變時，重置選擇 (防呆)
     window.resetSelections = () => {
         selectedMainIdx = -1;
         selectedTabIdx = -1;
-        // 如果預覽圖已存在，清除畫面上的選取狀態
         const allBtns = document.querySelectorAll('.tag-btn');
         allBtns.forEach(btn => {
             btn.classList.remove('active-main');
@@ -493,7 +496,7 @@
             const rows = parseInt(els.rows.value);
             const cols = parseInt(els.cols.value);
             const contour = parseInt(els.contour.value);
-            const padding = parseInt(els.padding.value); // New
+            const padding = parseInt(els.padding.value); 
 
             rawStickers = await cutAndContour(noBgImg, rows, cols, contour, padding);
             renderPreview(rows, cols);
@@ -610,28 +613,17 @@
                 ctx.drawImage(img, c*tileW, r*tileH, tileW, tileH, 0, 0, tileW, tileH);
                 
                 const tImg = await loadImage(cvs.toDataURL());
-                
-                // 擴大畫布以容納描邊 + 處理 padding
-                const pad = (paddingPct / 100) * tileW; // 內縮量
-                const finalSizeW = tileW; 
-                const finalSizeH = tileH;
-                
+                const pad = (paddingPct / 100) * tileW; 
                 const sCvs = document.createElement('canvas'); 
-                sCvs.width = finalSizeW; sCvs.height = finalSizeH; 
+                sCvs.width = tileW; sCvs.height = tileH; 
                 const sCtx = sCvs.getContext('2d');
                 
-                // 計算縮放後的目標尺寸 (原圖 - 2*padding)
-                // 如果要保留描邊空間，可以再縮小一點點
                 const drawW = tileW - pad * 2 - contour * 2;
                 const drawH = tileH - pad * 2 - contour * 2;
-                
-                // 確保不為負
                 const safeW = Math.max(1, drawW);
                 const safeH = Math.max(1, drawH);
-                
-                // 置中繪製
-                const dx = (finalSizeW - safeW) / 2;
-                const dy = (finalSizeH - safeH) / 2;
+                const dx = (tileW - safeW) / 2;
+                const dy = (tileH - safeH) / 2;
 
                 if(contour > 0) {
                     sCtx.drawImage(tImg, dx, dy, safeW, safeH);
@@ -669,9 +661,9 @@
             const div = document.createElement('div');
             div.className = 'sticker-card';
             div.innerHTML = `
-                <div class="sticker-img-box" onclick="downloadSingle(${i})">
+                <div class="sticker-img-box" onclick="viewImage('${url}')">
                     <img src="${url}">
-                    <div class="download-hint">點擊下載</div>
+                    <div class="dl-icon-btn" onclick="downloadSingle(${i}, event)">⬇</div>
                 </div>
                 <div class="sticker-name" id="name-${i}">${getFilename(i)}</div>
                 <div class="tags-row">
@@ -723,12 +715,27 @@
         zip.generateAsync({type:"blob"}).then(b => saveAs(b, `LineStickers_${dateStr}.zip`));
     };
 
-    window.downloadSingle = (i) => {
+    window.downloadSingle = (i, event) => {
+        if(event) event.stopPropagation();
         const w = parseInt(els.outW.value) || 370;
         const h = parseInt(els.outH.value) || 320;
         const url = resizeToOutput(rawStickers[i], w, h);
         saveAs(dataURLtoBlob(url), getFilename(i));
     };
+
+    // Modal Viewer
+    window.viewImage = (url) => {
+        els.modalImg.src = url;
+        els.modal.style.display = "block";
+    };
+    window.closeModal = () => {
+        els.modal.style.display = "none";
+    };
+    
+    // Close modal on escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === "Escape") closeModal();
+    });
 
     function dataURLtoBlob(u) {
         var arr=u.split(','),m=arr[0].match(/:(.*?);/)[1],b=atob(arr[1]),n=b.length,a=new Uint8Array(n);

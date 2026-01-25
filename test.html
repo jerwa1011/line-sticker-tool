@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LINE 貼圖製作大師 (V25: 全螢幕修圖版)</title>
+    <title>LINE 貼圖製作大師 (V26: 終極完全體)</title>
     
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 
     <style>
-        /* --- 配色系統 --- */
+        /* --- 配色與樣式系統 (V26) --- */
         :root {
             --primary: #06C755;
             --primary-hover: #05a546;
@@ -33,16 +34,17 @@
             background: var(--bg); padding: 20px; color: var(--text-main); padding-bottom: 60px;
         }
 
-        /* 佈局 */
         .container { max-width: 1300px; margin: 0 auto; display: grid; grid-template-columns: 380px 1fr; gap: 25px; align-items: start; }
         @media (max-width: 950px) { .container { grid-template-columns: 1fr; } }
         
         .card { background: var(--card-bg); padding: 20px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); display: flex; flex-direction: column; gap: 15px; }
         .sticky-sidebar { position: sticky; top: 20px; max-height: calc(100vh - 40px); overflow-y: auto; }
 
-        /* 元件 */
         h1 { margin: 0 0 20px 0; font-size: 1.6rem; color: var(--text-main); font-weight: 800; text-align: center; }
         
+        /* 區塊標題 */
+        .section-title { font-size: 1rem; font-weight: bold; color: var(--primary); border-left: 4px solid var(--primary); padding-left: 8px; margin-bottom: 10px; display:block; }
+
         .upload-box { 
             border: 2px dashed var(--border); border-radius: 10px; padding: 20px; text-align: center; 
             cursor: pointer; background: var(--input-bg); transition: 0.3s;
@@ -51,7 +53,7 @@
         
         .row { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; } 
         .col { flex: 1; }
-        .label-text { font-weight: 600; font-size: 0.9rem; color: var(--text-main); white-space: nowrap; min-width: 70px; display: inline-block;}
+        .label-text { font-weight: 600; font-size: 0.9rem; color: var(--text-main); white-space: nowrap; min-width: 60px; display: inline-block;}
         
         input[type="number"], input[type="text"], select { 
             padding: 8px; border: 1px solid var(--border); border-radius: 6px; 
@@ -64,11 +66,18 @@
         .btn-green { background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; gap: 8px; }
         .btn-green:hover { background: var(--primary-hover); transform: translateY(-1px); }
         .btn-green:disabled { background: #555; color: #888; cursor: not-allowed; }
-        .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-main); }
+        .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-main); cursor: pointer;}
         .btn-outline:hover { background: var(--panel-bg); }
 
+        /* Tabs */
+        .mode-tabs { display: flex; gap: 5px; background: var(--border); padding: 4px; border-radius: 8px; margin-bottom: 12px; }
+        .mode-tab { flex: 1; padding: 8px; text-align: center; cursor: pointer; border-radius: 6px; font-size: 0.9rem; font-weight: bold; color: var(--text-sub); transition: 0.2s; }
+        .mode-tab.active { background: var(--card-bg); color: var(--primary); box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .tab-content { display: none; animation: fadeIn 0.3s; }
+        .tab-content.active { display: block; }
+
+        /* Preview Grid */
         #previewContainer { background: var(--preview-bg); padding: 20px; border-radius: 12px; min-height: 400px; display: grid; gap: 15px; align-content: start; border: 1px solid var(--border); }
-        
         .sticker-card { display: flex; flex-direction: column; gap: 5px; }
         .sticker-img-box {
             position: relative; width: 100%; aspect-ratio: 1; border: 1px solid #444; border-radius: 10px;
@@ -76,50 +85,54 @@
             background-image: linear-gradient(45deg, #333 25%, transparent 25%), linear-gradient(-45deg, #333 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #333 75%), linear-gradient(-45deg, transparent 75%, #333 75%);
             background-size: 20px 20px; background-color: #222; cursor: zoom-in;
         }
+        .sticker-img-box.bg-light { background: #ffffff; background-image: none; border-color: #ddd; }
+        .sticker-img-box.bg-line { background: #849ebf; background-image: none; border-color: #6a8caf; }
         .sticker-img-box img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        
+        .dl-icon-btn {
+            position: absolute; bottom: 8px; right: 8px; width: 32px; height: 32px;
+            background: var(--primary); color: white; border-radius: 50%; display: flex; justify-content: center; align-items: center;
+            font-size: 1.1rem; cursor: pointer; box-shadow: 0 3px 8px rgba(0,0,0,0.4);
+        }
         .sticker-name { text-align: center; color: var(--text-sub); font-size: 0.8rem; font-family: monospace; }
 
-        /* --- V25 全螢幕編輯器 Modal --- */
-        #editorModal {
-            display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%;
-            background-color: #111;
-        }
-        .editor-header {
-            height: 50px; background: #222; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid #444;
-        }
-        .editor-toolbar {
-            height: 50px; background: #222; display: flex; align-items: center; justify-content: center; gap: 15px; border-bottom: 1px solid #444;
-        }
-        .editor-body {
-            height: calc(100% - 100px); position: relative; overflow: hidden;
-            background-image: linear-gradient(45deg, #333 25%, transparent 25%), linear-gradient(-45deg, #333 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #333 75%), linear-gradient(-45deg, transparent 75%, #333 75%);
-            background-size: 20px 20px; background-color: #222;
-            cursor: crosshair; /* 預設游標 */
-        }
+        /* Status & Editor */
+        #thumbnailBox { display: none; margin-top: 10px; text-align: center; }
+        #thumbnailImg { max-height: 150px; border: 1px solid var(--border); border-radius: 8px; margin-bottom:10px; }
+        .status-bar { padding: 10px; border-radius: 8px; font-size: 0.9rem; background: #e3f2fd; color: #0d47a1; margin-top: 10px; display: flex; align-items: center; gap: 8px; }
+        .status-success { background: #e8f5e9; color: #2e7d32; }
+        
+        /* Modal Editor */
+        #editorModal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background-color: #111; }
+        .editor-header { height: 50px; background: #222; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid #444; }
+        .editor-toolbar { height: 50px; background: #222; display: flex; align-items: center; justify-content: center; gap: 15px; border-bottom: 1px solid #444; }
+        .editor-body { height: calc(100% - 100px); position: relative; overflow: hidden; background-color: #222; cursor: crosshair; }
         #editorCanvas { display: block; position: absolute; top: 0; left: 0; transform-origin: 0 0; }
         
         .tool-btn { padding: 6px 12px; border-radius: 4px; border: 1px solid #555; background: #333; color: #eee; cursor: pointer; font-size: 0.9rem; }
         .tool-btn.active { background: var(--primary); border-color: var(--primary); color: white; }
-        
         .zoom-info { position: absolute; bottom: 20px; right: 20px; background: rgba(0,0,0,0.7); color: white; padding: 5px 10px; border-radius: 4px; pointer-events: none; font-size: 0.8rem; }
-        
-        /* 圖片縮略圖 */
-        #thumbnailBox { display: none; margin-top: 10px; text-align: center; }
-        #thumbnailImg { max-height: 150px; border: 1px solid var(--border); border-radius: 8px; }
-        .edit-badge { background: #e74c3c; color: white; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-bottom: 5px; }
 
+        /* Preview Modal */
+        #imageModal { display: none; position: fixed; z-index: 3000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.9); }
+        .modal-content { margin: auto; display: block; max-width: 90%; max-height: 90vh; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); border-radius: 8px; cursor: zoom-in; transition: transform 0.2s; }
+        .modal-content.zoomed { transform: translate(-50%, -50%) scale(2); cursor: zoom-out; }
+        .modal-close { position: absolute; top: 20px; right: 35px; color: #fff; font-size: 40px; cursor: pointer; }
+
+        @keyframes fadeIn { from {opacity: 0} to {opacity: 1} }
     </style>
 </head>
 <body>
 
 <div class="header">
-    <h1>LINE 貼圖製作大師 V25</h1>
-    <button class="btn-outline" style="padding: 5px 10px; border-radius: 20px; cursor:pointer;" onclick="toggleTheme()">切換主題</button>
+    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em;">V26 完全體</span></h1>
+    <button class="btn-outline" style="padding: 5px 10px; border-radius: 20px;" onclick="document.body.classList.toggle('light-mode')">切換主題</button>
 </div>
 
 <div class="container">
     <div class="card sticky-sidebar">
         
+        <span class="section-title">1. 上傳與修圖</span>
         <div style="border-bottom: 1px solid var(--border); padding-bottom: 15px;">
             <div class="upload-box" id="dropZone" onclick="document.getElementById('imgInput').click()">
                 <span id="fileName">📷 點擊選取圖片</span>
@@ -127,65 +140,80 @@
             </div>
             
             <div id="thumbnailBox">
-                <div style="margin: 10px 0;">
-                    <span class="edit-badge">已載入</span>
-                    <br>
-                    <img id="thumbnailImg" src="">
-                </div>
-                <button class="btn btn-green" onclick="openEditor()">🛠️ 開啟全螢幕修圖 (去除浮水印)</button>
+                <img id="thumbnailImg" src="">
+                <button class="btn btn-green" onclick="openEditor()">🛠️ 開啟全螢幕橡皮擦 (去除浮水印)</button>
             </div>
         </div>
 
-        <div style="display:flex; flex-direction:column; gap:10px;">
-            <div class="row">
-                <div class="col">
-                    <span class="label-text">列 (垂直)</span>
-                    <input type="number" id="rows" value="4" min="1">
-                </div>
-                <div class="col">
-                    <span class="label-text">行 (水平)</span>
-                    <input type="number" id="cols" value="5" min="1">
-                </div>
-            </div>
+        <span class="section-title">2. 裁切與去背</span>
+        <div class="row">
+            <div class="col"><span class="label-text">列 (垂直)</span><input type="number" id="rows" value="4" min="1"></div>
+            <div class="col"><span class="label-text">行 (水平)</span><input type="number" id="cols" value="5" min="1"></div>
+        </div>
 
-            <div class="row" style="background:var(--panel-bg); padding:8px; border-radius:8px;">
-                <span class="label-text">去背顏色</span>
+        <div class="mode-tabs">
+            <div class="mode-tab" onclick="switchMode('ai')" id="tab-ai">🤖 AI 模式</div>
+            <div class="mode-tab active" onclick="switchMode('color')" id="tab-color">🎨 顏色模式</div>
+        </div>
+
+        <div id="content-ai" class="tab-content">
+            <div class="row">
+                <span class="label-text">模型</span>
+                <select id="aiModelSel" style="flex:1;">
+                    <option value="rmbg14">🔥 RMBG-1.4 (推薦)</option>
+                    <option value="u2netp">🚀 輕量版</option>
+                    <option value="u2net">💪 U2Net</option>
+                </select>
+            </div>
+            <div id="status" class="status-bar">🔄 等待模型載入...</div>
+            <div class="row" style="margin-top:8px;">
+                <span class="label-text">靈敏度</span>
+                <input type="range" id="aiThreshold" min="0.05" max="0.95" step="0.05" value="0.2">
+            </div>
+        </div>
+
+        <div id="content-color" class="tab-content active">
+            <div class="row">
+                <span class="label-text">目標色</span>
                 <input type="color" id="targetColor" value="#FFFFFF" style="flex:1">
-                <button class="btn-outline" style="padding:2px 8px; font-size:0.8rem;" onclick="setColor('#FFFFFF')">白</button>
-                <button class="btn-outline" style="padding:2px 8px; font-size:0.8rem;" onclick="setColor('#00FF00')">綠</button>
+                <button class="btn-outline" style="font-size:0.8rem;" onclick="document.getElementById('targetColor').value='#FFFFFF'">白</button>
             </div>
-
             <div class="row"><span class="label-text">寬容度</span><input type="range" id="tolerance" min="0" max="100" value="40"></div>
-            <div class="row"><span class="label-text">柔化</span><input type="range" id="smoothness" min="0" max="10" step="0.5" value="0"></div>
-            <div class="row"><span class="label-text">除溢色</span><input type="range" id="despill" min="0" max="10" step="0.5" value="0"></div>
-            
-            <div class="row">
-                <span class="label-text">描邊</span>
-                <input type="range" id="contour" min="0" max="20" step="1" value="5">
-                <input type="color" id="contourColor" value="#FFFFFF" title="描邊顏色">
-            </div>
-            
-            <div class="row"><span class="label-text">陰影</span><input type="range" id="shadowBlur" min="0" max="20" step="1" value="0"></div>
-            <div class="row"><span class="label-text">留白</span><input type="range" id="padding" min="0" max="20" step="1" value="0"></div>
-            
-            <div class="row" style="margin-top:5px;">
-                <input type="checkbox" id="autoCenter" checked style="width:20px;">
-                <span style="font-size:0.9rem; color:var(--text-sub);">自動裁切並置中放大</span>
-            </div>
         </div>
 
-        <button id="runBtn" class="btn btn-green" disabled>開始製作</button>
+        <hr style="border:0; border-top:1px dashed var(--border); margin:10px 0;">
+
+        <div class="row"><span class="label-text">柔化</span><input type="range" id="smoothness" min="0" max="10" step="0.5" value="0"></div>
+        <div class="row"><span class="label-text">除溢色</span><input type="range" id="despill" min="0" max="10" step="0.5" value="0"></div>
+        <div class="row">
+            <span class="label-text">描邊</span>
+            <input type="range" id="contour" min="0" max="20" step="1" value="5">
+            <input type="color" id="contourColor" value="#FFFFFF">
+        </div>
+        <div class="row"><span class="label-text">陰影</span><input type="range" id="shadowBlur" min="0" max="20" step="1" value="0"></div>
+        <div class="row"><span class="label-text">留白</span><input type="range" id="padding" min="0" max="20" step="1" value="0"></div>
+        
+        <div class="row" style="margin-top:5px;">
+            <input type="checkbox" id="autoCenter" checked style="width:20px;">
+            <span style="font-size:0.9rem; color:var(--text-sub);">自動裁切並置中放大</span>
+        </div>
+
+        <button id="runBtn" class="btn btn-green" disabled>請先上傳圖片</button>
     </div>
 
     <div class="card">
         <div style="display:flex; justify-content:space-between; align-items:center;">
             <h2 style="margin:0; font-size:1.2rem;">預覽結果</h2>
-            <button class="btn-green" id="dlBtn" style="width:auto; padding:5px 15px; font-size:0.9rem;">下載全部 ZIP</button>
+            <div style="display:flex; gap:5px;">
+                <button class="btn-outline" onclick="setPreviewBg('dark')">黑</button>
+                <button class="btn-outline" onclick="setPreviewBg('line')">LINE</button>
+                <button class="btn-outline" onclick="setPreviewBg('light')">白</button>
+            </div>
         </div>
-        
         <div id="previewContainer">
-            <div style="grid-column:1/-1; text-align:center; color:#666; padding:50px;">請先上傳並修圖，再點擊「開始製作」</div>
+            <div style="grid-column:1/-1; text-align:center; color:#666; padding:50px;">預覽區域</div>
         </div>
+        <button class="btn btn-green" id="dlBtn">下載全部 ZIP</button>
     </div>
 </div>
 
@@ -193,18 +221,16 @@
     <div class="editor-header">
         <span style="color:white; font-weight:bold;">✨ 修圖工作台</span>
         <div>
-            <button class="tool-btn" onclick="saveEditor()">✅ 完成並儲存</button>
+            <button class="tool-btn" onclick="saveEditor()">✅ 完成</button>
             <button class="tool-btn" style="background:#c0392b; border-color:#c0392b;" onclick="closeEditor()">❌ 取消</button>
         </div>
     </div>
     <div class="editor-toolbar">
         <button class="tool-btn active" id="tool-eraser" onclick="setTool('eraser')">🧹 橡皮擦</button>
         <button class="tool-btn" id="tool-restore" onclick="setTool('restore')">🖌️ 還原筆</button>
-        <button class="tool-btn" id="tool-move" onclick="setTool('move')">✋ 移動畫布 (右鍵)</button>
-        <div style="width:1px; height:20px; background:#555;"></div>
+        <button class="tool-btn" id="tool-move" onclick="setTool('move')">✋ 移動 (右鍵)</button>
         <span style="color:#aaa; font-size:0.8rem;">筆刷:</span>
         <input type="range" id="brushSize" min="5" max="200" value="30" style="width:100px;">
-        <button class="tool-btn" onclick="togglePreviewMode()" id="btn-preview-mode">👁️ 預覽去背</button>
     </div>
     <div class="editor-body" id="editorBody">
         <canvas id="editorCanvas"></canvas>
@@ -212,41 +238,50 @@
     </div>
 </div>
 
+<div id="imageModal" onclick="this.style.display='none'">
+    <span class="modal-close">&times;</span>
+    <img class="modal-content" id="modalImg">
+</div>
+
 <script>
-    // --- 變數 ---
-    let originalImgObj = null; // 原始圖片物件
-    let editedCanvas = document.createElement('canvas'); // 儲存修圖結果的隱藏 Canvas
-    let rawStickers = [];
-    
-    // 編輯器狀態
-    let editorState = {
-        scale: 1,
-        offsetX: 0,
-        offsetY: 0,
-        isDragging: false,
-        lastX: 0,
-        lastY: 0,
-        tool: 'eraser', // eraser, restore, move
-        isDrawing: false,
-        previewMode: false // false = 顯示原圖+擦除, true = 顯示即時去背結果
+    // --- Configuration ---
+    const MODEL_CONFIG = {
+        'u2netp': { url: 'https://cdn.jsdelivr.net/gh/danielgatis/rembg@master/u2netp.onnx', size: 320 },
+        'u2net': { url: 'https://huggingface.co/schyy/u2net-onnx/resolve/main/u2net.onnx', size: 320 },
+        'rmbg14': { url: 'https://huggingface.co/briaai/RMBG-1.4/resolve/main/onnx/model.onnx', size: 1024 }
     };
+    ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/";
+
+    // --- State ---
+    let currentMode = 'color'; // 'ai' or 'color'
+    let session = null;
+    let originalImgObj = null; 
+    let editedCanvas = document.createElement('canvas'); // The image after eraser
+    let rawStickers = [];
+    let previewBgClass = 'bg-dark';
+    
+    // Editor State
+    let editorState = { scale: 1, offsetX: 0, offsetY: 0, isDragging: false, lastX: 0, lastY: 0, tool: 'eraser', isDrawing: false };
 
     const els = {
         imgIn: document.getElementById('imgInput'),
         thumbnailBox: document.getElementById('thumbnailBox'),
         thumbnailImg: document.getElementById('thumbnailImg'),
         runBtn: document.getElementById('runBtn'),
+        previewContainer: document.getElementById('previewContainer'),
         editorModal: document.getElementById('editorModal'),
         editorCanvas: document.getElementById('editorCanvas'),
         editorBody: document.getElementById('editorBody'),
         brushSize: document.getElementById('brushSize'),
         zoomInfo: document.getElementById('zoomInfo'),
-        previewContainer: document.getElementById('previewContainer'),
-        // Settings
+        status: document.getElementById('status'),
+        aiModel: document.getElementById('aiModelSel'),
+        // Inputs
         rows: document.getElementById('rows'),
         cols: document.getElementById('cols'),
         targetColor: document.getElementById('targetColor'),
         tolerance: document.getElementById('tolerance'),
+        aiThreshold: document.getElementById('aiThreshold'),
         contour: document.getElementById('contour'),
         contourColor: document.getElementById('contourColor'),
         padding: document.getElementById('padding'),
@@ -256,266 +291,227 @@
         autoCenter: document.getElementById('autoCenter')
     };
 
-    // --- 1. 圖片載入 ---
+    // --- 1. Load Image ---
     els.imgIn.addEventListener('change', async (e) => {
         const file = e.target.files[0];
         if(!file) return;
-        
         originalImgObj = await loadImage(URL.createObjectURL(file));
         
-        // 初始化編輯用的 Canvas
+        // Init Edited Canvas
         editedCanvas.width = originalImgObj.width;
         editedCanvas.height = originalImgObj.height;
         const ctx = editedCanvas.getContext('2d');
         ctx.drawImage(originalImgObj, 0, 0);
         
-        // 更新 UI
         els.thumbnailImg.src = editedCanvas.toDataURL();
         els.thumbnailBox.style.display = 'block';
         document.getElementById('dropZone').style.display = 'none';
-        els.runBtn.disabled = false;
+        updateButtonState();
         
-        // 自動開啟編輯器
+        // Auto open editor for convenience
         openEditor();
     });
 
-    // --- 2. 全螢幕編輯器邏輯 ---
+    // --- 2. Full Screen Editor Logic ---
     function openEditor() {
         if(!originalImgObj) return;
         els.editorModal.style.display = 'block';
-        
-        // 重置視圖讓圖片適中
         const bodyW = els.editorBody.clientWidth;
         const bodyH = els.editorBody.clientHeight;
         const scale = Math.min(bodyW / originalImgObj.width, bodyH / originalImgObj.height) * 0.9;
-        
         editorState.scale = scale;
         editorState.offsetX = (bodyW - originalImgObj.width * scale) / 2;
         editorState.offsetY = (bodyH - originalImgObj.height * scale) / 2;
-        
         renderEditor();
     }
-
-    function closeEditor() {
-        els.editorModal.style.display = 'none';
-    }
-
-    function saveEditor() {
-        // 更新縮圖
-        els.thumbnailImg.src = editedCanvas.toDataURL();
-        closeEditor();
-    }
-
+    function closeEditor() { els.editorModal.style.display = 'none'; }
+    function saveEditor() { els.thumbnailImg.src = editedCanvas.toDataURL(); closeEditor(); }
     function setTool(t) {
         editorState.tool = t;
         document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
-        if(t !== 'move') document.getElementById('tool-'+t).classList.add('active');
+        if(t!=='move') document.getElementById('tool-'+t).classList.add('active');
         else document.getElementById('tool-move').classList.add('active');
-        renderEditor();
     }
 
-    function togglePreviewMode() {
-        editorState.previewMode = !editorState.previewMode;
-        const btn = document.getElementById('btn-preview-mode');
-        btn.textContent = editorState.previewMode ? "👁️ 顯示原圖" : "👁️ 預覽去背";
-        btn.classList.toggle('active', editorState.previewMode);
-        renderEditor();
-    }
-
-    // 核心渲染迴圈 (Canvas)
     function renderEditor() {
         const cvs = els.editorCanvas;
         const ctx = cvs.getContext('2d');
-        
-        // 設定 Canvas 大小為視窗大小 (這樣才清晰)
         cvs.width = els.editorBody.clientWidth;
         cvs.height = els.editorBody.clientHeight;
-        
-        ctx.clearRect(0, 0, cvs.width, cvs.height);
-        
+        ctx.clearRect(0,0,cvs.width,cvs.height);
         ctx.save();
         ctx.translate(editorState.offsetX, editorState.offsetY);
         ctx.scale(editorState.scale, editorState.scale);
-        
-        // 畫圖邏輯
-        if (editorState.previewMode) {
-            // 預覽模式：即時計算去背效果
-            // 這裡做一個簡單的即時去背 (為了效能，可能只畫可見區域，但簡單起見先畫全部)
-            // 1. 畫當前的 editedCanvas
-            // 2. 疊加去背遮罩
-            // 由於即時運算像素太慢，我們用 composite operation 模擬
-            // 其實預覽模式就是：顯示 editedCanvas，但要把背景色變成透明
-            // 我們可以用 getImageData 做一次快速去背
-            
-            // 為了效能，我們建立一個暫存 canvas
-            const tempCvs = document.createElement('canvas');
-            tempCvs.width = editedCanvas.width;
-            tempCvs.height = editedCanvas.height;
-            const tCtx = tempCvs.getContext('2d');
-            tCtx.drawImage(editedCanvas, 0, 0);
-            
-            // 取得像素資料進行去背
-            const imgData = tCtx.getImageData(0, 0, tempCvs.width, tempCvs.height);
-            const d = imgData.data;
-            const hex = els.targetColor.value;
-            const tr = parseInt(hex.slice(1,3), 16);
-            const tg = parseInt(hex.slice(3,5), 16);
-            const tb = parseInt(hex.slice(5,7), 16);
-            const tol = parseInt(els.tolerance.value) / 100 * 442;
-            
-            for(let i=0; i<d.length; i+=4) {
-                if(d[i+3] === 0) continue; // 已經被擦掉的
-                const dist = Math.sqrt((d[i]-tr)**2 + (d[i+1]-tg)**2 + (d[i+2]-tb)**2);
-                if(dist < tol) d[i+3] = 0; // 變成透明
-            }
-            tCtx.putImageData(imgData, 0, 0);
-            ctx.drawImage(tempCvs, 0, 0);
-            
-        } else {
-            // 編輯模式：直接畫出 editedCanvas (包含被擦掉的透明區域)
-            ctx.drawImage(editedCanvas, 0, 0);
-        }
-        
+        ctx.drawImage(editedCanvas, 0, 0);
         ctx.restore();
-        els.zoomInfo.textContent = Math.round(editorState.scale * 100) + "%";
+        els.zoomInfo.textContent = Math.round(editorState.scale*100) + "%";
     }
 
-    // 編輯器事件監聽
+    // Editor Events
     const editCvs = els.editorCanvas;
-    
-    // 座標轉換：螢幕 -> 圖片內部座標
     function getImgPos(e) {
         const rect = editCvs.getBoundingClientRect();
-        const clientX = e.clientX - rect.left;
-        const clientY = e.clientY - rect.top;
         return {
-            x: (clientX - editorState.offsetX) / editorState.scale,
-            y: (clientY - editorState.offsetY) / editorState.scale
+            x: (e.clientX - rect.left - editorState.offsetX) / editorState.scale,
+            y: (e.clientY - rect.top - editorState.offsetY) / editorState.scale
         };
     }
-
     editCvs.addEventListener('mousedown', e => {
-        if (e.button === 2 || editorState.tool === 'move') { // 右鍵或移動工具
-            editorState.isDragging = true;
-            editorState.lastX = e.clientX;
-            editorState.lastY = e.clientY;
-        } else if (e.button === 0) { // 左鍵繪畫
-            editorState.isDrawing = true;
-            applyBrush(e);
+        if(e.button === 2 || editorState.tool === 'move') {
+            editorState.isDragging = true; editorState.lastX = e.clientX; editorState.lastY = e.clientY;
+        } else if(e.button === 0) {
+            editorState.isDrawing = true; applyBrush(e);
         }
     });
-
     editCvs.addEventListener('mousemove', e => {
-        if (editorState.isDragging) {
-            const dx = e.clientX - editorState.lastX;
-            const dy = e.clientY - editorState.lastY;
-            editorState.offsetX += dx;
-            editorState.offsetY += dy;
-            editorState.lastX = e.clientX;
-            editorState.lastY = e.clientY;
+        if(editorState.isDragging) {
+            editorState.offsetX += e.clientX - editorState.lastX;
+            editorState.offsetY += e.clientY - editorState.lastY;
+            editorState.lastX = e.clientX; editorState.lastY = e.clientY;
             renderEditor();
-        } else if (editorState.isDrawing) {
-            applyBrush(e);
-        }
+        } else if(editorState.isDrawing) applyBrush(e);
     });
-
-    window.addEventListener('mouseup', () => {
-        editorState.isDragging = false;
-        editorState.isDrawing = false;
-    });
-
-    // 滾輪縮放
+    window.addEventListener('mouseup', () => { editorState.isDragging=false; editorState.isDrawing=false; });
     editCvs.addEventListener('wheel', e => {
         e.preventDefault();
         const zoomSpeed = 0.001;
         const newScale = Math.max(0.1, editorState.scale - (e.deltaY * zoomSpeed * editorState.scale));
-        
-        // 以滑鼠為中心縮放
         const rect = editCvs.getBoundingClientRect();
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
-        
+        const mouseX = e.clientX - rect.left; const mouseY = e.clientY - rect.top;
         const worldX = (mouseX - editorState.offsetX) / editorState.scale;
         const worldY = (mouseY - editorState.offsetY) / editorState.scale;
-        
         editorState.offsetX = mouseX - worldX * newScale;
         editorState.offsetY = mouseY - worldY * newScale;
         editorState.scale = newScale;
-        
         renderEditor();
     });
-
-    // 防止右鍵選單
     editCvs.addEventListener('contextmenu', e => e.preventDefault());
 
     function applyBrush(e) {
-        if(editorState.previewMode) return; // 預覽模式不能畫
-        
         const pos = getImgPos(e);
         const ctx = editedCanvas.getContext('2d');
-        const size = els.brushSize.value / editorState.scale; // 筆刷大小隨縮放調整視覺一致性? 否，通常是固定物理大小
-        // 修正：筆刷大小應該對應圖片像素，不隨縮放改變
-        const brushPx = parseInt(els.brushSize.value); 
-
+        const brushPx = parseInt(els.brushSize.value);
         ctx.beginPath();
-        ctx.arc(pos.x, pos.y, brushPx / 2, 0, Math.PI * 2);
-        
-        if (editorState.tool === 'eraser') {
-            ctx.globalCompositeOperation = 'destination-out'; // 變透明
-            ctx.fill();
-        } else if (editorState.tool === 'restore') {
-            ctx.globalCompositeOperation = 'source-over'; // 畫回來
-            // 這邊比較麻煩，因為我們是在 editedCanvas 上畫。
-            // 還原需要從 originalImgObj 取樣。
-            // 簡單做法：用 clip + drawImage
-            ctx.save();
-            ctx.clip();
-            ctx.drawImage(originalImgObj, 0, 0);
-            ctx.restore();
+        ctx.arc(pos.x, pos.y, brushPx/2, 0, Math.PI*2);
+        if(editorState.tool === 'eraser') {
+            ctx.globalCompositeOperation = 'destination-out'; ctx.fill();
+        } else if(editorState.tool === 'restore') {
+            ctx.globalCompositeOperation = 'source-over'; 
+            ctx.save(); ctx.clip(); ctx.drawImage(originalImgObj, 0, 0); ctx.restore();
         }
-        
         requestAnimationFrame(renderEditor);
     }
 
-    // --- 3. 製作貼圖邏輯 (沿用 V23-1 但輸入源改為 editedCanvas) ---
+    // --- 3. Processing Logic (AI + Color) ---
+    function updateButtonState() {
+        const hasFile = !!originalImgObj;
+        if (!hasFile) {
+            els.runBtn.disabled = true; els.runBtn.textContent = "請先上傳圖片"; return;
+        }
+        if (currentMode === 'ai') {
+            if (session) { els.runBtn.disabled = false; els.runBtn.textContent = "開始製作 (AI)"; }
+            else { els.runBtn.disabled = true; els.runBtn.textContent = "等待模型載入..."; }
+        } else {
+            els.runBtn.disabled = false; els.runBtn.textContent = "開始製作 (顏色)";
+        }
+    }
+
+    async function loadAIModel() {
+        const key = els.aiModel.value; const config = MODEL_CONFIG[key];
+        els.status.className = 'status-bar'; els.status.textContent = `🔄 下載 ${key}...`; 
+        session = null; updateButtonState();
+        try {
+            session = await ort.InferenceSession.create(config.url, { executionProviders: ['wasm', 'webgl'] });
+            session.imgSize = config.size; 
+            els.status.className = 'status-bar status-success'; els.status.textContent = `✅ ${key} 就緒`;
+            updateButtonState();
+        } catch(e) {
+            els.status.className = 'status-bar'; els.status.style.background = "#ffebee"; els.status.style.color="#c62828";
+            els.status.textContent = "❌ 下載失敗 (請檢查網路)";
+        }
+    }
+
     els.runBtn.addEventListener('click', async () => {
-        els.runBtn.disabled = true; els.runBtn.textContent = "🚀 製作中...";
+        els.runBtn.disabled = true; els.runBtn.textContent = "🚀 處理中...";
         els.previewContainer.innerHTML = "<div style='grid-column:1/-1;text-align:center;color:#ccc;'>正在處理...</div>";
         
         setTimeout(async () => {
             try {
-                // 1. 從 editedCanvas 取得已修圖的影像
+                // Get image from edited canvas (with watermarks erased)
                 const sourceImg = await loadImage(editedCanvas.toDataURL());
-                
-                // 2. 顏色去背
-                const mask = generateColorMask(sourceImg);
-                let processedMask = mask;
+                let maskCanvas;
+
+                if(currentMode === 'ai') maskCanvas = await generateAIMask(sourceImg);
+                else maskCanvas = generateColorMask(sourceImg);
+
+                let processedMask = maskCanvas;
                 const smooth = parseFloat(els.smoothness.value);
                 const despill = parseFloat(els.despill.value);
-                if(smooth > 0 || despill > 0) processedMask = processMask(mask, smooth, despill);
-                
+                if(smooth > 0 || despill > 0) processedMask = processMask(maskCanvas, smooth, despill);
+
                 const noBgImg = applyMaskToImage(sourceImg, processedMask);
                 
-                // 3. 切割與後製
                 rawStickers = await cutAndContour(
                     noBgImg,
-                    parseInt(els.rows.value),
-                    parseInt(els.cols.value),
-                    parseInt(els.contour.value),
-                    document.getElementById('contourColor').value,
-                    parseInt(els.padding.value),
-                    parseInt(els.shadowBlur.value),
+                    parseInt(els.rows.value), parseInt(els.cols.value),
+                    parseInt(els.contour.value), els.contourColor.value,
+                    parseInt(els.padding.value), parseInt(els.shadowBlur.value),
                     els.autoCenter.checked
                 );
                 
                 renderPreview(parseInt(els.rows.value), parseInt(els.cols.value));
-                
             } catch(e) { console.error(e); alert("錯誤: " + e.message); }
-            finally { els.runBtn.disabled = false; els.runBtn.textContent = "開始製作"; }
+            finally { updateButtonState(); }
         }, 50);
     });
 
-    // --- 共用函式庫 (保持 V23-1 的核心算法) ---
+    // AI Mask
+    async function generateAIMask(img) {
+        const key = els.aiModel.value;
+        const size = (key === 'rmbg14') ? 1024 : 320; 
+        const cvs = document.createElement('canvas'); cvs.width = size; cvs.height = size;
+        const ctx = cvs.getContext('2d');
+        const scale = Math.min(size/img.width, size/img.height);
+        const nw = img.width * scale; const nh = img.height * scale;
+        const ox = (size - nw) / 2; const oy = (size - nh) / 2;
+        ctx.fillStyle = "#808080"; ctx.fillRect(0, 0, size, size);
+        ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, ox, oy, nw, nh);
+        const imgData = ctx.getImageData(0, 0, size, size);
+        const input = new Float32Array(size * size * 3);
+        if (key === 'rmbg14') {
+            for(let i=0; i<imgData.data.length; i+=4) {
+                input[i/4] = imgData.data[i]/255.0; input[i/4+size*size] = imgData.data[i+1]/255.0; input[i/4+2*size*size] = imgData.data[i+2]/255.0;
+            }
+        } else {
+            for(let i=0; i<imgData.data.length; i+=4) {
+                input[i/4] = (imgData.data[i]/255 - 0.485)/0.229; input[i/4+size*size] = (imgData.data[i+1]/255 - 0.456)/0.224; input[i/4+2*size*size] = (imgData.data[i+2]/255 - 0.406)/0.225;
+            }
+        }
+        const tensor = new ort.Tensor('float32', input, [1, 3, size, size]);
+        const res = await session.run({ [session.inputNames[0]]: tensor });
+        const out = res[session.outputNames[0]].data;
+        const maskCvs = document.createElement('canvas'); maskCvs.width = size; maskCvs.height = size;
+        const mCtx = maskCvs.getContext('2d'); const mDat = mCtx.createImageData(size, size);
+        let maxVal = -Infinity; let minVal = Infinity; 
+        for(let v of out) { if(v > maxVal) maxVal = v; if(v < minVal) minVal = v; }
+        const range = maxVal - minVal; const boost = range > 0.00001 ? (1 / range) : 1;
+        const thresh = parseFloat(els.aiThreshold.value);
+        for(let i=0; i<out.length; i++) {
+            let val = (out[i] - minVal) * boost;
+            let a = 0;
+            if (key === 'rmbg14') { if (val > thresh) { a = Math.min(255, val * 255); a = Math.min(255, a * 1.2); } else { a = 0; } } 
+            else { a = val > thresh ? 255 : 0; }
+            mDat.data[i*4+3] = a;
+        }
+        mCtx.putImageData(mDat, 0, 0);
+        const fullMask = document.createElement('canvas'); fullMask.width = img.width; fullMask.height = img.height;
+        const fCtx = fullMask.getContext('2d'); fCtx.imageSmoothingEnabled = true; fCtx.imageSmoothingQuality = 'high';
+        fCtx.drawImage(maskCvs, ox, oy, nw, nh, 0, 0, img.width, img.height);
+        return fullMask;
+    }
+
+    // Color Mask
     function generateColorMask(img) {
         const cvs = document.createElement('canvas'); cvs.width = img.width; cvs.height = img.height;
         const ctx = cvs.getContext('2d'); ctx.drawImage(img, 0, 0);
@@ -524,13 +520,14 @@
         const tr = parseInt(hex.slice(1,3), 16); const tg = parseInt(hex.slice(3,5), 16); const tb = parseInt(hex.slice(5,7), 16);
         const tol = parseInt(els.tolerance.value) / 100 * 442;
         for(let i=0; i<d.length; i+=4) {
-            if(d[i+3] === 0) continue; // 已經是透明的(橡皮擦)
+            if(d[i+3]===0) continue;
             const dist = Math.sqrt((d[i]-tr)**2 + (d[i+1]-tg)**2 + (d[i+2]-tb)**2);
             d[i+3] = dist < tol ? 0 : 255; 
         }
         ctx.putImageData(dat, 0, 0); return cvs;
     }
-    
+
+    // Common Processing
     function processMask(mask, smooth, shrink) {
         const cvs = document.createElement('canvas'); cvs.width = mask.width; cvs.height = mask.height;
         const ctx = cvs.getContext('2d');
@@ -548,80 +545,51 @@
         }
         return cvs;
     }
-
     function applyMaskToImage(img, mask) {
         const cvs = document.createElement('canvas'); cvs.width = img.width; cvs.height = img.height;
         const ctx = cvs.getContext('2d'); ctx.drawImage(img, 0, 0);
         ctx.globalCompositeOperation = 'destination-in'; ctx.drawImage(mask, 0, 0); return cvs;
     }
-
     async function cutAndContour(img, rows, cols, contour, contourColor, paddingPct, shadow, autoCenter) {
         const w = img.width; const h = img.height;
         const tileW = Math.floor(w/cols); const tileH = Math.floor(h/rows);
         const res = [];
         const cvs = document.createElement('canvas'); const ctx = cvs.getContext('2d');
-
         for(let r=0; r<rows; r++) {
             for(let c=0; c<cols; c++) {
-                cvs.width = tileW; cvs.height = tileH;
-                ctx.clearRect(0,0,tileW,tileH);
+                cvs.width = tileW; cvs.height = tileH; ctx.clearRect(0,0,tileW,tileH);
                 ctx.drawImage(img, c*tileW, r*tileH, tileW, tileH, 0, 0, tileW, tileH);
                 const tileImg = await loadImage(cvs.toDataURL());
-                
-                const sCvs = document.createElement('canvas'); sCvs.width = tileW; sCvs.height = tileH; 
-                const sCtx = sCvs.getContext('2d');
-                const pad = (paddingPct / 100) * tileW; 
-                const margin = shadow * 2; 
-                const drawW = tileW - pad * 2 - contour * 2 - margin;
-                const drawH = tileH - pad * 2 - contour * 2 - margin;
+                const sCvs = document.createElement('canvas'); sCvs.width = tileW; sCvs.height = tileH; const sCtx = sCvs.getContext('2d');
+                const pad = (paddingPct / 100) * tileW; const margin = shadow * 2; 
+                const drawW = tileW - pad*2 - contour*2 - margin; const drawH = tileH - pad*2 - contour*2 - margin;
                 const safeW = Math.max(1, drawW); const safeH = Math.max(1, drawH);
                 const safeX = (tileW - safeW) / 2; const safeY = (tileH - safeH) / 2;
-
-                let finalImg = tileImg;
-                let fx = safeX, fy = safeY, fw = safeW, fh = safeH;
-
+                
+                let finalImg = tileImg; let fx = safeX, fy = safeY, fw = safeW, fh = safeH;
                 if (autoCenter) {
                     const bbox = getContentBox(tileImg);
                     if (bbox) {
-                        const scale = Math.min(safeW / bbox.w, safeH / bbox.h);
+                        const scale = Math.min(safeW/bbox.w, safeH/bbox.h);
                         fw = bbox.w * scale; fh = bbox.h * scale;
-                        fx = safeX + (safeW - fw) / 2; fy = safeY + (safeH - fh) / 2;
-                        const contentCvs = document.createElement('canvas');
-                        contentCvs.width = fw; contentCvs.height = fh;
-                        const cCtx = contentCvs.getContext('2d');
-                        cCtx.drawImage(tileImg, bbox.x, bbox.y, bbox.w, bbox.h, 0, 0, fw, fh);
+                        fx = safeX + (safeW - fw)/2; fy = safeY + (safeH - fh)/2;
+                        const contentCvs = document.createElement('canvas'); contentCvs.width = fw; contentCvs.height = fh;
+                        const cCtx = contentCvs.getContext('2d'); cCtx.drawImage(tileImg, bbox.x, bbox.y, bbox.w, bbox.h, 0, 0, fw, fh);
                         finalImg = await loadImage(contentCvs.toDataURL());
                     } else { finalImg = null; }
                 } else {
-                    const scale = Math.min(safeW / tileW, safeH / tileH);
-                    fw = tileW * scale; fh = tileH * scale;
-                    fx = safeX + (safeW - fw) / 2; fy = safeY + (safeH - fh) / 2;
+                    const scale = Math.min(safeW/tileW, safeH/tileH);
+                    fw = tileW * scale; fh = tileH * scale; fx = safeX + (safeW - fw)/2; fy = safeY + (safeH - fh)/2;
                 }
-
+                
                 if (finalImg) {
-                    if(shadow > 0) {
-                        sCtx.save(); sCtx.shadowColor = "rgba(0,0,0,0.5)"; sCtx.shadowBlur = shadow;
-                        sCtx.shadowOffsetX = 2; sCtx.shadowOffsetY = 2;
-                        sCtx.drawImage(finalImg, fx, fy, fw, fh); sCtx.restore();
-                    }
+                    if(shadow > 0) { sCtx.save(); sCtx.shadowColor = "rgba(0,0,0,0.5)"; sCtx.shadowBlur = shadow; sCtx.shadowOffsetX = 2; sCtx.shadowOffsetY = 2; sCtx.drawImage(finalImg, fx, fy, fw, fh); sCtx.restore(); }
                     if(contour > 0) {
-                        const tempCvs = document.createElement('canvas');
-                        tempCvs.width = sCvs.width; tempCvs.height = sCvs.height;
-                        const tCtx = tempCvs.getContext('2d');
-                        tCtx.drawImage(finalImg, fx, fy, fw, fh);
-                        tCtx.globalCompositeOperation = 'source-in'; 
-                        tCtx.fillStyle = contourColor; 
-                        tCtx.fillRect(0,0,tempCvs.width,tempCvs.height);
-                        const outlineCvs = document.createElement('canvas'); 
-                        outlineCvs.width = sCvs.width; outlineCvs.height = sCvs.height;
-                        const oCtx = outlineCvs.getContext('2d');
-                        const steps = 12;
-                        for(let i=0; i<steps; i++) {
-                            const ang = (i/steps)*2*Math.PI;
-                            oCtx.drawImage(tempCvs, Math.cos(ang)*contour, Math.sin(ang)*contour);
-                        }
-                        oCtx.drawImage(tempCvs, 0, 0);
-                        sCtx.drawImage(outlineCvs, 0, 0);
+                        const tempCvs = document.createElement('canvas'); tempCvs.width = sCvs.width; tempCvs.height = sCvs.height; const tCtx = tempCvs.getContext('2d');
+                        tCtx.drawImage(finalImg, fx, fy, fw, fh); tCtx.globalCompositeOperation = 'source-in'; tCtx.fillStyle = contourColor; tCtx.fillRect(0,0,tempCvs.width,tempCvs.height);
+                        const outlineCvs = document.createElement('canvas'); outlineCvs.width = sCvs.width; outlineCvs.height = sCvs.height; const oCtx = outlineCvs.getContext('2d');
+                        const steps = 12; for(let i=0; i<steps; i++) { const ang = (i/steps)*2*Math.PI; oCtx.drawImage(tempCvs, Math.cos(ang)*contour, Math.sin(ang)*contour); }
+                        oCtx.drawImage(tempCvs, 0, 0); sCtx.drawImage(outlineCvs, 0, 0);
                     }
                     sCtx.drawImage(finalImg, fx, fy, fw, fh);
                 }
@@ -630,7 +598,7 @@
         }
         return res;
     }
-
+    
     function getContentBox(img) {
         const cvs = document.createElement('canvas'); cvs.width = img.width; cvs.height = img.height;
         const ctx = cvs.getContext('2d'); ctx.drawImage(img, 0, 0);
@@ -639,51 +607,48 @@
         for (let y = 0; y < cvs.height; y++) {
             for (let x = 0; x < cvs.width; x++) {
                 if (data[(y * cvs.width + x) * 4 + 3] > 10) { 
-                    if (x < minX) minX = x; if (x > maxX) maxX = x;
-                    if (y < minY) minY = y; if (y > maxY) maxY = y; found = true;
+                    if (x < minX) minX = x; if (x > maxX) maxX = x; if (y < minY) minY = y; if (y > maxY) maxY = y; found = true;
                 }
             }
         }
         return found ? { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 } : null;
     }
 
-    // 下載與其他功能
+    // UX Helpers
+    window.switchMode = (mode) => {
+        currentMode = mode;
+        document.getElementById('tab-ai').classList.toggle('active', mode==='ai');
+        document.getElementById('tab-color').classList.toggle('active', mode==='color');
+        document.getElementById('content-ai').classList.toggle('active', mode==='ai');
+        document.getElementById('content-color').classList.toggle('active', mode==='color');
+        updateButtonState();
+        if(mode==='ai' && !session) loadAIModel();
+    };
+    els.aiModel.addEventListener('change', loadAIModel);
+    
+    // DL & Preview
     function renderPreview(rows, cols) {
-        els.previewContainer.style.gridTemplateColumns = `repeat(${cols}, 1fr)`; els.previewContainer.innerHTML = '';
+        const el = els.previewContainer; el.innerHTML = ''; el.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
         rawStickers.forEach((cvs, i) => {
-            const url = resizeToOutput(cvs, 150, 150);
+            const url = cvs.toDataURL();
             const div = document.createElement('div'); div.className = 'sticker-card';
-            div.innerHTML = `<div class="sticker-img-box bg-dark"><img src="${url}"><div class="dl-icon-btn" onclick="downloadSingle(${i}, event)">⬇</div></div><div class="sticker-name">${(i+1).toString().padStart(3,'0')}.png</div>`;
-            els.previewContainer.appendChild(div);
+            div.innerHTML = `<div class="sticker-img-box ${previewBgClass}" onclick="viewImage('${url}')"><img src="${url}"><div class="dl-icon-btn" onclick="downloadSingle(${i}, event)">⬇</div></div><div class="sticker-name">${(i+1).toString().padStart(3,'0')}.png</div>`;
+            el.appendChild(div);
         });
     }
     
-    function resizeToOutput(canvas, w, h) {
-        const c = document.createElement('canvas'); c.width = w; c.height = h;
-        const ctx = c.getContext('2d'); const scale = Math.min(w/canvas.width, h/canvas.height);
-        const dw = canvas.width*scale; const dh = canvas.height*scale;
-        ctx.drawImage(canvas, (w-dw)/2, (h-dh)/2, dw, dh); return c.toDataURL();
-    }
-
-    els.dlBtn.onclick = () => {
+    document.getElementById('dlBtn').onclick = () => {
         const zip = new JSZip();
-        rawStickers.forEach((cvs, i) => { 
-            const url = resizeToOutput(cvs, 370, 320); 
-            zip.file(`${(i+1).toString().padStart(3,'0')}.png`, url.split(',')[1], {base64:true}); 
-        });
+        rawStickers.forEach((cvs, i) => zip.file(`${(i+1).toString().padStart(3,'0')}.png`, cvs.toDataURL().split(',')[1], {base64:true}));
         zip.generateAsync({type:"blob"}).then(b => saveAs(b, `Stickers.zip`));
     };
-
-    window.downloadSingle = (i, event) => {
-        event.stopPropagation();
-        saveAs(dataURLtoBlob(resizeToOutput(rawStickers[i], 370, 320)), `${(i+1).toString().padStart(3,'0')}.png`);
-    };
-
-    function dataURLtoBlob(u) { var arr=u.split(','),m=arr[0].match(/:(.*?);/)[1],b=atob(arr[1]),n=b.length,a=new Uint8Array(n); while(n--)a[n]=b.charCodeAt(n);return new Blob([a],{type:m}); }
+    window.downloadSingle = (i, e) => { e.stopPropagation(); saveAs(dataURLtoBlob(rawStickers[i].toDataURL()), `${(i+1).toString().padStart(3,'0')}.png`); };
+    window.viewImage = (url) => { const m = document.getElementById('modalImg'); m.src = url; m.classList.remove('zoomed'); document.getElementById('imageModal').style.display='block'; };
+    document.getElementById('modalImg').onclick = function(e){ e.stopPropagation(); this.classList.toggle('zoomed'); };
+    window.setPreviewBg = (cls) => { previewBgClass = 'bg-'+cls; renderPreview(parseInt(els.rows.value), parseInt(els.cols.value)); };
+    
+    function dataURLtoBlob(u) { var arr=u.split(','),b=atob(arr[1]),n=b.length,a=new Uint8Array(n); while(n--)a[n]=b.charCodeAt(n);return new Blob([a],{type:arr[0].match(/:(.*?);/)[1]}); }
     function loadImage(s){return new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.src=s;});}
-    window.setColor = (hex) => els.targetColor.value = hex;
-    window.toggleTheme = () => document.body.classList.toggle('light-mode');
-
 </script>
 </body>
 </html>

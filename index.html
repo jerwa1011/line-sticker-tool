@@ -3,20 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LINE 貼圖製作大師 (V10: 完美修正版)</title>
+    <title>LINE 貼圖製作大師 (V11: 完整發布版)</title>
     
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 
     <style>
-        /* --- 配色系統 (預設為暗黑模式) --- */
+        /* --- 配色系統 --- */
         :root {
-            /* 預設 Dark Mode */
-            --primary: #06C755;
-            --bg: #181818;           /* 深灰黑 */
-            --card-bg: #252525;      /* 卡片深灰 */
-            --panel-bg: #2f2f2f;     /* 區塊深灰 */
+            --primary: #06C755;      /* LINE Green */
+            --tab-color: #3498db;    /* Tab Blue */
+            --bg: #181818;
+            --card-bg: #252525;
+            --panel-bg: #2f2f2f;
             --text-main: #e0e0e0;
             --text-sub: #aaaaaa;
             --border: #444444;
@@ -25,16 +25,15 @@
             --shadow: rgba(0,0,0,0.3);
         }
 
-        /* 明亮模式 (牙白/米白配色) */
         body.light-mode {
-            --bg: #f4f1ea;           /* 牙白/米色背景 */
-            --card-bg: #fdfbf7;      /* 暖白卡片 */
-            --panel-bg: #f2efe9;     /* 淺米灰區塊 */
-            --text-main: #4a4a4a;    /* 深暖灰文字 */
+            --bg: #f4f1ea;
+            --card-bg: #fdfbf7;
+            --panel-bg: #f2efe9;
+            --text-main: #4a4a4a;
             --text-sub: #7a7a7a;
-            --border: #dcd6cc;       /* 暖色邊框 */
+            --border: #dcd6cc;
             --input-bg: #ffffff;
-            --preview-bg: #2b2b2b;   /* 預覽區保持深色以對比去背 */
+            --preview-bg: #2b2b2b;
             --shadow: rgba(0,0,0,0.08);
         }
 
@@ -42,6 +41,7 @@
             font-family: "Segoe UI", "Microsoft JhengHei", sans-serif; 
             background: var(--bg); padding: 20px; color: var(--text-main); 
             transition: background 0.3s, color 0.3s;
+            padding-bottom: 50px; /* 留給 Footer 空間 */
         }
 
         .header { display: flex; justify-content: space-between; align-items: center; max-width: 1300px; margin: 0 auto 20px auto; }
@@ -72,20 +72,16 @@
         .upload-box:hover { border-color: var(--primary); background: rgba(6, 199, 85, 0.05); }
         .upload-box span { color: var(--text-sub); font-size: 0.9rem; }
 
-        /* 輸入控制 (瘦身版) */
+        /* 輸入控制 */
         .row { display: flex; gap: 10px; align-items: center; margin-bottom: 5px; } 
         .col { flex: 1; }
-        
         label { display: block; font-weight: 600; margin-bottom: 3px; font-size: 0.8rem; color: var(--text-main); }
-        
         input[type="number"], input[type="text"], select { 
             padding: 5px 8px; border: 1px solid var(--border); border-radius: 4px; 
             font-size: 0.9rem; background: var(--input-bg); color: var(--text-main);
-            /* 關鍵修正：限制寬度 */
         }
         .input-mini { width: 60px !important; text-align: center; }
         .input-small { width: 80px !important; text-align: center; }
-
         input[type="range"] { width: 100%; accent-color: var(--primary); height: 15px; }
         input[type="color"] { width: 100%; height: 30px; border: none; cursor: pointer; padding: 0; border-radius: 4px; }
 
@@ -106,25 +102,20 @@
             padding: 5px 12px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; 
         }
 
-        /* 預覽區 (修正版) */
+        /* 預覽區 */
         #origPreviewBox { text-align: center; margin-bottom: 10px; display: none; background: var(--input-bg); padding: 5px; border-radius: 6px; }
         #origPreviewBox img { max-height: 120px; object-fit: contain; }
         
         #previewContainer {
             background: var(--preview-bg); padding: 15px; border-radius: 10px; min-height: 400px;
-            display: grid; gap: 10px; align-content: start;
-            /* Grid Columns 會由 JS 動態設定 */
+            display: grid; gap: 15px; align-content: start;
         }
 
-        /* 貼圖卡片與懸浮下載 (關鍵修正) */
-        .sticker-card { 
-            display: flex; flex-direction: column; gap: 4px; 
-            /* 讓卡片本身不干擾內部絕對定位 */
-        }
+        /* 貼圖卡片 */
+        .sticker-card { display: flex; flex-direction: column; gap: 6px; }
         
         .sticker-img-box {
-            position: relative; /* 關鍵：讓內部的 download-hint 依此定位 */
-            width: 100%; aspect-ratio: 1;
+            position: relative; width: 100%; aspect-ratio: 1;
             border: 1px solid #444; border-radius: 8px;
             display: flex; align-items: center; justify-content: center; overflow: hidden;
             background-image: linear-gradient(45deg, #333 25%, transparent 25%), linear-gradient(-45deg, #333 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #333 75%), linear-gradient(-45deg, transparent 75%, #333 75%);
@@ -134,38 +125,60 @@
         .sticker-img-box:hover { border-color: var(--primary); }
         .sticker-img-box img { max-width: 100%; max-height: 100%; object-fit: contain; }
         
-        /* 下載提示 (懸浮樣式) */
+        /* 懸浮下載提示 (字體加大, 綠底白字) */
         .download-hint {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.6);
-            color: white;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(6, 199, 85, 0.9); /* 綠底半透明 */
+            color: white; /* 白字 */
             display: flex; justify-content: center; align-items: center;
-            font-size: 0.9rem; font-weight: bold;
+            font-size: 1.2rem; /* 字體加大 */
+            font-weight: bold;
             opacity: 0; transition: opacity 0.2s;
-            pointer-events: none; /* 讓點擊穿透到 box */
+            pointer-events: none;
         }
         .sticker-img-box:hover .download-hint { opacity: 1; }
 
         .sticker-name { text-align: center; color: #888; font-size: 0.75rem; font-family: monospace; }
 
-        /* 匯出設定區 (更緊湊) */
-        .export-bar { 
-            background: rgba(6,199,85,0.05); border: 1px solid var(--primary); 
-            padding: 10px; border-radius: 8px; margin-bottom: 10px; 
+        /* Main / Tab 按鈕列 */
+        .tags-row {
+            display: flex; justify-content: center; gap: 8px;
         }
+        .tag-btn {
+            border: 1px solid var(--border); background: var(--input-bg); color: var(--text-sub);
+            padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer;
+            transition: 0.2s; font-weight: bold;
+        }
+        .tag-btn:hover { border-color: var(--text-main); }
         
+        /* Main 選中樣式 (綠底白字) */
+        .tag-btn.active-main {
+            background: var(--primary); border-color: var(--primary); color: white;
+        }
+        /* Tab 選中樣式 (淺藍底白字) */
+        .tag-btn.active-tab {
+            background: var(--tab-color); border-color: var(--tab-color); color: white;
+        }
+
+        /* 匯出設定區 */
+        .export-bar { background: rgba(6,199,85,0.05); border: 1px solid var(--primary); padding: 10px; border-radius: 8px; margin-bottom: 10px; }
         .status-bar { padding: 8px; border-radius: 6px; font-size: 0.85em; background: #e3f2fd; color: #0d47a1; margin-top: 5px; }
         .status-error { background: #ffebee; color: #c62828; }
         .status-success { background: #e8f5e9; color: #2e7d32; }
 
         #manualLoad { display: none; margin-top: 8px; padding: 8px; border: 1px solid #fab1a0; background: #fff5f5; border-radius: 6px; font-size: 0.85rem; color: #333; }
+        
+        /* 頁尾 */
+        .footer {
+            text-align: center; margin-top: 40px; color: var(--text-sub);
+            font-size: 0.85rem; border-top: 1px solid var(--border); padding-top: 20px;
+        }
     </style>
 </head>
-<body>
+<body class="">
 
 <div class="header">
-    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V10 旗艦修正版</span></h1>
+    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V11 旗艦版</span></h1>
     <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️ 切換明亮</button>
 </div>
 
@@ -296,20 +309,24 @@
     </div>
 </div>
 
+<div class="footer" id="footerText">
+    </div>
+
 <script>
-    // 使用 jsDelivr 提供的穩定連結 (danielgatis 原版 repo)
+    // 使用 jsDelivr 提供的穩定連結
     const MODELS = {
-        'u2netp': 'https://cdn.jsdelivr.net/gh/danielgatis/rembg@master/u2netp.onnx', // 4.4MB
-        'u2net': 'https://huggingface.co/schyy/u2net-onnx/resolve/main/u2net.onnx'     // 176MB (備用)
+        'u2netp': 'https://cdn.jsdelivr.net/gh/danielgatis/rembg@master/u2netp.onnx',
+        'u2net': 'https://huggingface.co/schyy/u2net-onnx/resolve/main/u2net.onnx'
     };
     
-    // 預設使用 CDN
     ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/";
 
     let currentMode = 'ai';
     let session = null;
     let rawStickers = [];
-    let isDark = true; // 預設暗黑
+    let isDark = true;
+    let selectedMainIdx = -1;
+    let selectedTabIdx = -1;
 
     const els = {
         imgIn: document.getElementById('imgInput'),
@@ -337,8 +354,13 @@
         contentAi: document.getElementById('content-ai'),
         contentColor: document.getElementById('content-color'),
         tabAi: document.getElementById('tab-ai'),
-        tabColor: document.getElementById('tab-color')
+        tabColor: document.getElementById('tab-color'),
+        footer: document.getElementById('footerText')
     };
+
+    // 初始化頁尾
+    const today = new Date().toISOString().slice(0, 10);
+    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool 1.0.0 | ${today}`;
 
     // 數值顯示同步
     ['aiThreshold', 'tolerance', 'smoothness', 'despill', 'contour'].forEach(id => {
@@ -382,21 +404,18 @@
         els.manual.style.display = 'none';
 
         try {
-            // 先嘗試直接載入 (支援本地快取或 CDN)
             session = await ort.InferenceSession.create(url, { executionProviders: ['wasm', 'webgl'] });
             els.status.className = 'status-bar status-success';
             els.status.textContent = `✅ ${key} 就緒`;
             checkAIReady();
         } catch(e) {
-            console.warn("CDN Load failed, trying fallback...", e);
-            // 失敗處理
+            console.warn("Error loading model", e);
             els.status.className = 'status-bar status-error';
             els.status.textContent = "❌ 下載失敗";
             els.manual.style.display = 'block';
         }
     }
     
-    // 手動載入
     document.getElementById('modelInput').addEventListener('change', async (e) => {
         if(!e.target.files[0]) return;
         try {
@@ -425,14 +444,50 @@
         }
     });
 
-    // 執行
+    // --- Main / Tab 邏輯 ---
+    window.setTag = (type, index) => {
+        if (type === 'main') {
+            // 如果點擊已經是選中的，則取消
+            if (selectedMainIdx === index) selectedMainIdx = -1;
+            else selectedMainIdx = index;
+        } else if (type === 'tab') {
+            if (selectedTabIdx === index) selectedTabIdx = -1;
+            else selectedTabIdx = index;
+        }
+        
+        // 重新渲染按鈕狀態 (不重繪整個 DOM，只改 class)
+        updateTagClasses();
+    };
+
+    function updateTagClasses() {
+        const total = rawStickers.length;
+        for (let i = 0; i < total; i++) {
+            const btnMain = document.getElementById(`btn-main-${i}`);
+            const btnTab = document.getElementById(`btn-tab-${i}`);
+            
+            if (btnMain) {
+                if (i === selectedMainIdx) btnMain.classList.add('active-main');
+                else btnMain.classList.remove('active-main');
+            }
+            if (btnTab) {
+                if (i === selectedTabIdx) btnTab.classList.add('active-tab');
+                else btnTab.classList.remove('active-tab');
+            }
+        }
+    }
+
+    // --- 執行製作 ---
     els.runBtn.addEventListener('click', async () => {
         const file = els.imgIn.files[0];
         if(!file) { alert("請先上傳圖片"); return; }
         
         els.runBtn.disabled = true;
         els.runBtn.textContent = "處理中...";
-        els.preview.innerHTML = "<div style='grid-column:1/-1;text-align:center;color:#999;'>🚀 正在處理...</div>";
+        els.preview.innerHTML = "<div style='grid-column:1/-1;text-align:center;color:#ccc;'>🚀 正在處理影像...</div>";
+        
+        // 重置選擇
+        selectedMainIdx = -1;
+        selectedTabIdx = -1;
 
         try {
             const originalImg = await loadImage(URL.createObjectURL(file));
@@ -465,7 +520,7 @@
         }
     });
 
-    // AI Logic
+    // --- 影像處理函式庫 ---
     async function generateAIMask(img) {
         const size = 320;
         const cvs = document.createElement('canvas'); cvs.width = size; cvs.height = size;
@@ -613,6 +668,10 @@
                     <div class="download-hint">點擊下載</div>
                 </div>
                 <div class="sticker-name" id="name-${i}">${getFilename(i)}</div>
+                <div class="tags-row">
+                    <span class="tag-btn" id="btn-main-${i}" onclick="setTag('main', ${i})">main</span>
+                    <span class="tag-btn" id="btn-tab-${i}" onclick="setTag('tab', ${i})">tab</span>
+                </div>
             `;
             els.preview.appendChild(div);
         });
@@ -639,10 +698,25 @@
         const w = parseInt(els.outW.value) || 370;
         const h = parseInt(els.outH.value) || 320;
         const dateStr = new Date().toISOString().slice(0,10).replace(/-/g,'');
+        
+        // 加入一般貼圖
         rawStickers.forEach((cvs, i) => {
             const url = resizeToOutput(cvs, w, h);
             zip.file(getFilename(i), url.split(',')[1], {base64:true});
         });
+
+        // 加入 Main (240x240)
+        if (selectedMainIdx !== -1 && rawStickers[selectedMainIdx]) {
+            const mainUrl = resizeToOutput(rawStickers[selectedMainIdx], 240, 240);
+            zip.file("main.png", mainUrl.split(',')[1], {base64:true});
+        }
+
+        // 加入 Tab (96x74)
+        if (selectedTabIdx !== -1 && rawStickers[selectedTabIdx]) {
+            const tabUrl = resizeToOutput(rawStickers[selectedTabIdx], 96, 74);
+            zip.file("tab.png", tabUrl.split(',')[1], {base64:true});
+        }
+
         zip.generateAsync({type:"blob"}).then(b => saveAs(b, `LineStickers_${dateStr}.zip`));
     };
 

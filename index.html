@@ -2,8 +2,8 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LINE 貼圖製作大師 (V18: 完美排版版)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>LINE 貼圖製作大師 (V18: 完美終結版)</title>
     
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -13,6 +13,7 @@
         /* --- 配色系統 --- */
         :root {
             --primary: #06C755;
+            --primary-hover: #05a546;
             --tab-color: #3498db;
             --main-color: #ff5252;
             --bg: #181818;
@@ -28,183 +29,210 @@
         }
 
         body.light-mode {
-            --bg: #f4f1ea;
-            --card-bg: #fdfbf7;
-            --panel-bg: #f2efe9;
-            --text-main: #4a4a4a;
-            --text-sub: #7a7a7a;
-            --border: #dcd6cc;
+            --bg: #f8f6f2; /* 更柔和的米白 */
+            --card-bg: #ffffff;
+            --panel-bg: #f4f4f4;
+            --text-main: #333333;
+            --text-sub: #666666;
+            --border: #e0e0e0;
             --input-bg: #ffffff;
-            --preview-bg: #2b2b2b;
-            --shadow: rgba(0,0,0,0.08);
-            --group-bg: rgba(0,0,0,0.03);
+            --preview-bg: #eeeeee;
+            --shadow: rgba(0,0,0,0.05);
+            --group-bg: #f9f9f9;
         }
 
         body { 
-            font-family: "Segoe UI", "Microsoft JhengHei", sans-serif; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", sans-serif; 
             background: var(--bg); padding: 20px; color: var(--text-main); 
             transition: background 0.3s, color 0.3s;
             padding-bottom: 60px;
         }
 
+        /* 版面結構 */
         .header { display: flex; justify-content: space-between; align-items: center; max-width: 1300px; margin: 0 auto 20px auto; }
-        .container { max-width: 1300px; margin: 0 auto; display: grid; grid-template-columns: 360px 1fr; gap: 20px; }
-        @media (max-width: 900px) { .container { grid-template-columns: 1fr; } }
-        
-        .card { 
-            background: var(--card-bg); padding: 20px; border-radius: 12px; 
-            box-shadow: 0 4px 15px var(--shadow); display: flex; flex-direction: column; gap: 15px; 
+        .container { 
+            max-width: 1300px; margin: 0 auto; 
+            display: grid; grid-template-columns: 380px 1fr; gap: 25px; 
+            align-items: start; /* 重要：讓 sticky 生效 */
         }
+        @media (max-width: 950px) { .container { grid-template-columns: 1fr; } }
+        
+        /* 卡片 */
+        .card { 
+            background: var(--card-bg); padding: 20px; border-radius: 16px; 
+            box-shadow: 0 4px 20px var(--shadow); display: flex; flex-direction: column; gap: 15px; 
+        }
+        
+        /* 左側欄位固定 (Sticky) - 新功能 */
+        .sticky-sidebar {
+            position: sticky; top: 20px; 
+            max-height: calc(100vh - 40px); overflow-y: auto; /* 若內容太長可捲動 */
+            scrollbar-width: thin;
+        }
+
         .section { 
-            border: 1px solid var(--border); border-radius: 8px; padding: 12px; 
+            border: 1px solid var(--border); border-radius: 10px; padding: 15px; 
             background: var(--panel-bg); position: relative; margin-bottom: 10px;
         }
         .section-title { 
-            font-size: 0.9rem; font-weight: bold; color: var(--primary); 
-            margin-bottom: 8px; display: flex; align-items: center; 
-            border-left: 3px solid var(--primary); padding-left: 6px; 
+            font-size: 0.95rem; font-weight: 700; color: var(--primary); 
+            margin-bottom: 10px; display: flex; align-items: center; 
+            border-left: 4px solid var(--primary); padding-left: 8px; 
         }
 
-        h1 { margin: 0; font-size: 1.5rem; color: var(--text-main); }
+        h1 { margin: 0; font-size: 1.6rem; color: var(--text-main); font-weight: 800; letter-spacing: -0.5px; }
         
+        /* 上傳區 */
         .upload-box { 
-            border: 2px dashed var(--border); border-radius: 8px; padding: 15px; text-align: center; 
+            border: 2px dashed var(--border); border-radius: 10px; padding: 20px; text-align: center; 
             cursor: pointer; background: var(--input-bg); transition: 0.3s;
         }
-        .upload-box:hover { border-color: var(--primary); background: rgba(6, 199, 85, 0.05); }
-        .upload-box span { color: var(--text-sub); font-size: 0.9rem; }
+        .upload-box:hover, .upload-box.dragover { border-color: var(--primary); background: rgba(6, 199, 85, 0.08); transform: scale(1.01); }
+        .upload-box span { color: var(--text-sub); font-size: 0.95rem; pointer-events: none; }
 
-        /* 輸入控制與排版修正 */
-        .row { display: flex; gap: 10px; align-items: center; margin-bottom: 5px; } 
-        .col { flex: 1; }
+        /* 輸入控制 (字體加大) */
+        .row { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; } 
+        .col { flex: 1; display: flex; align-items: center; gap: 8px; }
         
-        /* 標籤群組 (文字+問號) - 關鍵修正 */
-        .label-group {
-            display: flex; 
-            align-items: center; 
-            width: 90px; /* 加寬寬度以容納問號 */
-            flex-shrink: 0; /* 禁止壓縮 */
-        }
-        .label-text { font-weight: 600; font-size: 0.8rem; color: var(--text-main); margin: 0; white-space: nowrap; }
+        /* 標籤群組 */
+        .label-group { display: flex; align-items: center; width: 85px; flex-shrink: 0; }
+        .label-text { font-weight: 600; font-size: 0.9rem; color: var(--text-main); white-space: nowrap; }
         
-        /* 優化版問號按鈕 (空心圓) */
         .info-btn {
             display: inline-flex; justify-content: center; align-items: center;
-            width: 14px; height: 14px; border-radius: 50%;
+            width: 16px; height: 16px; border-radius: 50%;
             border: 1px solid var(--text-sub); color: var(--text-sub);
-            font-size: 10px; font-weight: bold; cursor: pointer;
+            font-size: 11px; font-weight: bold; cursor: pointer;
             margin-left: 6px; transition: 0.2s;
         }
         .info-btn:hover { border-color: var(--primary); color: var(--primary); background: rgba(6,199,85,0.1); }
 
         input[type="number"], input[type="text"], select { 
-            padding: 5px 8px; border: 1px solid var(--border); border-radius: 4px; 
-            font-size: 0.9rem; background: var(--input-bg); color: var(--text-main);
+            padding: 8px; border: 1px solid var(--border); border-radius: 6px; 
+            font-size: 1rem; /* 16px 防止 iOS 縮放 */
+            background: var(--input-bg); color: var(--text-main);
+            transition: border-color 0.2s;
         }
+        input:focus, select:focus { outline: none; border-color: var(--primary); }
+        input:disabled { opacity: 0.5; cursor: not-allowed; }
+        
         .input-mini { width: 60px !important; text-align: center; }
-        .input-small { width: 80px !important; text-align: center; }
         .input-short { width: 80px !important; text-align: center; }
         
-        input[type="range"] { width: 100%; accent-color: var(--primary); height: 15px; }
-        input[type="color"] { width: 100%; height: 30px; border: none; cursor: pointer; padding: 0; border-radius: 4px; }
+        input[type="range"] { width: 100%; accent-color: var(--primary); height: 20px; cursor: pointer; }
+        input[type="color"] { width: 100%; height: 36px; border: none; cursor: pointer; padding: 0; border-radius: 6px; }
 
-        .mode-tabs { display: flex; gap: 5px; background: var(--border); padding: 3px; border-radius: 6px; margin-bottom: 8px; }
-        .mode-tab { flex: 1; padding: 6px; text-align: center; cursor: pointer; border-radius: 4px; font-size: 0.85rem; font-weight: bold; color: var(--text-sub); }
-        .mode-tab.active { background: var(--card-bg); color: var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
-        .tab-content { display: none; }
+        /* Tabs */
+        .mode-tabs { display: flex; gap: 5px; background: var(--border); padding: 4px; border-radius: 8px; margin-bottom: 12px; }
+        .mode-tab { flex: 1; padding: 8px; text-align: center; cursor: pointer; border-radius: 6px; font-size: 0.9rem; font-weight: bold; color: var(--text-sub); transition: 0.2s; }
+        .mode-tab.active { background: var(--card-bg); color: var(--primary); box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .tab-content { display: none; animation: fadeIn 0.3s; }
         .tab-content.active { display: block; }
 
-        .btn { width: 100%; padding: 10px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.95rem; transition: 0.2s; }
-        .btn-green { background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; gap: 8px; }
-        .btn-green:hover { background: #05b34c; }
-        .btn-green:disabled { background: #555; color: #888; cursor: not-allowed; }
+        /* 按鈕 */
+        .btn { width: 100%; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1rem; transition: 0.2s; }
+        .btn-green { background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 10px rgba(6,199,85,0.2); }
+        .btn-green:hover { background: var(--primary-hover); transform: translateY(-1px); }
+        .btn-green:disabled { background: #555; color: #888; cursor: not-allowed; transform: none; box-shadow: none; }
         .theme-btn { 
             background: transparent; border: 1px solid var(--border); color: var(--text-main); 
-            padding: 5px 12px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; 
+            padding: 6px 15px; border-radius: 20px; cursor: pointer; font-size: 0.9rem; font-weight: 500;
         }
 
-        #origPreviewBox { text-align: center; margin-bottom: 10px; display: none; background: var(--input-bg); padding: 5px; border-radius: 6px; }
-        #origPreviewBox img { max-height: 120px; object-fit: contain; }
+        #origPreviewBox { text-align: center; margin-bottom: 10px; display: none; background: var(--input-bg); padding: 8px; border-radius: 8px; border: 1px solid var(--border); }
+        #origPreviewBox img { max-height: 140px; object-fit: contain; }
         
-        #previewContainer { background: var(--preview-bg); padding: 15px; border-radius: 10px; min-height: 400px; display: grid; gap: 15px; align-content: start; }
+        /* 右側預覽區 */
+        #previewContainer { 
+            background: var(--preview-bg); padding: 20px; border-radius: 12px; min-height: 400px; 
+            display: grid; gap: 15px; align-content: start; border: 1px solid var(--border);
+        }
 
-        .sticker-card { display: flex; flex-direction: column; gap: 6px; }
+        /* 貼圖卡片 */
+        .sticker-card { display: flex; flex-direction: column; gap: 8px; }
         .sticker-img-box {
             position: relative; width: 100%; aspect-ratio: 1;
-            border: 1px solid #444; border-radius: 8px;
+            border: 1px solid #444; border-radius: 10px;
             display: flex; align-items: center; justify-content: center; overflow: hidden;
+            /* 預設棋盤格 (深色) */
             background-image: linear-gradient(45deg, #333 25%, transparent 25%), linear-gradient(-45deg, #333 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #333 75%), linear-gradient(-45deg, transparent 75%, #333 75%);
             background-size: 20px 20px; background-color: #222;
             cursor: zoom-in; transition: 0.2s;
         }
-        .sticker-img-box:hover { border-color: var(--primary); }
+        /* 模擬背景色 Classes */
+        .sticker-img-box.bg-light { background: #ffffff; background-image: none; border-color: #ddd; }
+        .sticker-img-box.bg-line { background: #849ebf; background-image: none; border-color: #6a8caf; } /* LINE 聊天室藍 */
+        
+        .sticker-img-box:hover { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary); }
         .sticker-img-box img { max-width: 100%; max-height: 100%; object-fit: contain; }
         
         .dl-icon-btn {
-            position: absolute; bottom: 5px; right: 5px;
-            width: 30px; height: 30px;
+            position: absolute; bottom: 8px; right: 8px;
+            width: 32px; height: 32px;
             background: var(--primary); color: white;
             border-radius: 50%;
             display: flex; justify-content: center; align-items: center;
-            font-size: 1.2rem; cursor: pointer;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
-            transition: transform 0.2s, background 0.2s; z-index: 10;
+            font-size: 1.1rem; cursor: pointer;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.4);
+            transition: transform 0.2s; z-index: 10;
         }
-        .dl-icon-btn:hover { background: #05b34c; transform: scale(1.1); }
-        .dl-icon-btn:active { transform: scale(0.95); }
+        .dl-icon-btn:hover { transform: scale(1.1); }
+        .dl-icon-btn:active { transform: scale(0.9); }
 
-        .sticker-name { text-align: center; color: #888; font-size: 0.75rem; font-family: monospace; }
+        .sticker-name { text-align: center; color: var(--text-sub); font-size: 0.85rem; font-family: monospace; }
 
         .tags-row { display: flex; justify-content: center; gap: 8px; }
         .tag-btn {
             border: 1px solid var(--border); background: var(--input-bg); color: var(--text-sub);
-            padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer;
+            padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; cursor: pointer;
             transition: 0.2s; font-weight: bold;
         }
-        .tag-btn:hover { border-color: var(--text-main); }
+        .tag-btn:hover { border-color: var(--text-main); color: var(--text-main); }
         .tag-btn.active-main { background: var(--main-color); border-color: var(--main-color); color: white; }
         .tag-btn.active-tab { background: var(--tab-color); border-color: var(--tab-color); color: white; }
 
-        .export-bar { background: var(--panel-bg); border: 1px solid var(--border); padding: 12px; border-radius: 10px; margin-bottom: 15px; display: flex; gap: 15px; flex-wrap: wrap; align-items: stretch; }
+        /* 匯出設定區 */
+        .export-bar { 
+            background: var(--panel-bg); border: 1px solid var(--border); 
+            padding: 15px; border-radius: 12px; margin-bottom: 20px; 
+            display: flex; gap: 15px; flex-wrap: wrap; align-items: stretch;
+        }
         .export-group-box {
             background: var(--group-bg); border: 1px solid var(--border);
-            border-radius: 8px; padding: 8px 12px;
+            border-radius: 8px; padding: 10px 15px;
             display: flex; flex-direction: column; justify-content: center;
         }
-        /* 匯出區標籤特別處理 */
-        .export-label-row { display: flex; align-items: center; margin-bottom: 6px; }
-        .export-label-text { font-size: 0.85rem; color: var(--primary); font-weight: 600; }
+        .export-group-box label { font-size: 0.85rem; color: var(--primary); margin-bottom: 8px; font-weight: bold; }
+        .export-label-row { display: flex; align-items: center; margin-bottom: 8px; }
+        .export-label-text { font-size: 0.85rem; color: var(--primary); font-weight: bold; }
 
-        .status-bar { padding: 8px; border-radius: 6px; font-size: 0.85em; background: #e3f2fd; color: #0d47a1; margin-top: 5px; }
+        /* 模擬背景切換器 */
+        .bg-toggles { display: flex; gap: 8px; justify-content: flex-end; margin-bottom: 10px; }
+        .bg-toggle-btn { width: 24px; height: 24px; border-radius: 50%; cursor: pointer; border: 2px solid #555; transition: 0.2s; }
+        .bg-toggle-btn:hover { transform: scale(1.1); }
+        .bg-toggle-btn.active { border-color: var(--primary); transform: scale(1.1); box-shadow: 0 0 5px var(--primary); }
+
+        .status-bar { padding: 10px; border-radius: 8px; font-size: 0.9rem; background: #e3f2fd; color: #0d47a1; margin-top: 10px; display: flex; align-items: center; gap: 8px; }
         .status-error { background: #ffebee; color: #c62828; }
         .status-success { background: #e8f5e9; color: #2e7d32; }
 
-        #manualLoad { display: none; margin-top: 8px; padding: 8px; border: 1px solid #fab1a0; background: #fff5f5; border-radius: 6px; font-size: 0.85rem; color: #333; }
+        #manualLoad { display: none; margin-top: 10px; padding: 10px; border: 1px solid #fab1a0; background: #fff5f5; border-radius: 8px; font-size: 0.9rem; color: #333; }
         
         .footer { text-align: center; margin-top: 40px; color: var(--text-sub); font-size: 0.85rem; border-top: 1px solid var(--border); padding-top: 20px; }
 
-        .modal {
-            display: none; position: fixed; z-index: 1000; left: 0; top: 0;
-            width: 100%; height: 100%; overflow: auto;
-            background-color: rgba(0,0,0,0.9); animation: fadeIn 0.3s;
-        }
-        .modal-content {
-            margin: auto; display: block; max-width: 90%; max-height: 90vh;
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            border-radius: 8px; border: 2px solid #444;
-            background-image: linear-gradient(45deg, #333 25%, transparent 25%), linear-gradient(-45deg, #333 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #333 75%), linear-gradient(-45deg, transparent 75%, #333 75%);
-            background-size: 20px 20px; background-color: #222;
-        }
-        .modal-close { position: absolute; top: 20px; right: 35px; color: #f1f1f1; font-size: 40px; font-weight: bold; cursor: pointer; }
+        /* Modals */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.95); animation: fadeIn 0.3s; }
+        .modal-content { margin: auto; display: block; max-width: 90%; max-height: 90vh; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); border-radius: 8px; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        .modal-close { position: absolute; top: 20px; right: 35px; color: #fff; font-size: 40px; font-weight: bold; cursor: pointer; }
         
         .help-modal-content {
             background: var(--card-bg); color: var(--text-main);
-            padding: 20px; border-radius: 12px; width: 300px;
+            padding: 25px; border-radius: 12px; width: 320px;
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.5); text-align: left; border: 1px solid var(--border);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: left; border: 1px solid var(--border);
         }
-        .help-title { color: var(--primary); font-size: 1.1rem; font-weight: bold; margin-bottom: 10px; }
-        .help-text { font-size: 0.95rem; line-height: 1.5; color: var(--text-main); }
+        .help-title { color: var(--primary); font-size: 1.1rem; font-weight: bold; margin-bottom: 12px; }
+        .help-text { font-size: 1rem; line-height: 1.6; color: var(--text-main); white-space: pre-wrap; }
 
         @keyframes fadeIn { from {opacity: 0} to {opacity: 1} }
     </style>
@@ -212,12 +240,12 @@
 <body class="">
 
 <div class="header">
-    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V18 完美排版版</span></h1>
+    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V18 完美終結版</span></h1>
     <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️ 切換明亮</button>
 </div>
 
 <div class="container">
-    <div class="card">
+    <div class="card sticky-sidebar">
         
         <div class="section">
             <span class="section-title">1. 上傳圖片</span>
@@ -236,11 +264,11 @@
                 <span class="info-btn" onclick="showHelp('crop')">?</span>
             </span>
             <div class="row">
-                <div class="col" style="display:flex; align-items:center; gap:5px;">
+                <div class="col">
                     <span class="label-text">垂直(列)</span>
                     <input type="number" id="rows" value="4" min="1" class="input-mini" onchange="resetSelections()">
                 </div>
-                <div class="col" style="display:flex; align-items:center; gap:5px;">
+                <div class="col">
                     <span class="label-text">水平(行)</span>
                     <input type="number" id="cols" value="5" min="1" class="input-mini" onchange="resetSelections()">
                 </div>
@@ -250,7 +278,7 @@
         <div class="section">
             <span class="section-title">3. 去背與後製</span>
             <div class="mode-tabs">
-                <div class="mode-tab active" onclick="switchMode('ai')" id="tab-ai">🤖 AI 模式</div>
+                <div class="mode-tab" onclick="switchMode('ai')" id="tab-ai">🤖 AI 模式</div>
                 <div class="mode-tab active" onclick="switchMode('color')" id="tab-color">🎨 顏色模式</div>
             </div>
 
@@ -267,7 +295,7 @@
                 <div id="manualLoad">
                     <strong>⚠️ 自動載入失敗</strong>
                     <div style="margin-top:5px;">
-                        <button class="btn btn-outline" style="font-size:0.8rem; padding:4px 8px; width:auto; border:1px solid #ccc; background:#fff;" onclick="document.getElementById('modelInput').click()">📂 載入 .onnx</button>
+                        <button class="btn btn-outline" style="font-size:0.8rem; padding:4px 8px;" onclick="document.getElementById('modelInput').click()">📂 載入 .onnx</button>
                     </div>
                     <input type="file" id="modelInput" accept=".onnx" style="display:none">
                 </div>
@@ -282,8 +310,8 @@
             <div id="content-color" class="tab-content active">
                 <div class="row">
                     <input type="color" id="targetColor" value="#FFFFFF" style="flex:1;">
-                    <button class="btn btn-outline" style="flex:1; padding:5px; background:var(--input-bg); color:var(--text-main); border:1px solid var(--border);" onclick="setColor('#FFFFFF')">白</button>
-                    <button class="btn btn-outline" style="flex:1; padding:5px; background:var(--input-bg); color:var(--text-main); border:1px solid var(--border);" onclick="setColor('#00FF00')">綠</button>
+                    <button class="btn btn-outline" style="flex:1; padding:5px; border:1px solid var(--border); color:var(--text-main); background:var(--input-bg);" onclick="setColor('#FFFFFF')">白</button>
+                    <button class="btn btn-outline" style="flex:1; padding:5px; border:1px solid var(--border); color:var(--text-main); background:var(--input-bg);" onclick="setColor('#00FF00')">綠</button>
                 </div>
                 <div class="row">
                     <div class="label-group">
@@ -295,7 +323,7 @@
                 </div>
             </div>
 
-            <hr style="border:0; border-top:1px dashed var(--border); margin:10px 0;">
+            <hr style="border:0; border-top:1px dashed var(--border); margin:12px 0;">
 
             <div class="row">
                 <div class="label-group">
@@ -318,8 +346,16 @@
                     <span class="label-text">描邊</span>
                     <span class="info-btn" onclick="showHelp('contour')">?</span>
                 </div>
-                <input type="range" id="contour" min="0" max="10" step="1" value="5">
+                <input type="range" id="contour" min="0" max="20" step="1" value="5">
                 <span class="input-mini" id="val-contour" style="text-align:right;">5</span>
+            </div>
+            <div class="row">
+                <div class="label-group">
+                    <span class="label-text">陰影</span>
+                    <span class="info-btn" onclick="showHelp('shadow')">?</span>
+                </div>
+                <input type="range" id="shadowBlur" min="0" max="20" step="1" value="0">
+                <span class="input-mini" id="val-shadowBlur" style="text-align:right;">0</span>
             </div>
             
             <div class="row">
@@ -336,7 +372,14 @@
     </div>
 
     <div class="card">
-        <h2>🖼️ 匯出與預覽</h2>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h2>🖼️ 匯出與預覽</h2>
+            <div class="bg-toggles">
+                <div class="bg-toggle-btn active" style="background:#222;" onclick="setPreviewBg(this, 'dark')" title="暗黑底"></div>
+                <div class="bg-toggle-btn" style="background:#849ebf;" onclick="setPreviewBg(this, 'line')" title="LINE 聊天室"></div>
+                <div class="bg-toggle-btn" style="background:#ffffff;" onclick="setPreviewBg(this, 'light')" title="白底"></div>
+            </div>
+        </div>
         
         <div class="export-bar">
             <div class="export-group-box" style="min-width: 100px; flex: 0 0 auto;">
@@ -368,7 +411,7 @@
 
             <div style="display:flex; align-items:center;">
                 <button id="dlBtn" class="btn btn-green" style="height:100%; padding:0 20px; white-space:nowrap;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
                         <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
                         <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
                     </svg>
@@ -396,7 +439,7 @@
     <div class="help-modal-content" onclick="event.stopPropagation()">
         <div class="help-title">💡 功能說明</div>
         <div id="helpText" class="help-text"></div>
-        <button class="btn btn-green" style="margin-top:15px; width:100%;" onclick="closeHelp()">知道了</button>
+        <button class="btn btn-green" style="margin-top:20px; width:100%;" onclick="closeHelp()">知道了</button>
     </div>
 </div>
 
@@ -407,23 +450,24 @@
     };
     ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/";
 
-    let currentMode = 'color'; // Default color
+    let currentMode = 'color';
     let session = null;
     let rawStickers = [];
     let isDark = true;
     let selectedMainIdx = -1;
     let selectedTabIdx = -1;
+    let previewBgClass = 'bg-dark'; // Default
 
-    // Help Text Dictionary
     const HELP_TEXTS = {
         'crop': '將整張大圖分割成多張小圖。\n例如「垂直4列、水平5行」，就會切成 4x5 = 20 張貼圖。',
-        'tolerance': '決定去除顏色的範圍。\n數值越高：去除越多相近色 (適合背景不均勻)。\n數值越低：只去除完全一樣的顏色。',
-        'smoothness': '讓邊緣變平滑。\n消除去背後的鋸齒狀邊緣，讓線條更圓潤。',
-        'despill': '消除邊緣雜色。\n如果物體邊緣有殘留的背景色 (如綠邊、白邊)，調高此數值可將其內縮去除。',
-        'contour': '白色外框。\n在圖案周圍加上白邊，就像貼紙一樣。數值代表白邊的粗細 (px)。',
-        'padding': '安全留白。\n將圖案稍微縮小，確保描邊或圖案不會貼到畫布最邊緣被切掉。',
-        'startNum': '設定檔名編號。\n例如輸入 "001"，下載的檔案就會是 001.png, 002.png... 依此類推。',
-        'sizeMode': '設定下載圖片的解析度。\n• 貼圖：固定 370x320\n• 表情貼：固定 270x270\n• 自訂：可自由輸入長寬'
+        'tolerance': '決定顏色去背的強度。\n數值越高：去除越多相近色。\n數值越小：只去除完全一樣的顏色。',
+        'smoothness': '讓去背後的邊緣變平滑，消除鋸齒狀，讓貼圖看起來更圓潤自然。',
+        'despill': '消除物體邊緣殘留的背景色（例如綠幕的綠邊或白底的白邊），讓邊緣更乾淨。',
+        'contour': '在圖案周圍加上白框，像貼紙一樣的效果。數值代表白框的粗細 (px)。',
+        'shadow': '在圖案下方加入柔和的陰影，讓貼圖在淺色背景中更立體、更明顯。',
+        'padding': '將圖案稍微縮小 (內縮)，確保描邊或圖案不會貼到畫布最邊緣被切掉。',
+        'startNum': '設定第一張貼圖的檔名編號。\n例如輸入 "001"，下載的檔案就會是 001.png, 002.png...',
+        'sizeMode': '設定下載圖片的解析度。\n• 自訂：自由輸入\n• 貼圖：固定 370x320\n• 表情貼：固定 270x270'
     };
 
     const els = {
@@ -444,6 +488,7 @@
         smoothness: document.getElementById('smoothness'),
         despill: document.getElementById('despill'),
         contour: document.getElementById('contour'),
+        shadowBlur: document.getElementById('shadowBlur'),
         padding: document.getElementById('padding'),
         startNum: document.getElementById('startNum'),
         outW: document.getElementById('outW'),
@@ -464,24 +509,65 @@
     const today = new Date().toISOString().slice(0, 10);
     els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool 1.0.0 | ${today}`;
 
-    // --- UX Functions ---
-    window.showHelp = (key) => {
-        els.helpText.innerText = HELP_TEXTS[key];
-        els.helpModal.style.display = "block";
-    };
-    window.closeHelp = () => {
-        els.helpModal.style.display = "none";
+    // --- Local Storage: Load Settings ---
+    function loadSettings() {
+        const settings = JSON.parse(localStorage.getItem('stickerToolSettings'));
+        if (settings) {
+            if(settings.rows) els.rows.value = settings.rows;
+            if(settings.cols) els.cols.value = settings.cols;
+            if(settings.contour) els.contour.value = settings.contour;
+            if(settings.tolerance) els.tolerance.value = settings.tolerance;
+            if(settings.padding) els.padding.value = settings.padding;
+            if(settings.shadowBlur) els.shadowBlur.value = settings.shadowBlur;
+            // Update labels
+            updateLabels();
+        }
+    }
+    
+    function saveSettings() {
+        const settings = {
+            rows: els.rows.value,
+            cols: els.cols.value,
+            contour: els.contour.value,
+            tolerance: els.tolerance.value,
+            padding: els.padding.value,
+            shadowBlur: els.shadowBlur.value
+        };
+        localStorage.setItem('stickerToolSettings', JSON.stringify(settings));
+    }
+
+    function updateLabels() {
+        ['aiThreshold', 'tolerance', 'smoothness', 'despill', 'contour', 'shadowBlur', 'padding'].forEach(id => {
+            let val = document.getElementById(id).value;
+            if(id === 'tolerance' || id === 'padding') val += '%';
+            document.getElementById(`val-${id}`).textContent = val;
+        });
+    }
+
+    // UX Functions
+    window.showHelp = (key) => { els.helpText.innerText = HELP_TEXTS[key]; els.helpModal.style.display = "block"; };
+    window.closeHelp = () => { els.helpModal.style.display = "none"; };
+
+    window.setPreviewBg = (btn, mode) => {
+        document.querySelectorAll('.bg-toggle-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        const boxes = document.querySelectorAll('.sticker-img-box');
+        boxes.forEach(box => {
+            box.classList.remove('bg-light', 'bg-line');
+            if (mode === 'light') box.classList.add('bg-light');
+            if (mode === 'line') box.classList.add('bg-line');
+        });
+        previewBgClass = mode === 'light' ? 'bg-light' : (mode === 'line' ? 'bg-line' : '');
     };
 
     function updateButtonState() {
         const hasFile = !!els.imgIn.files[0];
-        
         if (!hasFile) {
             els.runBtn.disabled = true;
             els.runBtn.textContent = "請先上傳圖片";
             return;
         }
-
         if (currentMode === 'ai') {
             if (session) {
                 els.runBtn.disabled = false;
@@ -496,6 +582,7 @@
         }
     }
 
+    // Events
     els.dropZone.addEventListener('dragover', (e) => { e.preventDefault(); els.dropZone.classList.add('dragover'); });
     els.dropZone.addEventListener('dragleave', () => { els.dropZone.classList.remove('dragover'); });
     els.dropZone.addEventListener('drop', (e) => {
@@ -519,12 +606,15 @@
         }
     });
 
-    ['aiThreshold', 'tolerance', 'smoothness', 'despill', 'contour', 'padding'].forEach(id => {
+    ['aiThreshold', 'tolerance', 'smoothness', 'despill', 'contour', 'shadowBlur', 'padding'].forEach(id => {
         document.getElementById(id).addEventListener('input', (e) => {
-            let val = e.target.value;
-            if(id === 'tolerance' || id === 'padding') val += '%';
-            document.getElementById(`val-${id}`).textContent = val;
+            updateLabels();
+            saveSettings(); // Auto save
         });
+    });
+    
+    ['rows', 'cols'].forEach(id => {
+        document.getElementById(id).addEventListener('change', saveSettings);
     });
 
     window.toggleTheme = () => {
@@ -544,7 +634,6 @@
         els.tabColor.classList.toggle('active', mode === 'color');
         els.contentAi.classList.toggle('active', mode === 'ai');
         els.contentColor.classList.toggle('active', mode === 'color');
-        
         updateButtonState();
     };
 
@@ -563,7 +652,6 @@
     async function loadAIModel() {
         const key = els.aiModel.value;
         const url = MODELS[key];
-        
         els.status.className = 'status-bar';
         els.status.textContent = `🔄 下載 ${key}...`;
         els.manual.style.display = 'none';
@@ -605,12 +693,10 @@
             document.getElementById('fileName').textContent = file.name;
             els.origPrev.src = URL.createObjectURL(file);
             els.origBox.style.display = 'block';
-            
             els.preview.innerHTML = "<div style='grid-column:1/-1;text-align:center;color:#666;padding:50px;'>請點擊左側「開始製作」</div>";
             rawStickers = [];
             selectedMainIdx = -1;
             selectedTabIdx = -1;
-            
             updateButtonState();
         }
     });
@@ -647,38 +733,44 @@
         if(!file) return;
         
         els.runBtn.disabled = true;
-        els.runBtn.textContent = "處理中...";
-        els.preview.innerHTML = "<div style='grid-column:1/-1;text-align:center;color:#ccc;'>🚀 正在處理影像...</div>";
+        els.runBtn.style.cursor = 'wait';
+        els.runBtn.textContent = "🚀 正在處理影像...";
+        els.preview.innerHTML = "<div style='grid-column:1/-1;text-align:center;color:#ccc;'>製作中...請稍候</div>";
         
         selectedMainIdx = -1;
         selectedTabIdx = -1;
 
-        try {
-            const originalImg = await loadImage(URL.createObjectURL(file));
-            
-            let maskCanvas;
-            if(currentMode === 'ai') maskCanvas = await generateAIMask(originalImg);
-            else maskCanvas = generateColorMask(originalImg);
+        // 小延遲讓 UI 有機會更新
+        setTimeout(async () => {
+            try {
+                const originalImg = await loadImage(URL.createObjectURL(file));
+                
+                let maskCanvas;
+                if(currentMode === 'ai') maskCanvas = await generateAIMask(originalImg);
+                else maskCanvas = generateColorMask(originalImg);
 
-            const smooth = parseFloat(els.smoothness.value);
-            const despill = parseFloat(els.despill.value);
-            if(smooth > 0 || despill > 0) maskCanvas = processMask(maskCanvas, smooth, despill);
+                const smooth = parseFloat(els.smoothness.value);
+                const despill = parseFloat(els.despill.value);
+                if(smooth > 0 || despill > 0) maskCanvas = processMask(maskCanvas, smooth, despill);
 
-            const noBgImg = applyMaskToImage(originalImg, maskCanvas);
-            const rows = parseInt(els.rows.value);
-            const cols = parseInt(els.cols.value);
-            const contour = parseInt(els.contour.value);
-            const padding = parseInt(els.padding.value); 
+                const noBgImg = applyMaskToImage(originalImg, maskCanvas);
+                const rows = parseInt(els.rows.value);
+                const cols = parseInt(els.cols.value);
+                const contour = parseInt(els.contour.value);
+                const padding = parseInt(els.padding.value); 
+                const shadow = parseInt(els.shadowBlur.value);
 
-            rawStickers = await cutAndContour(noBgImg, rows, cols, contour, padding);
-            renderPreview(rows, cols);
+                rawStickers = await cutAndContour(noBgImg, rows, cols, contour, padding, shadow);
+                renderPreview(rows, cols);
 
-        } catch(e) {
-            console.error(e);
-            alert("錯誤: " + e.message);
-        } finally {
-            updateButtonState();
-        }
+            } catch(e) {
+                console.error(e);
+                alert("錯誤: " + e.message);
+            } finally {
+                updateButtonState();
+                els.runBtn.style.cursor = 'pointer';
+            }
+        }, 50);
     });
 
     async function generateAIMask(img) {
@@ -771,7 +863,7 @@
         return cvs;
     }
 
-    async function cutAndContour(img, rows, cols, contour, paddingPct) {
+    async function cutAndContour(img, rows, cols, contour, paddingPct, shadow) {
         const w = img.width; const h = img.height;
         const tileW = Math.floor(w/cols); const tileH = Math.floor(h/rows);
         const res = [];
@@ -786,30 +878,53 @@
                 const tImg = await loadImage(cvs.toDataURL());
                 const pad = (paddingPct / 100) * tileW; 
                 const sCvs = document.createElement('canvas'); 
+                // 預留陰影空間 (簡單加在周圍)
+                const margin = shadow * 2; 
                 sCvs.width = tileW; sCvs.height = tileH; 
                 const sCtx = sCvs.getContext('2d');
                 
-                const drawW = tileW - pad * 2 - contour * 2;
-                const drawH = tileH - pad * 2 - contour * 2;
+                // 計算安全繪圖區
+                const drawW = tileW - pad * 2 - contour * 2 - margin;
+                const drawH = tileH - pad * 2 - contour * 2 - margin;
                 const safeW = Math.max(1, drawW);
                 const safeH = Math.max(1, drawH);
                 const dx = (tileW - safeW) / 2;
                 const dy = (tileH - safeH) / 2;
 
-                if(contour > 0) {
+                // 繪製陰影
+                if(shadow > 0) {
+                    sCtx.save();
+                    sCtx.shadowColor = "rgba(0,0,0,0.5)";
+                    sCtx.shadowBlur = shadow;
+                    sCtx.shadowOffsetX = 2; 
+                    sCtx.shadowOffsetY = 2;
+                    // 畫一個看不到的圖來產生陰影
                     sCtx.drawImage(tImg, dx, dy, safeW, safeH);
-                    sCtx.globalCompositeOperation = 'source-in'; sCtx.fillStyle = 'white'; sCtx.fillRect(0,0,sCvs.width,sCvs.height);
+                    sCtx.restore();
+                    // 清除圖片本體只留陰影 (這步比較複雜，簡單做法是直接疊上去)
+                    // 為了效能和簡單，這裡直接疊，反正後面會被圖蓋住
+                }
+
+                // 描邊
+                if(contour > 0) {
+                    const tempCvs = document.createElement('canvas');
+                    tempCvs.width = sCvs.width; tempCvs.height = sCvs.height;
+                    const tCtx = tempCvs.getContext('2d');
+                    
+                    tCtx.drawImage(tImg, dx, dy, safeW, safeH);
+                    tCtx.globalCompositeOperation = 'source-in'; tCtx.fillStyle = 'white'; tCtx.fillRect(0,0,tempCvs.width,tempCvs.height);
+                    
                     const outlineCvs = document.createElement('canvas'); outlineCvs.width = sCvs.width; outlineCvs.height = sCvs.height;
                     const oCtx = outlineCvs.getContext('2d');
                     const steps = 12;
                     for(let i=0; i<steps; i++) {
                         const ang = (i/steps)*2*Math.PI;
-                        oCtx.drawImage(sCvs, Math.cos(ang)*contour, Math.sin(ang)*contour);
+                        oCtx.drawImage(tempCvs, Math.cos(ang)*contour, Math.sin(ang)*contour);
                     }
-                    oCtx.drawImage(sCvs, 0, 0);
-                    sCtx.globalCompositeOperation = 'source-over'; sCtx.clearRect(0,0,sCvs.width,sCvs.height); sCtx.drawImage(outlineCvs, 0, 0);
+                    oCtx.drawImage(tempCvs, 0, 0);
+                    sCtx.drawImage(outlineCvs, 0, 0);
                 }
-                sCtx.globalCompositeOperation = 'source-over'; 
+                
                 sCtx.drawImage(tImg, dx, dy, safeW, safeH);
                 res.push(sCvs);
             }
@@ -832,7 +947,7 @@
             const div = document.createElement('div');
             div.className = 'sticker-card';
             div.innerHTML = `
-                <div class="sticker-img-box" onclick="viewImage('${url}')">
+                <div class="sticker-img-box ${previewBgClass}" onclick="viewImage('${url}')">
                     <img src="${url}">
                     <div class="dl-icon-btn" onclick="downloadSingle(${i}, event)">⬇</div>
                 </div>
@@ -913,6 +1028,9 @@
     function loadImage(s){return new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.src=s;});}
     
     loadAIModel();
+    // Load saved settings
+    loadSettings();
+    updateLabels();
 </script>
 </body>
 </html>

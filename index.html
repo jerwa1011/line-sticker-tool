@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LINE 貼圖製作大師 (V17: 貼心修正版)</title>
+    <title>LINE 貼圖製作大師 (V18: 完美排版版)</title>
     
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -61,7 +61,8 @@
         }
         .section-title { 
             font-size: 0.9rem; font-weight: bold; color: var(--primary); 
-            margin-bottom: 8px; display: block; border-left: 3px solid var(--primary); padding-left: 6px; 
+            margin-bottom: 8px; display: flex; align-items: center; 
+            border-left: 3px solid var(--primary); padding-left: 6px; 
         }
 
         h1 { margin: 0; font-size: 1.5rem; color: var(--text-main); }
@@ -73,35 +74,40 @@
         .upload-box:hover { border-color: var(--primary); background: rgba(6, 199, 85, 0.05); }
         .upload-box span { color: var(--text-sub); font-size: 0.9rem; }
 
-        /* 輸入控制 */
+        /* 輸入控制與排版修正 */
         .row { display: flex; gap: 10px; align-items: center; margin-bottom: 5px; } 
         .col { flex: 1; }
         
-        label { display: flex; align-items: center; font-weight: 600; margin-bottom: 3px; font-size: 0.8rem; color: var(--text-main); }
-        
-        /* 問號按鈕樣式 */
-        .help-btn {
-            display: inline-flex; justify-content: center; align-items: center;
-            width: 16px; height: 16px; border-radius: 50%;
-            background-color: var(--primary); color: white;
-            font-size: 10px; font-weight: bold; cursor: pointer;
-            margin-left: 5px; user-select: none;
+        /* 標籤群組 (文字+問號) - 關鍵修正 */
+        .label-group {
+            display: flex; 
+            align-items: center; 
+            width: 90px; /* 加寬寬度以容納問號 */
+            flex-shrink: 0; /* 禁止壓縮 */
         }
-        .help-btn:hover { background-color: #05b34c; transform: scale(1.1); }
+        .label-text { font-weight: 600; font-size: 0.8rem; color: var(--text-main); margin: 0; white-space: nowrap; }
+        
+        /* 優化版問號按鈕 (空心圓) */
+        .info-btn {
+            display: inline-flex; justify-content: center; align-items: center;
+            width: 14px; height: 14px; border-radius: 50%;
+            border: 1px solid var(--text-sub); color: var(--text-sub);
+            font-size: 10px; font-weight: bold; cursor: pointer;
+            margin-left: 6px; transition: 0.2s;
+        }
+        .info-btn:hover { border-color: var(--primary); color: var(--primary); background: rgba(6,199,85,0.1); }
 
         input[type="number"], input[type="text"], select { 
             padding: 5px 8px; border: 1px solid var(--border); border-radius: 4px; 
             font-size: 0.9rem; background: var(--input-bg); color: var(--text-main);
         }
-        input:disabled { opacity: 0.6; cursor: not-allowed; background: rgba(0,0,0,0.1); }
-        
         .input-mini { width: 60px !important; text-align: center; }
+        .input-small { width: 80px !important; text-align: center; }
         .input-short { width: 80px !important; text-align: center; }
         
         input[type="range"] { width: 100%; accent-color: var(--primary); height: 15px; }
         input[type="color"] { width: 100%; height: 30px; border: none; cursor: pointer; padding: 0; border-radius: 4px; }
 
-        /* Tabs */
         .mode-tabs { display: flex; gap: 5px; background: var(--border); padding: 3px; border-radius: 6px; margin-bottom: 8px; }
         .mode-tab { flex: 1; padding: 6px; text-align: center; cursor: pointer; border-radius: 4px; font-size: 0.85rem; font-weight: bold; color: var(--text-sub); }
         .mode-tab.active { background: var(--card-bg); color: var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
@@ -120,12 +126,8 @@
         #origPreviewBox { text-align: center; margin-bottom: 10px; display: none; background: var(--input-bg); padding: 5px; border-radius: 6px; }
         #origPreviewBox img { max-height: 120px; object-fit: contain; }
         
-        #previewContainer {
-            background: var(--preview-bg); padding: 15px; border-radius: 10px; min-height: 400px;
-            display: grid; gap: 15px; align-content: start;
-        }
+        #previewContainer { background: var(--preview-bg); padding: 15px; border-radius: 10px; min-height: 400px; display: grid; gap: 15px; align-content: start; }
 
-        /* 貼圖卡片 */
         .sticker-card { display: flex; flex-direction: column; gap: 6px; }
         .sticker-img-box {
             position: relative; width: 100%; aspect-ratio: 1;
@@ -163,17 +165,15 @@
         .tag-btn.active-main { background: var(--main-color); border-color: var(--main-color); color: white; }
         .tag-btn.active-tab { background: var(--tab-color); border-color: var(--tab-color); color: white; }
 
-        .export-bar { 
-            background: var(--panel-bg); border: 1px solid var(--border); 
-            padding: 12px; border-radius: 10px; margin-bottom: 15px; 
-            display: flex; gap: 15px; flex-wrap: wrap; align-items: stretch;
-        }
+        .export-bar { background: var(--panel-bg); border: 1px solid var(--border); padding: 12px; border-radius: 10px; margin-bottom: 15px; display: flex; gap: 15px; flex-wrap: wrap; align-items: stretch; }
         .export-group-box {
             background: var(--group-bg); border: 1px solid var(--border);
             border-radius: 8px; padding: 8px 12px;
             display: flex; flex-direction: column; justify-content: center;
         }
-        .export-group-box label { font-size: 0.85rem; color: var(--primary); margin-bottom: 6px; }
+        /* 匯出區標籤特別處理 */
+        .export-label-row { display: flex; align-items: center; margin-bottom: 6px; }
+        .export-label-text { font-size: 0.85rem; color: var(--primary); font-weight: 600; }
 
         .status-bar { padding: 8px; border-radius: 6px; font-size: 0.85em; background: #e3f2fd; color: #0d47a1; margin-top: 5px; }
         .status-error { background: #ffebee; color: #c62828; }
@@ -183,7 +183,6 @@
         
         .footer { text-align: center; margin-top: 40px; color: var(--text-sub); font-size: 0.85rem; border-top: 1px solid var(--border); padding-top: 20px; }
 
-        /* Modal */
         .modal {
             display: none; position: fixed; z-index: 1000; left: 0; top: 0;
             width: 100%; height: 100%; overflow: auto;
@@ -196,19 +195,15 @@
             background-image: linear-gradient(45deg, #333 25%, transparent 25%), linear-gradient(-45deg, #333 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #333 75%), linear-gradient(-45deg, transparent 75%, #333 75%);
             background-size: 20px 20px; background-color: #222;
         }
-        .modal-close {
-            position: absolute; top: 20px; right: 35px; color: #f1f1f1; font-size: 40px; font-weight: bold; cursor: pointer;
-        }
+        .modal-close { position: absolute; top: 20px; right: 35px; color: #f1f1f1; font-size: 40px; font-weight: bold; cursor: pointer; }
         
-        /* 說明視窗 Modal (Help) */
         .help-modal-content {
             background: var(--card-bg); color: var(--text-main);
             padding: 20px; border-radius: 12px; width: 300px;
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-            text-align: left;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5); text-align: left; border: 1px solid var(--border);
         }
-        .help-title { color: var(--primary); font-size: 1.1rem; font-weight: bold; margin-bottom: 10px; display: flex; align-items: center; gap: 5px; }
+        .help-title { color: var(--primary); font-size: 1.1rem; font-weight: bold; margin-bottom: 10px; }
         .help-text { font-size: 0.95rem; line-height: 1.5; color: var(--text-main); }
 
         @keyframes fadeIn { from {opacity: 0} to {opacity: 1} }
@@ -217,7 +212,7 @@
 <body class="">
 
 <div class="header">
-    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V17 貼心修正版</span></h1>
+    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V18 完美排版版</span></h1>
     <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️ 切換明亮</button>
 </div>
 
@@ -238,18 +233,16 @@
         <div class="section">
             <span class="section-title">
                 2. 裁切分割
-                <span class="help-btn" onclick="showHelp('crop')">?</span>
+                <span class="info-btn" onclick="showHelp('crop')">?</span>
             </span>
             <div class="row">
                 <div class="col" style="display:flex; align-items:center; gap:5px;">
-                    <label style="margin:0;">垂直</label>
+                    <span class="label-text">垂直(列)</span>
                     <input type="number" id="rows" value="4" min="1" class="input-mini" onchange="resetSelections()">
-                    <span style="font-size:0.8rem; color:var(--text-sub);">列</span>
                 </div>
                 <div class="col" style="display:flex; align-items:center; gap:5px;">
-                    <label style="margin:0;">水平</label>
+                    <span class="label-text">水平(行)</span>
                     <input type="number" id="cols" value="5" min="1" class="input-mini" onchange="resetSelections()">
-                    <span style="font-size:0.8rem; color:var(--text-sub);">行</span>
                 </div>
             </div>
         </div>
@@ -257,13 +250,13 @@
         <div class="section">
             <span class="section-title">3. 去背與後製</span>
             <div class="mode-tabs">
-                <div class="mode-tab" onclick="switchMode('ai')" id="tab-ai">🤖 AI 模式</div>
+                <div class="mode-tab active" onclick="switchMode('ai')" id="tab-ai">🤖 AI 模式</div>
                 <div class="mode-tab active" onclick="switchMode('color')" id="tab-color">🎨 顏色模式</div>
             </div>
 
             <div id="content-ai" class="tab-content">
                 <div class="row">
-                    <label style="width:60px;">模型</label>
+                    <div class="label-group"><span class="label-text">模型</span></div>
                     <select id="aiModelSel">
                         <option value="u2netp">🚀 輕量版 (穩定)</option>
                         <option value="u2net">💪 完整版 (精細)</option>
@@ -280,7 +273,7 @@
                 </div>
 
                 <div class="row" style="margin-top:8px;">
-                    <label style="width:60px;">靈敏度</label>
+                    <div class="label-group"><span class="label-text">靈敏度</span></div>
                     <input type="range" id="aiThreshold" min="0.05" max="0.95" step="0.05" value="0.2">
                     <span class="input-mini" id="val-aiThreshold" style="text-align:right;">0.2</span>
                 </div>
@@ -293,10 +286,10 @@
                     <button class="btn btn-outline" style="flex:1; padding:5px; background:var(--input-bg); color:var(--text-main); border:1px solid var(--border);" onclick="setColor('#00FF00')">綠</button>
                 </div>
                 <div class="row">
-                    <label style="width:60px;">
-                        寬容度
-                        <span class="help-btn" onclick="showHelp('tolerance')">?</span>
-                    </label>
+                    <div class="label-group">
+                        <span class="label-text">寬容度</span>
+                        <span class="info-btn" onclick="showHelp('tolerance')">?</span>
+                    </div>
                     <input type="range" id="tolerance" min="0" max="100" value="40">
                     <span class="input-mini" id="val-tolerance" style="text-align:right;">40%</span>
                 </div>
@@ -305,35 +298,35 @@
             <hr style="border:0; border-top:1px dashed var(--border); margin:10px 0;">
 
             <div class="row">
-                <label style="width:60px;">
-                    柔化
-                    <span class="help-btn" onclick="showHelp('smoothness')">?</span>
-                </label>
+                <div class="label-group">
+                    <span class="label-text">柔化</span>
+                    <span class="info-btn" onclick="showHelp('smoothness')">?</span>
+                </div>
                 <input type="range" id="smoothness" min="0" max="10" step="0.5" value="0">
                 <span class="input-mini" id="val-smoothness" style="text-align:right;">0</span>
             </div>
             <div class="row">
-                <label style="width:60px;">
-                    除溢色
-                    <span class="help-btn" onclick="showHelp('despill')">?</span>
-                </label>
+                <div class="label-group">
+                    <span class="label-text">除溢色</span>
+                    <span class="info-btn" onclick="showHelp('despill')">?</span>
+                </div>
                 <input type="range" id="despill" min="0" max="10" step="0.5" value="0">
                 <span class="input-mini" id="val-despill" style="text-align:right;">0</span>
             </div>
             <div class="row">
-                <label style="width:60px;">
-                    描邊
-                    <span class="help-btn" onclick="showHelp('contour')">?</span>
-                </label>
+                <div class="label-group">
+                    <span class="label-text">描邊</span>
+                    <span class="info-btn" onclick="showHelp('contour')">?</span>
+                </div>
                 <input type="range" id="contour" min="0" max="10" step="1" value="5">
                 <span class="input-mini" id="val-contour" style="text-align:right;">5</span>
             </div>
             
             <div class="row">
-                <label style="width:60px;">
-                    留白
-                    <span class="help-btn" onclick="showHelp('padding')">?</span>
-                </label>
+                <div class="label-group">
+                    <span class="label-text">留白</span>
+                    <span class="info-btn" onclick="showHelp('padding')">?</span>
+                </div>
                 <input type="range" id="padding" min="0" max="20" step="1" value="0">
                 <span class="input-mini" id="val-padding" style="text-align:right;">0%</span>
             </div>
@@ -347,18 +340,18 @@
         
         <div class="export-bar">
             <div class="export-group-box" style="min-width: 100px; flex: 0 0 auto;">
-                <label>
-                    起始檔名
-                    <span class="help-btn" onclick="showHelp('startNum')">?</span>
-                </label>
+                <div class="export-label-row">
+                    <span class="export-label-text">起始檔名</span>
+                    <span class="info-btn" onclick="showHelp('startNum')">?</span>
+                </div>
                 <input type="text" id="startNum" value="001" class="input-short" placeholder="001">
             </div>
             
             <div class="export-group-box" style="flex:1;">
-                <label>
-                    尺寸模式
-                    <span class="help-btn" onclick="showHelp('sizeMode')">?</span>
-                </label>
+                <div class="export-label-row">
+                    <span class="export-label-text">尺寸模式</span>
+                    <span class="info-btn" onclick="showHelp('sizeMode')">?</span>
+                </div>
                 <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                     <select id="sizePreset" style="flex:1; min-width:80px;">
                         <option value="custom">✍️ 自訂</option>
@@ -423,14 +416,14 @@
 
     // Help Text Dictionary
     const HELP_TEXTS = {
-        'crop': '決定將圖片切成幾塊。例如垂直 2 列、水平 5 行，就會切成 2x5 = 10 張貼圖。',
-        'tolerance': '決定顏色去背的強度。數值越大，會去除越多與背景相似的顏色；數值越小，只去除完全一樣的顏色。',
-        'smoothness': '讓去背後的邊緣變平滑，消除鋸齒狀，讓貼圖看起來更圓潤自然。',
-        'despill': '消除物體邊緣殘留的背景色（例如綠幕的綠邊或白底的白邊），讓邊緣更乾淨。',
-        'contour': '在圖案最外圍加上白框，像貼紙一樣的效果。數值代表白框的粗細 (px)。',
-        'padding': '縮小圖案，讓圖案與邊框之間保持距離，避免圖案太滿被切到。',
-        'startNum': '設定第一張貼圖的檔名編號。例如輸入 "001"，產生的檔案就會是 001.png, 002.png...',
-        'sizeMode': '設定下載圖片的大小。"貼圖"固定 370px，"表情貼"固定 270px，"自訂"則可以自由輸入。'
+        'crop': '將整張大圖分割成多張小圖。\n例如「垂直4列、水平5行」，就會切成 4x5 = 20 張貼圖。',
+        'tolerance': '決定去除顏色的範圍。\n數值越高：去除越多相近色 (適合背景不均勻)。\n數值越低：只去除完全一樣的顏色。',
+        'smoothness': '讓邊緣變平滑。\n消除去背後的鋸齒狀邊緣，讓線條更圓潤。',
+        'despill': '消除邊緣雜色。\n如果物體邊緣有殘留的背景色 (如綠邊、白邊)，調高此數值可將其內縮去除。',
+        'contour': '白色外框。\n在圖案周圍加上白邊，就像貼紙一樣。數值代表白邊的粗細 (px)。',
+        'padding': '安全留白。\n將圖案稍微縮小，確保描邊或圖案不會貼到畫布最邊緣被切掉。',
+        'startNum': '設定檔名編號。\n例如輸入 "001"，下載的檔案就會是 001.png, 002.png... 依此類推。',
+        'sizeMode': '設定下載圖片的解析度。\n• 貼圖：固定 370x320\n• 表情貼：固定 270x270\n• 自訂：可自由輸入長寬'
     };
 
     const els = {
@@ -473,14 +466,13 @@
 
     // --- UX Functions ---
     window.showHelp = (key) => {
-        els.helpText.textContent = HELP_TEXTS[key];
+        els.helpText.innerText = HELP_TEXTS[key];
         els.helpModal.style.display = "block";
     };
     window.closeHelp = () => {
         els.helpModal.style.display = "none";
     };
 
-    // Update Button State Logic (Fix for Color Mode)
     function updateButtonState() {
         const hasFile = !!els.imgIn.files[0];
         
@@ -499,13 +491,11 @@
                 els.runBtn.textContent = "等待模型載入...";
             }
         } else {
-            // Color mode only needs file
             els.runBtn.disabled = false;
             els.runBtn.textContent = "開始製作 (預覽)";
         }
     }
 
-    // Drag & Drop
     els.dropZone.addEventListener('dragover', (e) => { e.preventDefault(); els.dropZone.classList.add('dragover'); });
     els.dropZone.addEventListener('dragleave', () => { els.dropZone.classList.remove('dragover'); });
     els.dropZone.addEventListener('drop', (e) => {
@@ -555,7 +545,7 @@
         els.contentAi.classList.toggle('active', mode === 'ai');
         els.contentColor.classList.toggle('active', mode === 'color');
         
-        updateButtonState(); // Check button state on switch
+        updateButtonState();
     };
 
     window.setColor = (hex) => els.targetColor.value = hex;
@@ -574,7 +564,6 @@
         const key = els.aiModel.value;
         const url = MODELS[key];
         
-        // Update UI but don't disable if in color mode
         els.status.className = 'status-bar';
         els.status.textContent = `🔄 下載 ${key}...`;
         els.manual.style.display = 'none';
@@ -617,7 +606,6 @@
             els.origPrev.src = URL.createObjectURL(file);
             els.origBox.style.display = 'block';
             
-            // UX Reset
             els.preview.innerHTML = "<div style='grid-column:1/-1;text-align:center;color:#666;padding:50px;'>請點擊左側「開始製作」</div>";
             rawStickers = [];
             selectedMainIdx = -1;

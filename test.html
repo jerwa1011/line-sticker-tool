@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LINE 貼圖製作大師 (V20: 介面優化版)</title>
+    <title>LINE 貼圖製作大師 (V21: 自動置中開關版)</title>
     
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -80,7 +80,6 @@
             transition: all 0.3s ease;
         }
         
-        /* 可點擊的標題區 */
         .section-header {
             padding: 12px 15px;
             display: flex; align-items: center; justify-content: space-between;
@@ -94,7 +93,6 @@
             display: flex; align-items: center; gap: 8px;
         }
         
-        /* 數字標籤 Badge */
         .step-badge {
             background: var(--primary); color: white;
             width: 24px; height: 24px; border-radius: 50%;
@@ -107,18 +105,16 @@
             transition: transform 0.3s;
         }
 
-        /* 內容區 */
         .section-body {
             padding: 15px; border-top: 1px solid var(--border);
             animation: slideDown 0.3s ease-out;
         }
 
-        /* 收合狀態 (透過 JS 切換 class) */
         .section.collapsed .section-body { display: none; }
         .section.collapsed .toggle-icon { transform: rotate(-90deg); }
-        .section.collapsed .section-header { border-bottom: none; } /* 收合時移除分隔線 */
+        .section.collapsed .section-header { border-bottom: none; }
 
-        /* --- 既有元件樣式 --- */
+        /* --- 元件樣式 --- */
         h1 { margin: 0; font-size: 1.6rem; color: var(--text-main); font-weight: 800; letter-spacing: -0.5px; }
         
         .upload-box { 
@@ -156,6 +152,7 @@
         
         input[type="range"] { width: 100%; accent-color: var(--primary); height: 20px; cursor: pointer; }
         input[type="color"] { width: 100%; height: 36px; border: none; cursor: pointer; padding: 0; border-radius: 6px; }
+        input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--primary); cursor: pointer; }
 
         .mode-tabs { display: flex; gap: 5px; background: var(--border); padding: 4px; border-radius: 8px; margin-bottom: 12px; }
         .mode-tab { flex: 1; padding: 8px; text-align: center; cursor: pointer; border-radius: 6px; font-size: 0.9rem; font-weight: bold; color: var(--text-sub); transition: 0.2s; }
@@ -267,7 +264,7 @@
 <body class="">
 
 <div class="header">
-    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V20 介面優化版</span></h1>
+    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V21 自動置中版</span></h1>
     <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️ 切換明亮</button>
 </div>
 
@@ -403,7 +400,6 @@
                     <input type="range" id="shadowBlur" min="0" max="20" step="1" value="0">
                     <span class="input-mini" id="val-shadowBlur" style="text-align:right;">0</span>
                 </div>
-                
                 <div class="row">
                     <div class="label-group">
                         <span class="label-text">留白</span>
@@ -411,6 +407,17 @@
                     </div>
                     <input type="range" id="padding" min="0" max="20" step="1" value="0">
                     <span class="input-mini" id="val-padding" style="text-align:right;">0%</span>
+                </div>
+
+                <div class="row" style="margin-top:12px; padding-top:12px; border-top:1px dashed var(--border);">
+                    <div class="label-group">
+                        <span class="label-text">自動置中</span>
+                        <span class="info-btn" onclick="showHelp('autoCenter')">?</span>
+                    </div>
+                    <div style="flex:1; display:flex; align-items:center;">
+                        <input type="checkbox" id="autoCenter" checked>
+                        <span style="margin-left:8px; color:var(--text-sub); font-size:0.9rem;">裁切並自動放大置中</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -528,7 +535,8 @@
         'shadow': '在圖案下方加入柔和的陰影，讓貼圖在淺色背景中更立體、更明顯。',
         'padding': '將圖案稍微縮小 (內縮)，確保描邊或圖案不會貼到畫布最邊緣被切掉。',
         'startNum': '設定第一張貼圖的檔名編號。\n例如輸入 "001"，下載的檔案就會是 001.png, 002.png...',
-        'sizeMode': '設定下載圖片的解析度。\n• 自訂：自由輸入\n• 貼圖：固定 370x320\n• 表情貼：固定 270x270'
+        'sizeMode': '設定下載圖片的解析度。\n• 自訂：自由輸入\n• 貼圖：固定 370x320\n• 表情貼：固定 270x270',
+        'autoCenter': '【開啟時】\n程式會偵測圖案的邊緣，自動將其「放大」並「置中」到貼圖正中央。\n\n【關閉時】\n完全保留原始裁切的構圖位置，不會改變大小或位置。'
     };
 
     const els = {
@@ -564,11 +572,12 @@
         modal: document.getElementById('imageModal'),
         modalImg: document.getElementById('modalImg'),
         helpModal: document.getElementById('helpModal'),
-        helpText: document.getElementById('helpText')
+        helpText: document.getElementById('helpText'),
+        autoCenter: document.getElementById('autoCenter')
     };
 
     const today = new Date().toISOString().slice(0, 10);
-    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V20 | ${today}`;
+    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V21 | ${today}`;
 
     // --- Accordion Toggle Function ---
     window.toggleSection = (id) => {
@@ -586,6 +595,7 @@
             if(settings.tolerance) els.tolerance.value = settings.tolerance;
             if(settings.padding) els.padding.value = settings.padding;
             if(settings.shadowBlur) els.shadowBlur.value = settings.shadowBlur;
+            if(settings.autoCenter !== undefined) els.autoCenter.checked = settings.autoCenter;
             updateLabels();
         }
     }
@@ -597,7 +607,8 @@
             contour: els.contour.value,
             tolerance: els.tolerance.value,
             padding: els.padding.value,
-            shadowBlur: els.shadowBlur.value
+            shadowBlur: els.shadowBlur.value,
+            autoCenter: els.autoCenter.checked
         };
         localStorage.setItem('stickerToolSettings', JSON.stringify(settings));
     }
@@ -679,7 +690,7 @@
         });
     });
     
-    ['rows', 'cols'].forEach(id => {
+    ['rows', 'cols', 'autoCenter'].forEach(id => {
         document.getElementById(id).addEventListener('change', saveSettings);
     });
 
@@ -834,8 +845,9 @@
                 const contour = parseInt(els.contour.value);
                 const padding = parseInt(els.padding.value); 
                 const shadow = parseInt(els.shadowBlur.value);
+                const autoCenter = els.autoCenter.checked; // 取得自動置中設定
 
-                rawStickers = await cutAndContour(noBgImg, rows, cols, contour, padding, shadow);
+                rawStickers = await cutAndContour(noBgImg, rows, cols, contour, padding, shadow, autoCenter);
                 renderPreview(rows, cols);
 
             } catch(e) {
@@ -848,45 +860,34 @@
         }, 50);
     });
 
-// --- AI Inference Logic (修正版) ---
+    // --- AI Inference Logic (修正版: 支援 RMBG-1.4 歸一化) ---
     async function generateAIMask(img) {
         const key = els.aiModel.value;
-        // 1. 決定推論尺寸：RMBG 必須要大才準，U2Net 維持 320 即可
         const size = (key === 'rmbg14') ? 1024 : 320; 
         
         const cvs = document.createElement('canvas'); 
         cvs.width = size; cvs.height = size;
         const ctx = cvs.getContext('2d');
         
-        // 保持比例縮放，置中
         const scale = Math.min(size/img.width, size/img.height);
-        const nw = img.width * scale; 
-        const nh = img.height * scale;
-        const ox = (size - nw) / 2; 
-        const oy = (size - nh) / 2;
+        const nw = img.width * scale; const nh = img.height * scale;
+        const ox = (size - nw) / 2; const oy = (size - nh) / 2;
         
-        // 背景填中性灰 (對於某些模型，黑色或中性灰背景干擾較小)
         ctx.fillStyle = "#808080"; 
         ctx.fillRect(0, 0, size, size);
-        
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
+        ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(img, ox, oy, nw, nh);
 
         const imgData = ctx.getImageData(0, 0, size, size);
         const input = new Float32Array(size * size * 3);
         
-        // 2. 預處理 (Preprocessing) 分流
         if (key === 'rmbg14') {
-            // RMBG-1.4 專用預處理：通常只需要歸一化到 0-1，不需要 ImageNet mean/std 偏移
-            // (注意：不同轉出的 onnx 版本可能略有不同，但 0-1 是最通用的)
             for(let i=0; i<imgData.data.length; i+=4) {
-                input[i/4] = imgData.data[i] / 255.0;            // R
-                input[i/4+size*size] = imgData.data[i+1] / 255.0;// G
-                input[i/4+2*size*size] = imgData.data[i+2] / 255.0;// B
+                input[i/4] = imgData.data[i] / 255.0;            
+                input[i/4+size*size] = imgData.data[i+1] / 255.0;
+                input[i/4+2*size*size] = imgData.data[i+2] / 255.0;
             }
         } else {
-            // U2Net / U2Netp 標準預處理 (ImageNet mean/std)
             for(let i=0; i<imgData.data.length; i+=4) {
                 input[i/4] = (imgData.data[i]/255 - 0.485)/0.229;
                 input[i/4+size*size] = (imgData.data[i+1]/255 - 0.456)/0.224;
@@ -895,20 +896,15 @@
         }
 
         const tensor = new ort.Tensor('float32', input, [1, 3, size, size]);
-        
-        // 執行推論
         const res = await session.run({ [session.inputNames[0]]: tensor });
         const out = res[session.outputNames[0]].data;
 
-        // 處理輸出遮罩
         const maskCvs = document.createElement('canvas'); 
         maskCvs.width = size; maskCvs.height = size;
         const mCtx = maskCvs.getContext('2d');
         const mDat = mCtx.createImageData(size, size);
         
-        // 找出最大值/最小值做正規化 (有些模型輸出範圍不一定是 0-1)
-        let maxVal = -Infinity; 
-        let minVal = Infinity; 
+        let maxVal = -Infinity; let minVal = Infinity; 
         for(let v of out) {
             if(v > maxVal) maxVal = v;
             if(v < minVal) minVal = v;
@@ -919,42 +915,25 @@
         const thresh = parseFloat(els.aiThresh.value);
 
         for(let i=0; i<out.length; i++) {
-            // 將數值歸一化到 0~1
             let val = (out[i] - minVal) * boost;
-            
             let a = 0;
             if (key === 'rmbg14') {
-                // RMBG 策略：保留半透明漸層，讓邊緣更自然
-                // 使用 sigmoid 曲線或是直接線性映射，這裡用簡單的線性
-                // 如果 val < 靈敏度，則視為背景；否則保留原始透明度
                 if (val > thresh) {
                     a = Math.min(255, val * 255);
-                    // 稍微增強不透明度，避免主體太透
                     a = Math.min(255, a * 1.2); 
-                } else {
-                    a = 0;
-                }
+                } else { a = 0; }
             } else {
-                // U2Net 策略：硬切 (二值化)，比較適合簡單貼圖
                 a = val > thresh ? 255 : 0; 
             }
-            
-            mDat.data[i*4+3] = a; // 只修改 Alpha 通道
+            mDat.data[i*4+3] = a;
         }
         mCtx.putImageData(mDat, 0, 0);
 
-        // 將遮罩放大回原始尺寸
         const fullMask = document.createElement('canvas'); 
-        fullMask.width = img.width; 
-        fullMask.height = img.height;
+        fullMask.width = img.width; fullMask.height = img.height;
         const fCtx = fullMask.getContext('2d');
-        
-        fCtx.imageSmoothingEnabled = true;
-        fCtx.imageSmoothingQuality = 'high';
-        
-        // 把 maskCvs 中，當初畫圖的區域 (ox, oy, nw, nh) 畫回 fullMask 的 (0, 0, w, h)
+        fCtx.imageSmoothingEnabled = true; fCtx.imageSmoothingQuality = 'high';
         fCtx.drawImage(maskCvs, ox, oy, nw, nh, 0, 0, img.width, img.height);
-        
         return fullMask;
     }
 
@@ -1005,7 +984,36 @@
         return cvs;
     }
 
-    async function cutAndContour(img, rows, cols, contour, paddingPct, shadow) {
+    // 新增：偵測非透明區域的邊界框
+    function getContentBox(img) {
+        const cvs = document.createElement('canvas'); 
+        cvs.width = img.width; cvs.height = img.height;
+        const ctx = cvs.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        const data = ctx.getImageData(0, 0, cvs.width, cvs.height).data;
+        
+        let minX = cvs.width, minY = cvs.height, maxX = 0, maxY = 0;
+        let found = false;
+
+        for (let y = 0; y < cvs.height; y++) {
+            for (let x = 0; x < cvs.width; x++) {
+                const alpha = data[(y * cvs.width + x) * 4 + 3];
+                if (alpha > 10) { 
+                    if (x < minX) minX = x;
+                    if (x > maxX) maxX = x;
+                    if (y < minY) minY = y;
+                    if (y > maxY) maxY = y;
+                    found = true;
+                }
+            }
+        }
+        
+        if (!found) return null;
+        return { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
+    }
+
+    // 修改版：支援開關控制
+    async function cutAndContour(img, rows, cols, contour, paddingPct, shadow, autoCenter) {
         const w = img.width; const h = img.height;
         const tileW = Math.floor(w/cols); const tileH = Math.floor(h/rows);
         const res = [];
@@ -1017,50 +1025,81 @@
                 ctx.clearRect(0,0,tileW,tileH);
                 ctx.drawImage(img, c*tileW, r*tileH, tileW, tileH, 0, 0, tileW, tileH);
                 
-                const tImg = await loadImage(cvs.toDataURL());
-                const pad = (paddingPct / 100) * tileW; 
+                const tileImg = await loadImage(cvs.toDataURL());
+                
                 const sCvs = document.createElement('canvas'); 
-                const margin = shadow * 2; 
                 sCvs.width = tileW; sCvs.height = tileH; 
                 const sCtx = sCvs.getContext('2d');
-                
+
+                const pad = (paddingPct / 100) * tileW; 
+                const margin = shadow * 2; 
                 const drawW = tileW - pad * 2 - contour * 2 - margin;
                 const drawH = tileH - pad * 2 - contour * 2 - margin;
                 const safeW = Math.max(1, drawW);
                 const safeH = Math.max(1, drawH);
-                const dx = (tileW - safeW) / 2;
-                const dy = (tileH - safeH) / 2;
+                const safeX = (tileW - safeW) / 2;
+                const safeY = (tileH - safeH) / 2;
 
-                if(shadow > 0) {
-                    sCtx.save();
-                    sCtx.shadowColor = "rgba(0,0,0,0.5)";
-                    sCtx.shadowBlur = shadow;
-                    sCtx.shadowOffsetX = 2; 
-                    sCtx.shadowOffsetY = 2;
-                    sCtx.drawImage(tImg, dx, dy, safeW, safeH);
-                    sCtx.restore();
-                }
+                let finalImg = tileImg;
+                let fx = safeX, fy = safeY, fw = safeW, fh = safeH;
 
-                if(contour > 0) {
-                    const tempCvs = document.createElement('canvas');
-                    tempCvs.width = sCvs.width; tempCvs.height = sCvs.height;
-                    const tCtx = tempCvs.getContext('2d');
-                    
-                    tCtx.drawImage(tImg, dx, dy, safeW, safeH);
-                    tCtx.globalCompositeOperation = 'source-in'; tCtx.fillStyle = 'white'; tCtx.fillRect(0,0,tempCvs.width,tempCvs.height);
-                    
-                    const outlineCvs = document.createElement('canvas'); outlineCvs.width = sCvs.width; outlineCvs.height = sCvs.height;
-                    const oCtx = outlineCvs.getContext('2d');
-                    const steps = 12;
-                    for(let i=0; i<steps; i++) {
-                        const ang = (i/steps)*2*Math.PI;
-                        oCtx.drawImage(tempCvs, Math.cos(ang)*contour, Math.sin(ang)*contour);
+                if (autoCenter) {
+                    const bbox = getContentBox(tileImg);
+                    if (bbox) {
+                        const scale = Math.min(safeW / bbox.w, safeH / bbox.h);
+                        fw = bbox.w * scale;
+                        fh = bbox.h * scale;
+                        fx = safeX + (safeW - fw) / 2;
+                        fy = safeY + (safeH - fh) / 2;
+
+                        const contentCvs = document.createElement('canvas');
+                        contentCvs.width = fw; contentCvs.height = fh;
+                        const cCtx = contentCvs.getContext('2d');
+                        cCtx.drawImage(tileImg, bbox.x, bbox.y, bbox.w, bbox.h, 0, 0, fw, fh);
+                        finalImg = await loadImage(contentCvs.toDataURL());
+                    } else {
+                        finalImg = null; // Empty tile
                     }
-                    oCtx.drawImage(tempCvs, 0, 0);
-                    sCtx.drawImage(outlineCvs, 0, 0);
+                } else {
+                    // 非自動置中模式：直接將原圖縮放到 Safe Area (保持比例) 以容納描邊與陰影
+                    const scale = Math.min(safeW / tileW, safeH / tileH);
+                    fw = tileW * scale;
+                    fh = tileH * scale;
+                    fx = safeX + (safeW - fw) / 2;
+                    fy = safeY + (safeH - fh) / 2;
                 }
-                
-                sCtx.drawImage(tImg, dx, dy, safeW, safeH);
+
+                if (finalImg) {
+                    if(shadow > 0) {
+                        sCtx.save();
+                        sCtx.shadowColor = "rgba(0,0,0,0.5)";
+                        sCtx.shadowBlur = shadow;
+                        sCtx.shadowOffsetX = 2; sCtx.shadowOffsetY = 2;
+                        sCtx.drawImage(finalImg, fx, fy, fw, fh);
+                        sCtx.restore();
+                    }
+
+                    if(contour > 0) {
+                        const tempCvs = document.createElement('canvas');
+                        tempCvs.width = sCvs.width; tempCvs.height = sCvs.height;
+                        const tCtx = tempCvs.getContext('2d');
+                        tCtx.drawImage(finalImg, fx, fy, fw, fh);
+                        tCtx.globalCompositeOperation = 'source-in'; tCtx.fillStyle = 'white'; tCtx.fillRect(0,0,tempCvs.width,tempCvs.height);
+                        
+                        const outlineCvs = document.createElement('canvas'); 
+                        outlineCvs.width = sCvs.width; outlineCvs.height = sCvs.height;
+                        const oCtx = outlineCvs.getContext('2d');
+                        const steps = 12;
+                        for(let i=0; i<steps; i++) {
+                            const ang = (i/steps)*2*Math.PI;
+                            oCtx.drawImage(tempCvs, Math.cos(ang)*contour, Math.sin(ang)*contour);
+                        }
+                        oCtx.drawImage(tempCvs, 0, 0);
+                        sCtx.drawImage(outlineCvs, 0, 0);
+                    }
+                    
+                    sCtx.drawImage(finalImg, fx, fy, fw, fh);
+                }
                 res.push(sCvs);
             }
         }
@@ -1168,4 +1207,3 @@
 </script>
 </body>
 </html>
-

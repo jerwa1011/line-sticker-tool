@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LINE 貼圖製作大師 (V25-2: 緊湊佈局版)</title>
+    <title>LINE 貼圖製作大師 (V25-3: 多色預覽版)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -62,22 +62,19 @@
             box-shadow: 0 4px 20px var(--shadow); display: flex; flex-direction: column; gap: 10px; 
         }
         
-        /* 左側固定面板優化：顯示捲軸、高度計算更精準 */
         .sticky-sidebar {
             position: sticky; top: 10px; 
-            /* 讓高度適應視窗，預留底部空間 */
             max-height: calc(100vh - 20px); 
             overflow-y: auto;
             scrollbar-width: thin;
-            padding-right: 5px; /* 避免捲軸蓋住內容 */
+            padding-right: 5px; 
         }
         
-        /* 自訂捲軸樣式 (Chrome/Safari) */
         .sticky-sidebar::-webkit-scrollbar { width: 6px; }
         .sticky-sidebar::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); border-radius: 3px; }
         .sticky-sidebar::-webkit-scrollbar-thumb { background: var(--text-sub); border-radius: 3px; }
 
-        /* 手風琴設計 - 緊湊版 */
+        /* 手風琴設計 */
         .section { 
             border: 1px solid var(--border); border-radius: 8px; 
             background: var(--panel-bg); margin-bottom: 8px;
@@ -99,7 +96,7 @@
         .section.collapsed .toggle-icon { transform: rotate(-90deg); }
         .section.collapsed .section-header { border-bottom: none; }
 
-        /* 元件樣式 - 緊湊版 */
+        /* 元件樣式 */
         h1 { margin: 0; font-size: 1.4rem; color: var(--text-main); font-weight: 800; letter-spacing: -0.5px; }
         
         .upload-box { 
@@ -141,7 +138,6 @@
 
         #origPreviewBox { text-align: center; margin-bottom: 8px; display: none; background: var(--input-bg); padding: 5px; border-radius: 6px; border: 1px solid var(--border); position: relative; }
         #origPreviewBox img { max-height: 120px; object-fit: contain; cursor: crosshair; }
-        /* 吸管提示 */
         #eyedropperHint { position: absolute; bottom: 5px; right: 5px; background: rgba(0,0,0,0.6); color: white; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; pointer-events: none; }
 
         #previewContainer { background: var(--preview-bg); padding: 20px; border-radius: 12px; min-height: 400px; display: grid; gap: 15px; align-content: start; border: 1px solid var(--border); }
@@ -152,8 +148,12 @@
             background-image: linear-gradient(45deg, #333 25%, transparent 25%), linear-gradient(-45deg, #333 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #333 75%), linear-gradient(-45deg, transparent 75%, #333 75%);
             background-size: 20px 20px; background-color: #222; cursor: zoom-in; transition: 0.2s;
         }
+        /* 新增背景樣式 */
         .sticker-img-box.bg-light { background: #ffffff; background-image: none; border-color: #ddd; }
         .sticker-img-box.bg-line { background: #849ebf; background-image: none; border-color: #6a8caf; }
+        .sticker-img-box.bg-pink { background: #ffe6f2; background-image: none; border-color: #ffccdd; }
+        .sticker-img-box.bg-yellow { background: #fffde7; background-image: none; border-color: #fff9c4; }
+
         .sticker-img-box:hover { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary); }
         .sticker-img-box img { max-width: 100%; max-height: 100%; object-fit: contain; }
         
@@ -183,7 +183,6 @@
 
         .footer { text-align: center; margin-top: 30px; color: var(--text-sub); font-size: 0.8rem; border-top: 1px solid var(--border); padding-top: 15px; }
 
-        /* Modal */
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.95); animation: fadeIn 0.3s; }
         .modal-content { 
             margin: auto; display: block; max-width: 90%; max-height: 90vh; 
@@ -203,7 +202,7 @@
 <body class="">
 
 <div class="header">
-    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-2 緊湊佈局版</span></h1>
+    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-3 多色預覽版</span></h1>
     <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️ 切換明亮</button>
 </div>
 
@@ -359,6 +358,8 @@
                 <div class="bg-toggle-btn active" style="background:#222;" onclick="setPreviewBg(this, 'dark')" title="暗黑底"></div>
                 <div class="bg-toggle-btn" style="background:#849ebf;" onclick="setPreviewBg(this, 'line')" title="LINE 聊天室"></div>
                 <div class="bg-toggle-btn" style="background:#ffffff;" onclick="setPreviewBg(this, 'light')" title="白底"></div>
+                <div class="bg-toggle-btn" style="background:#ffe6f2;" onclick="setPreviewBg(this, 'pink')" title="淺粉底"></div>
+                <div class="bg-toggle-btn" style="background:#fffde7;" onclick="setPreviewBg(this, 'yellow')" title="淺黃底"></div>
             </div>
         </div>
         
@@ -457,7 +458,7 @@
         'autoCenter': '【開啟】自動偵測內容並置中放大。\n【關閉】保留原始裁切位置。'
     };
 
-    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-2 | ${new Date().toISOString().slice(0, 10)}`;
+    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-3 | ${new Date().toISOString().slice(0, 10)}`;
 
     // --- 吸管工具 (Pick Color) ---
     els.origPrev.addEventListener('click', async (e) => {
@@ -770,6 +771,23 @@
         });
     }
 
+    window.setPreviewBg = (btn, mode) => { 
+        document.querySelectorAll('.bg-toggle-btn').forEach(b => b.classList.remove('active')); 
+        btn.classList.add('active'); 
+        
+        // 映射模式到 Class
+        const map = {
+            'light': 'bg-light',
+            'line': 'bg-line',
+            'pink': 'bg-pink',
+            'yellow': 'bg-yellow',
+            'dark': '' 
+        };
+        previewBgClass = map[mode] || '';
+        
+        renderPreview(parseInt(els.rows.value), parseInt(els.cols.value)); 
+    };
+
     function getFilename(idx) {
         const str = els.startNum.value.trim();
         return String((parseInt(str)||1) + idx).padStart(str.length, '0') + '.png';
@@ -807,7 +825,6 @@
     window.toggleTheme = () => { isDark = !isDark; document.body.classList.toggle('light-mode', !isDark); document.getElementById('themeBtn').textContent = isDark ? '☀️ 切換明亮' : '🌙 切換暗黑'; };
     window.resetSelections = () => { selectedMainIdx = -1; selectedTabIdx = -1; document.querySelectorAll('.tag-btn').forEach(btn => { btn.classList.remove('active-main'); btn.classList.remove('active-tab'); }); };
     window.setTag = (type, index) => { if (type === 'main') selectedMainIdx = (selectedMainIdx === index) ? -1 : index; else selectedTabIdx = (selectedTabIdx === index) ? -1 : index; updateTagClasses(); };
-    window.setPreviewBg = (btn, mode) => { document.querySelectorAll('.bg-toggle-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); previewBgClass = mode === 'light' ? 'bg-light' : (mode === 'line' ? 'bg-line' : ''); renderPreview(parseInt(els.rows.value), parseInt(els.cols.value)); };
     
     els.sizePreset.addEventListener('change', () => { 
         if (els.sizePreset.value === 'sticker') { els.outW.value = 370; els.outH.value = 320; }

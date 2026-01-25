@@ -3,110 +3,170 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LINE 貼圖製作大師 (V9: 旗艦順序版)</title>
+    <title>LINE 貼圖製作大師 (V10: 完美修正版)</title>
     
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 
     <style>
-        /* 變數定義 */
+        /* --- 配色系統 (預設為暗黑模式) --- */
         :root {
+            /* 預設 Dark Mode */
             --primary: #06C755;
-            --bg: #f0f2f5;
-            --card-bg: #ffffff;
-            --text-main: #333333;
-            --text-sub: #666666;
-            --border: #dddddd;
-            --input-bg: #ffffff;
-            --section-bg: #f8f9fa;
-        }
-
-        body.dark-mode {
-            --bg: #121212;
-            --card-bg: #1e1e1e;
+            --bg: #181818;           /* 深灰黑 */
+            --card-bg: #252525;      /* 卡片深灰 */
+            --panel-bg: #2f2f2f;     /* 區塊深灰 */
             --text-main: #e0e0e0;
             --text-sub: #aaaaaa;
             --border: #444444;
-            --input-bg: #2d2d2d;
-            --section-bg: #252525;
+            --input-bg: #333333;
+            --preview-bg: #1a1a1a;
+            --shadow: rgba(0,0,0,0.3);
         }
 
-        body { font-family: "Segoe UI", "Microsoft JhengHei", sans-serif; background: var(--bg); padding: 20px; color: var(--text-main); transition: 0.3s; }
-        .header { display: flex; justify-content: space-between; align-items: center; max-width: 1400px; margin: 0 auto 20px auto; }
-        .container { max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: 400px 1fr; gap: 25px; }
-        @media (max-width: 950px) { .container { grid-template-columns: 1fr; } }
+        /* 明亮模式 (牙白/米白配色) */
+        body.light-mode {
+            --bg: #f4f1ea;           /* 牙白/米色背景 */
+            --card-bg: #fdfbf7;      /* 暖白卡片 */
+            --panel-bg: #f2efe9;     /* 淺米灰區塊 */
+            --text-main: #4a4a4a;    /* 深暖灰文字 */
+            --text-sub: #7a7a7a;
+            --border: #dcd6cc;       /* 暖色邊框 */
+            --input-bg: #ffffff;
+            --preview-bg: #2b2b2b;   /* 預覽區保持深色以對比去背 */
+            --shadow: rgba(0,0,0,0.08);
+        }
+
+        body { 
+            font-family: "Segoe UI", "Microsoft JhengHei", sans-serif; 
+            background: var(--bg); padding: 20px; color: var(--text-main); 
+            transition: background 0.3s, color 0.3s;
+        }
+
+        .header { display: flex; justify-content: space-between; align-items: center; max-width: 1300px; margin: 0 auto 20px auto; }
+        .container { max-width: 1300px; margin: 0 auto; display: grid; grid-template-columns: 360px 1fr; gap: 20px; }
+        @media (max-width: 900px) { .container { grid-template-columns: 1fr; } }
         
         /* 卡片與區塊 */
-        .card { background: var(--card-bg); padding: 25px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); display: flex; flex-direction: column; gap: 20px; }
-        .section { border: 1px solid var(--border); border-radius: 10px; padding: 15px; background: var(--section-bg); position: relative; }
-        .section-title { font-size: 0.95rem; font-weight: bold; color: var(--primary); margin-bottom: 10px; display: block; border-left: 4px solid var(--primary); padding-left: 8px; }
+        .card { 
+            background: var(--card-bg); padding: 20px; border-radius: 12px; 
+            box-shadow: 0 4px 15px var(--shadow); display: flex; flex-direction: column; gap: 15px; 
+        }
+        .section { 
+            border: 1px solid var(--border); border-radius: 8px; padding: 12px; 
+            background: var(--panel-bg); position: relative; margin-bottom: 10px;
+        }
+        .section-title { 
+            font-size: 0.9rem; font-weight: bold; color: var(--primary); 
+            margin-bottom: 8px; display: block; border-left: 3px solid var(--primary); padding-left: 6px; 
+        }
 
-        h1 { margin: 0; font-size: 1.6rem; }
+        h1 { margin: 0; font-size: 1.5rem; color: var(--text-main); }
         
         /* 上傳區 */
         .upload-box { 
-            border: 2px dashed var(--border); border-radius: 8px; padding: 20px; text-align: center; 
+            border: 2px dashed var(--border); border-radius: 8px; padding: 15px; text-align: center; 
             cursor: pointer; background: var(--input-bg); transition: 0.3s;
         }
         .upload-box:hover { border-color: var(--primary); background: rgba(6, 199, 85, 0.05); }
+        .upload-box span { color: var(--text-sub); font-size: 0.9rem; }
 
-        /* 輸入控制 */
-        input[type="number"], input[type="text"], select { 
-            width: 100%; padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; 
-            font-size: 0.9rem; background: var(--input-bg); color: var(--text-main);
-        }
-        input[type="range"] { width: 100%; accent-color: var(--primary); height: 20px; vertical-align: middle; }
-        input[type="color"] { width: 100%; height: 35px; border: none; cursor: pointer; padding: 0; border-radius: 4px; }
-        .row { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; } 
+        /* 輸入控制 (瘦身版) */
+        .row { display: flex; gap: 10px; align-items: center; margin-bottom: 5px; } 
         .col { flex: 1; }
-        .slider-row { display: flex; align-items: center; gap: 10px; font-size: 0.85rem; margin-bottom: 8px; }
-        .slider-row label { width: 80px; flex-shrink: 0; }
-        .slider-val { width: 30px; text-align: right; font-family: monospace; }
+        
+        label { display: block; font-weight: 600; margin-bottom: 3px; font-size: 0.8rem; color: var(--text-main); }
+        
+        input[type="number"], input[type="text"], select { 
+            padding: 5px 8px; border: 1px solid var(--border); border-radius: 4px; 
+            font-size: 0.9rem; background: var(--input-bg); color: var(--text-main);
+            /* 關鍵修正：限制寬度 */
+        }
+        .input-mini { width: 60px !important; text-align: center; }
+        .input-small { width: 80px !important; text-align: center; }
+
+        input[type="range"] { width: 100%; accent-color: var(--primary); height: 15px; }
+        input[type="color"] { width: 100%; height: 30px; border: none; cursor: pointer; padding: 0; border-radius: 4px; }
 
         /* Tabs */
-        .mode-tabs { display: flex; gap: 5px; background: var(--border); padding: 3px; border-radius: 6px; margin-bottom: 10px; }
+        .mode-tabs { display: flex; gap: 5px; background: var(--border); padding: 3px; border-radius: 6px; margin-bottom: 8px; }
         .mode-tab { flex: 1; padding: 6px; text-align: center; cursor: pointer; border-radius: 4px; font-size: 0.85rem; font-weight: bold; color: var(--text-sub); }
-        .mode-tab.active { background: var(--card-bg); color: var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .mode-tab.active { background: var(--card-bg); color: var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
 
         /* 按鈕 */
-        .btn { width: 100%; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1rem; transition: 0.2s; }
+        .btn { width: 100%; padding: 10px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.95rem; transition: 0.2s; }
         .btn-green { background: var(--primary); color: white; }
         .btn-green:hover { background: #05b34c; }
-        .btn-green:disabled { background: #ccc; cursor: not-allowed; }
-        .theme-btn { background: transparent; border: 1px solid var(--border); color: var(--text-main); padding: 5px 12px; border-radius: 20px; cursor: pointer; font-size: 0.9rem; }
+        .btn-green:disabled { background: #555; color: #888; cursor: not-allowed; }
+        .theme-btn { 
+            background: transparent; border: 1px solid var(--border); color: var(--text-main); 
+            padding: 5px 12px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; 
+        }
 
-        /* 預覽與匯出 */
-        #origPreviewBox { text-align: center; margin-bottom: 10px; display: none; }
-        #origPreviewBox img { max-height: 150px; border-radius: 6px; border: 1px solid var(--border); }
+        /* 預覽區 (修正版) */
+        #origPreviewBox { text-align: center; margin-bottom: 10px; display: none; background: var(--input-bg); padding: 5px; border-radius: 6px; }
+        #origPreviewBox img { max-height: 120px; object-fit: contain; }
         
         #previewContainer {
-            background: #2b2b2b; padding: 20px; border-radius: 12px; min-height: 300px;
-            display: grid; gap: 15px; align-content: start;
+            background: var(--preview-bg); padding: 15px; border-radius: 10px; min-height: 400px;
+            display: grid; gap: 10px; align-content: start;
+            /* Grid Columns 會由 JS 動態設定 */
         }
+
+        /* 貼圖卡片與懸浮下載 (關鍵修正) */
+        .sticker-card { 
+            display: flex; flex-direction: column; gap: 4px; 
+            /* 讓卡片本身不干擾內部絕對定位 */
+        }
+        
         .sticker-img-box {
-            width: 100%; aspect-ratio: 1; border: 1px solid #555; border-radius: 8px;
+            position: relative; /* 關鍵：讓內部的 download-hint 依此定位 */
+            width: 100%; aspect-ratio: 1;
+            border: 1px solid #444; border-radius: 8px;
             display: flex; align-items: center; justify-content: center; overflow: hidden;
             background-image: linear-gradient(45deg, #333 25%, transparent 25%), linear-gradient(-45deg, #333 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #333 75%), linear-gradient(-45deg, transparent 75%, #333 75%);
             background-size: 20px 20px; background-color: #222;
             cursor: pointer; transition: 0.2s;
         }
-        .sticker-img-box:hover { border-color: var(--primary); transform: scale(1.03); }
+        .sticker-img-box:hover { border-color: var(--primary); }
         .sticker-img-box img { max-width: 100%; max-height: 100%; object-fit: contain; }
-        .sticker-name { text-align: center; color: #aaa; font-size: 0.8rem; margin-top: 5px; font-family: monospace; }
+        
+        /* 下載提示 (懸浮樣式) */
+        .download-hint {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            color: white;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 0.9rem; font-weight: bold;
+            opacity: 0; transition: opacity 0.2s;
+            pointer-events: none; /* 讓點擊穿透到 box */
+        }
+        .sticker-img-box:hover .download-hint { opacity: 1; }
 
-        .export-bar { background: rgba(6,199,85,0.05); border: 1px solid var(--primary); padding: 15px; border-radius: 10px; margin-bottom: 15px; }
+        .sticker-name { text-align: center; color: #888; font-size: 0.75rem; font-family: monospace; }
+
+        /* 匯出設定區 (更緊湊) */
+        .export-bar { 
+            background: rgba(6,199,85,0.05); border: 1px solid var(--primary); 
+            padding: 10px; border-radius: 8px; margin-bottom: 10px; 
+        }
+        
         .status-bar { padding: 8px; border-radius: 6px; font-size: 0.85em; background: #e3f2fd; color: #0d47a1; margin-top: 5px; }
+        .status-error { background: #ffebee; color: #c62828; }
         .status-success { background: #e8f5e9; color: #2e7d32; }
+
+        #manualLoad { display: none; margin-top: 8px; padding: 8px; border: 1px solid #fab1a0; background: #fff5f5; border-radius: 6px; font-size: 0.85rem; color: #333; }
     </style>
 </head>
-<body class="light-mode">
+<body>
 
 <div class="header">
-    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V9 旗艦版</span></h1>
-    <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">🌙 暗黑模式</button>
+    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V10 旗艦修正版</span></h1>
+    <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️ 切換明亮</button>
 </div>
 
 <div class="container">
@@ -124,87 +184,83 @@
         </div>
 
         <div class="section">
-            <span class="section-title">2. 裁切分割 (設定欄位)</span>
+            <span class="section-title">2. 裁切分割</span>
             <div class="row">
-                <div class="col">
-                    <label>垂直 (Rows)</label>
-                    <input type="number" id="rows" value="2" min="1">
+                <div class="col" style="display:flex; align-items:center; gap:5px;">
+                    <label style="margin:0;">垂直</label>
+                    <input type="number" id="rows" value="2" min="1" class="input-mini">
+                    <span style="font-size:0.8rem; color:var(--text-sub);">列</span>
                 </div>
-                <div class="col">
-                    <label>水平 (Cols)</label>
-                    <input type="number" id="cols" value="2" min="1">
+                <div class="col" style="display:flex; align-items:center; gap:5px;">
+                    <label style="margin:0;">水平</label>
+                    <input type="number" id="cols" value="2" min="1" class="input-mini">
+                    <span style="font-size:0.8rem; color:var(--text-sub);">行</span>
                 </div>
             </div>
         </div>
 
         <div class="section">
-            <span class="section-title">3. 去背功能選項</span>
+            <span class="section-title">3. 去背與後製</span>
             
             <div class="mode-tabs">
-                <div class="mode-tab active" onclick="switchMode('ai')" id="tab-ai">🤖 AI 智慧去背</div>
-                <div class="mode-tab" onclick="switchMode('color')" id="tab-color">🎨 顏色去背</div>
+                <div class="mode-tab active" onclick="switchMode('ai')" id="tab-ai">🤖 AI 模式</div>
+                <div class="mode-tab" onclick="switchMode('color')" id="tab-color">🎨 顏色模式</div>
             </div>
 
             <div id="content-ai" class="tab-content active">
                 <div class="row">
-                    <div class="col">
-                        <label>AI 模型</label>
-                        <select id="aiModelSel">
-                            <option value="u2netp">🚀 輕量版 (快速)</option>
-                            <option value="u2net">💪 完整版 (精準)</option>
-                        </select>
-                    </div>
+                    <label style="width:60px;">模型</label>
+                    <select id="aiModelSel">
+                        <option value="u2netp">🚀 輕量版 (穩定)</option>
+                        <option value="u2net">💪 完整版 (精細)</option>
+                    </select>
                 </div>
-                <div id="status" class="status-bar">🔄 準備中...</div>
+                <div id="status" class="status-bar">🔄 等待操作...</div>
                 
-                <div class="slider-row" style="margin-top:10px;">
-                    <label>靈敏度</label>
-                    <input type="range" id="aiThreshold" min="0.05" max="0.95" step="0.05" value="0.2">
-                    <span class="slider-val" id="val-aiThreshold">0.2</span>
+                <div id="manualLoad">
+                    <strong>⚠️ 自動載入失敗</strong>
+                    <div style="margin-top:5px;">
+                        <button class="btn btn-outline" style="font-size:0.8rem; padding:4px 8px; width:auto; border:1px solid #ccc; background:#fff;" onclick="document.getElementById('modelInput').click()">📂 載入 .onnx</button>
+                    </div>
+                    <input type="file" id="modelInput" accept=".onnx" style="display:none">
                 </div>
-                <div style="font-size:0.75em; color:var(--text-sub); margin-bottom:10px;">*若圖像消失請調低，若背景殘留請調高</div>
+
+                <div class="row" style="margin-top:8px;">
+                    <label style="width:60px;">靈敏度</label>
+                    <input type="range" id="aiThreshold" min="0.05" max="0.95" step="0.05" value="0.2">
+                    <span class="input-mini" id="val-aiThreshold" style="text-align:right;">0.2</span>
+                </div>
             </div>
 
             <div id="content-color" class="tab-content">
                 <div class="row">
-                    <div class="col">
-                        <label>選擇背景色</label>
-                        <input type="color" id="targetColor" value="#FFFFFF">
-                    </div>
-                    <div class="col" style="display:flex; gap:5px; align-items:flex-end;">
-                        <button class="btn btn-outline" style="padding:5px;" onclick="setColor('#FFFFFF')">白</button>
-                        <button class="btn btn-outline" style="padding:5px;" onclick="setColor('#00FF00')">綠</button>
-                        <button class="btn btn-outline" style="padding:5px;" onclick="setColor('#000000')">黑</button>
-                    </div>
+                    <input type="color" id="targetColor" value="#FFFFFF" style="flex:1;">
+                    <button class="btn btn-outline" style="flex:1; padding:5px; background:var(--input-bg); color:var(--text-main); border:1px solid var(--border);" onclick="setColor('#FFFFFF')">白</button>
+                    <button class="btn btn-outline" style="flex:1; padding:5px; background:var(--input-bg); color:var(--text-main); border:1px solid var(--border);" onclick="setColor('#00FF00')">綠</button>
                 </div>
-                <div class="slider-row">
-                    <label>寬容度</label>
+                <div class="row">
+                    <label style="width:60px;">寬容度</label>
                     <input type="range" id="tolerance" min="0" max="100" value="15">
-                    <span class="slider-val" id="val-tolerance">15%</span>
+                    <span class="input-mini" id="val-tolerance" style="text-align:right;">15%</span>
                 </div>
             </div>
 
-            <hr style="border:0; border-top:1px dashed var(--border); margin:15px 0;">
+            <hr style="border:0; border-top:1px dashed var(--border); margin:10px 0;">
 
-            <label style="color:var(--primary);">✨ 邊緣後製處理</label>
-            
-            <div class="slider-row">
-                <label>邊緣柔化</label>
+            <div class="row">
+                <label style="width:60px;">柔化</label>
                 <input type="range" id="smoothness" min="0" max="10" step="0.5" value="0">
-                <span class="slider-val" id="val-smoothness">0px</span>
+                <span class="input-mini" id="val-smoothness" style="text-align:right;">0</span>
             </div>
-
-            <div class="slider-row">
-                <label>溢色去除</label>
+            <div class="row">
+                <label style="width:60px;">除溢色</label>
                 <input type="range" id="despill" min="0" max="10" step="0.5" value="0">
-                <span class="slider-val" id="val-despill">0px</span>
+                <span class="input-mini" id="val-despill" style="text-align:right;">0</span>
             </div>
-            <div style="font-size:0.75em; color:var(--text-sub); margin-bottom:5px;">*內縮邊緣以去除殘留的背景色</div>
-
-            <div class="slider-row">
-                <label>物體描邊</label>
+            <div class="row">
+                <label style="width:60px;">描邊</label>
                 <input type="range" id="contour" min="0" max="10" step="1" value="0">
-                <span class="slider-val" id="val-contour">0px</span>
+                <span class="input-mini" id="val-contour" style="text-align:right;">0</span>
             </div>
         </div>
 
@@ -212,49 +268,49 @@
     </div>
 
     <div class="card">
-        <h2>🖼️ 匯出設定與預覽</h2>
+        <h2>🖼️ 匯出與預覽</h2>
         
         <div class="export-bar">
-            <div class="row">
-                <div class="col">
-                    <label>起始檔名</label>
-                    <input type="text" id="startNum" value="001" placeholder="001">
+            <div class="row" style="margin-bottom:0; justify-content:space-between;">
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <label style="margin:0;">起始檔名</label>
+                    <input type="text" id="startNum" value="001" class="input-small">
                 </div>
-                <div class="col" style="flex:2;">
-                    <label>下載尺寸 (寬 x 高)</label>
-                    <div style="display:flex; gap:5px; align-items:center;">
-                        <input type="number" id="outW" value="370"> x <input type="number" id="outH" value="320">
-                    </div>
+                
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <label style="margin:0;">尺寸</label>
+                    <input type="number" id="outW" value="370" class="input-mini">
+                    <span>x</span>
+                    <input type="number" id="outH" value="320" class="input-mini">
                 </div>
-                <div class="col" style="display:flex; align-items:flex-end;">
-                    <button id="dlBtn" class="btn btn-green" style="padding:8px;">📦 下載 ZIP</button>
-                </div>
+
+                <button id="dlBtn" class="btn btn-green" style="width:auto; padding:6px 15px; font-size:0.9rem;">下載全部 ZIP</button>
             </div>
         </div>
 
         <div id="previewContainer">
-            <div style="grid-column:1/-1; text-align:center; color:#888; padding:50px;">
-                請先設定參數並點擊左側「開始製作」
+            <div style="grid-column:1/-1; text-align:center; color:#666; padding:50px;">
+                請點擊左側「開始製作」
             </div>
         </div>
     </div>
 </div>
 
 <script>
+    // 使用 jsDelivr 提供的穩定連結 (danielgatis 原版 repo)
+    const MODELS = {
+        'u2netp': 'https://cdn.jsdelivr.net/gh/danielgatis/rembg@master/u2netp.onnx', // 4.4MB
+        'u2net': 'https://huggingface.co/schyy/u2net-onnx/resolve/main/u2net.onnx'     // 176MB (備用)
+    };
+    
+    // 預設使用 CDN
     ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/";
 
-    // --- 變數 ---
     let currentMode = 'ai';
     let session = null;
     let rawStickers = [];
-    let isDark = false;
+    let isDark = true; // 預設暗黑
 
-    const MODELS = {
-        'u2netp': 'https://huggingface.co/schyy/u2netp.onnx/resolve/main/u2netp.onnx',
-        'u2net': 'https://huggingface.co/schyy/u2net-onnx/resolve/main/u2net.onnx'
-    };
-
-    // --- DOM ---
     const els = {
         imgIn: document.getElementById('imgInput'),
         origPrev: document.getElementById('origPreviewImg'),
@@ -262,19 +318,17 @@
         runBtn: document.getElementById('runBtn'),
         preview: document.getElementById('previewContainer'),
         status: document.getElementById('status'),
+        manual: document.getElementById('manualLoad'),
+        // Inputs
         rows: document.getElementById('rows'),
         cols: document.getElementById('cols'),
-        // AI
         aiModel: document.getElementById('aiModelSel'),
         aiThresh: document.getElementById('aiThreshold'),
-        // Color
         targetColor: document.getElementById('targetColor'),
         tolerance: document.getElementById('tolerance'),
-        // Post Process
         smoothness: document.getElementById('smoothness'),
         despill: document.getElementById('despill'),
         contour: document.getElementById('contour'),
-        // Export
         startNum: document.getElementById('startNum'),
         outW: document.getElementById('outW'),
         outH: document.getElementById('outH'),
@@ -286,31 +340,27 @@
         tabColor: document.getElementById('tab-color')
     };
 
-    // --- 初始化與事件綁定 ---
-    
     // 數值顯示同步
     ['aiThreshold', 'tolerance', 'smoothness', 'despill', 'contour'].forEach(id => {
-        const el = document.getElementById(id);
-        const disp = document.getElementById(`val-${id}`);
-        el.addEventListener('input', () => {
-            let val = el.value;
+        document.getElementById(id).addEventListener('input', (e) => {
+            let val = e.target.value;
             if(id === 'tolerance') val += '%';
-            else if(id === 'aiThreshold') val = val;
-            else val += 'px';
-            disp.textContent = val;
+            document.getElementById(`val-${id}`).textContent = val;
         });
     });
 
     // 主題切換
     window.toggleTheme = () => {
         isDark = !isDark;
-        document.body.classList.toggle('dark-mode', isDark);
-        document.getElementById('themeBtn').textContent = isDark ? '☀️ 明亮模式' : '🌙 暗黑模式';
-        document.getElementById('themeBtn').style.background = isDark ? '#fff' : 'transparent';
-        document.getElementById('themeBtn').style.color = isDark ? '#333' : 'var(--text-main)';
+        if (isDark) {
+            document.body.classList.remove('light-mode');
+            document.getElementById('themeBtn').textContent = '☀️ 切換明亮';
+        } else {
+            document.body.classList.add('light-mode');
+            document.getElementById('themeBtn').textContent = '🌙 切換暗黑';
+        }
     };
 
-    // 模式切換
     window.switchMode = (mode) => {
         currentMode = mode;
         els.tabAi.classList.toggle('active', mode === 'ai');
@@ -321,33 +371,50 @@
         else els.runBtn.disabled = false;
     };
 
-    // 顏色設定
     window.setColor = (hex) => els.targetColor.value = hex;
 
-    // AI 模型載入
     async function loadAIModel() {
         const key = els.aiModel.value;
+        const url = MODELS[key];
         els.runBtn.disabled = true;
         els.status.className = 'status-bar';
         els.status.textContent = `🔄 下載 ${key}...`;
+        els.manual.style.display = 'none';
+
         try {
-            session = await ort.InferenceSession.create(MODELS[key], { executionProviders: ['wasm', 'webgl'] });
+            // 先嘗試直接載入 (支援本地快取或 CDN)
+            session = await ort.InferenceSession.create(url, { executionProviders: ['wasm', 'webgl'] });
             els.status.className = 'status-bar status-success';
             els.status.textContent = `✅ ${key} 就緒`;
             checkAIReady();
         } catch(e) {
-            console.error(e);
+            console.warn("CDN Load failed, trying fallback...", e);
+            // 失敗處理
             els.status.className = 'status-bar status-error';
             els.status.textContent = "❌ 下載失敗";
-            // 若失敗可提示手動載入(此處簡化)
+            els.manual.style.display = 'block';
         }
     }
+    
+    // 手動載入
+    document.getElementById('modelInput').addEventListener('change', async (e) => {
+        if(!e.target.files[0]) return;
+        try {
+            els.status.textContent = "讀取檔案...";
+            const blobUrl = URL.createObjectURL(e.target.files[0]);
+            session = await ort.InferenceSession.create(blobUrl, { executionProviders: ['wasm', 'webgl'] });
+            els.status.className = 'status-bar status-success';
+            els.status.textContent = "✅ 模型已載入";
+            els.manual.style.display = 'none';
+            checkAIReady();
+        } catch(err) { alert("模型檔案無效"); }
+    });
+
     els.aiModel.addEventListener('change', loadAIModel);
     function checkAIReady() {
         if(currentMode === 'ai' && session && els.imgIn.files[0]) els.runBtn.disabled = false;
     }
 
-    // 圖片上傳
     els.imgIn.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if(file) {
@@ -358,19 +425,18 @@
         }
     });
 
-    // --- 主執行流程 ---
+    // 執行
     els.runBtn.addEventListener('click', async () => {
         const file = els.imgIn.files[0];
         if(!file) { alert("請先上傳圖片"); return; }
         
         els.runBtn.disabled = true;
         els.runBtn.textContent = "處理中...";
-        els.preview.innerHTML = "<div style='grid-column:1/-1;text-align:center;color:#ccc;'>🚀 正在處理影像...</div>";
+        els.preview.innerHTML = "<div style='grid-column:1/-1;text-align:center;color:#999;'>🚀 正在處理...</div>";
 
         try {
             const originalImg = await loadImage(URL.createObjectURL(file));
             
-            // 1. 產生遮罩 (Mask Generation)
             let maskCanvas;
             if(currentMode === 'ai') {
                 maskCanvas = await generateAIMask(originalImg);
@@ -378,25 +444,16 @@
                 maskCanvas = generateColorMask(originalImg);
             }
 
-            // 2. 遮罩後製 (Smoothness & Despill/Shrink)
             const smooth = parseFloat(els.smoothness.value);
             const despill = parseFloat(els.despill.value);
-            
-            if(smooth > 0 || despill > 0) {
-                maskCanvas = processMask(maskCanvas, smooth, despill);
-            }
+            if(smooth > 0 || despill > 0) maskCanvas = processMask(maskCanvas, smooth, despill);
 
-            // 3. 應用遮罩到原圖
             const noBgImg = applyMaskToImage(originalImg, maskCanvas);
-
-            // 4. 切割並描邊 (Split & Contour)
             const rows = parseInt(els.rows.value);
             const cols = parseInt(els.cols.value);
             const contour = parseInt(els.contour.value);
 
             rawStickers = await cutAndContour(noBgImg, rows, cols, contour);
-            
-            // 5. 顯示預覽
             renderPreview(rows, cols);
 
         } catch(e) {
@@ -408,12 +465,11 @@
         }
     });
 
-    // --- AI 核心 ---
+    // AI Logic
     async function generateAIMask(img) {
         const size = 320;
         const cvs = document.createElement('canvas'); cvs.width = size; cvs.height = size;
         const ctx = cvs.getContext('2d');
-        // Letterbox
         const scale = Math.min(size/img.width, size/img.height);
         const nw = img.width*scale; const nh = img.height*scale;
         const ox = (size-nw)/2; const oy = (size-nh)/2;
@@ -432,7 +488,6 @@
         const res = await session.run({ [session.inputNames[0]]: tensor });
         const out = res[session.outputNames[0]].data;
 
-        // 產生初始遮罩
         const maskCvs = document.createElement('canvas'); maskCvs.width = size; maskCvs.height = size;
         const mCtx = maskCvs.getContext('2d');
         const mDat = mCtx.createImageData(size, size);
@@ -442,12 +497,11 @@
 
         for(let i=0; i<out.length; i++) {
             let val = out[i] * boost;
-            let a = val > thresh ? 255 : 0; // 初步二值化，後續用柔化處理
+            let a = val > thresh ? 255 : 0; 
             mDat.data[i*4+3] = a;
         }
         mCtx.putImageData(mDat, 0, 0);
 
-        // 還原尺寸的遮罩
         const fullMask = document.createElement('canvas'); 
         fullMask.width = img.width; fullMask.height = img.height;
         const fCtx = fullMask.getContext('2d');
@@ -455,69 +509,46 @@
         return fullMask;
     }
 
-    // --- 顏色去背遮罩 ---
     function generateColorMask(img) {
         const cvs = document.createElement('canvas'); cvs.width = img.width; cvs.height = img.height;
         const ctx = cvs.getContext('2d');
         ctx.drawImage(img, 0, 0);
         const dat = ctx.getImageData(0,0,cvs.width,cvs.height);
         const d = dat.data;
-        
         const hex = els.targetColor.value;
         const tr = parseInt(hex.slice(1,3), 16); const tg = parseInt(hex.slice(3,5), 16); const tb = parseInt(hex.slice(5,7), 16);
         const tol = parseInt(els.tolerance.value) / 100 * 442;
 
         for(let i=0; i<d.length; i+=4) {
             const dist = Math.sqrt((d[i]-tr)**2 + (d[i+1]-tg)**2 + (d[i+2]-tb)**2);
-            d[i+3] = dist < tol ? 0 : 255; // Alpha
+            d[i+3] = dist < tol ? 0 : 255; 
         }
         ctx.putImageData(dat, 0, 0);
-        return cvs; // 這是一個只有 Alpha 通道有意義的 Canvas
+        return cvs;
     }
 
-    // --- 遮罩後製 (核心更新) ---
     function processMask(mask, smooth, shrink) {
-        const cvs = document.createElement('canvas'); 
-        cvs.width = mask.width; cvs.height = mask.height;
+        const cvs = document.createElement('canvas'); cvs.width = mask.width; cvs.height = mask.height;
         const ctx = cvs.getContext('2d');
-        
-        // 1. 內縮 (Shrink/Despill) - 透過 Blur + Threshold 模擬
         if(shrink > 0) {
-            ctx.filter = `blur(${shrink}px)`;
-            ctx.drawImage(mask, 0, 0);
-            // Threshold pass to erode
+            ctx.filter = `blur(${shrink}px)`; ctx.drawImage(mask, 0, 0);
             const imgData = ctx.getImageData(0,0,cvs.width, cvs.height);
             const d = imgData.data;
-            for(let i=3; i<d.length; i+=4) {
-                // Alpha < 150 變 0，縮小白色區域
-                if(d[i] < 150) d[i] = 0;
-                else d[i] = 255; 
-            }
-            ctx.putImageData(imgData, 0, 0);
-            ctx.filter = 'none'; // reset
-        } else {
-            ctx.drawImage(mask, 0, 0);
-        }
+            for(let i=3; i<d.length; i+=4) d[i] = (d[i] < 150) ? 0 : 255;
+            ctx.putImageData(imgData, 0, 0); ctx.filter = 'none';
+        } else ctx.drawImage(mask, 0, 0);
 
-        // 2. 柔化 (Smooth)
         if(smooth > 0) {
-            const temp = document.createElement('canvas');
-            temp.width = cvs.width; temp.height = cvs.height;
-            const tCtx = temp.getContext('2d');
-            tCtx.drawImage(cvs, 0, 0);
-            
+            const temp = document.createElement('canvas'); temp.width = cvs.width; temp.height = cvs.height;
+            const tCtx = temp.getContext('2d'); tCtx.drawImage(cvs, 0, 0);
             ctx.clearRect(0,0,cvs.width,cvs.height);
-            ctx.filter = `blur(${smooth}px)`;
-            ctx.drawImage(temp, 0, 0);
-            ctx.filter = 'none';
+            ctx.filter = `blur(${smooth}px)`; ctx.drawImage(temp, 0, 0); ctx.filter = 'none';
         }
-
         return cvs;
     }
 
     function applyMaskToImage(img, mask) {
-        const cvs = document.createElement('canvas');
-        cvs.width = img.width; cvs.height = img.height;
+        const cvs = document.createElement('canvas'); cvs.width = img.width; cvs.height = img.height;
         const ctx = cvs.getContext('2d');
         ctx.drawImage(img, 0, 0);
         ctx.globalCompositeOperation = 'destination-in';
@@ -525,8 +556,7 @@
         return cvs;
     }
 
-    // --- 切割與描邊 ---
-    async function cutAndContour(img, rows, cols, stroke) {
+    async function cutAndContour(img, rows, cols, contour) {
         const w = img.width; const h = img.height;
         const tileW = Math.floor(w/cols); const tileH = Math.floor(h/rows);
         const res = [];
@@ -539,49 +569,32 @@
                 ctx.drawImage(img, c*tileW, r*tileH, tileW, tileH, 0, 0, tileW, tileH);
                 
                 const tImg = await loadImage(cvs.toDataURL());
-                
-                // 產生描邊效果
-                const sCvs = document.createElement('canvas'); 
-                sCvs.width = tileW + stroke*2; sCvs.height = tileH + stroke*2; // 預留空間
+                const sCvs = document.createElement('canvas'); sCvs.width = tileW + contour*2; sCvs.height = tileH + contour*2; 
                 const sCtx = sCvs.getContext('2d');
-                
-                const dx = stroke; const dy = stroke;
+                const dx = contour; const dy = contour;
 
-                if(stroke > 0) {
-                    // 繪製白色剪影
+                if(contour > 0) {
                     sCtx.drawImage(tImg, dx, dy);
-                    sCtx.globalCompositeOperation = 'source-in';
-                    sCtx.fillStyle = 'white';
-                    sCtx.fillRect(0,0,sCvs.width,sCvs.height);
-                    
-                    // 擴散剪影以形成外框 (簡單且效能好的方法：繪製多次)
-                    const outlineCvs = document.createElement('canvas');
-                    outlineCvs.width = sCvs.width; outlineCvs.height = sCvs.height;
+                    sCtx.globalCompositeOperation = 'source-in'; sCtx.fillStyle = 'white'; sCtx.fillRect(0,0,sCvs.width,sCvs.height);
+                    const outlineCvs = document.createElement('canvas'); outlineCvs.width = sCvs.width; outlineCvs.height = sCvs.height;
                     const oCtx = outlineCvs.getContext('2d');
                     const steps = 12;
                     for(let i=0; i<steps; i++) {
                         const ang = (i/steps)*2*Math.PI;
-                        oCtx.drawImage(sCvs, Math.cos(ang)*stroke, Math.sin(ang)*stroke);
+                        oCtx.drawImage(sCvs, Math.cos(ang)*contour, Math.sin(ang)*contour);
                     }
-                    oCtx.drawImage(sCvs, 0, 0); // 填補中間
-                    
-                    // 重置主畫布並繪製外框
-                    sCtx.globalCompositeOperation = 'source-over';
-                    sCtx.clearRect(0,0,sCvs.width,sCvs.height);
-                    sCtx.drawImage(outlineCvs, 0, 0);
+                    oCtx.drawImage(sCvs, 0, 0);
+                    sCtx.globalCompositeOperation = 'source-over'; sCtx.clearRect(0,0,sCvs.width,sCvs.height); sCtx.drawImage(outlineCvs, 0, 0);
                 }
-                
-                // 疊上原圖
-                sCtx.drawImage(tImg, dx, dy);
+                sCtx.globalCompositeOperation = 'source-over'; sCtx.drawImage(tImg, dx, dy);
                 res.push(sCvs);
             }
         }
         return res;
     }
 
-    // --- 預覽與下載 ---
     function getFilename(idx) {
-        const str = els.startNum.value;
+        const str = els.startNum.value.trim();
         const pad = str.length;
         const start = parseInt(str) || 1;
         return String(start + idx).padStart(pad, '0') + '.png';
@@ -591,14 +604,13 @@
         els.preview.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
         els.preview.innerHTML = '';
         rawStickers.forEach((cvs, i) => {
-            // 預覽縮圖
-            const url = cvs.toDataURL();
+            const url = resizeToOutput(cvs, 150, 150);
             const div = document.createElement('div');
             div.className = 'sticker-card';
             div.innerHTML = `
                 <div class="sticker-img-box" onclick="downloadSingle(${i})">
                     <img src="${url}">
-                    <div class="download-hint">下載</div>
+                    <div class="download-hint">點擊下載</div>
                 </div>
                 <div class="sticker-name" id="name-${i}">${getFilename(i)}</div>
             `;
@@ -606,7 +618,6 @@
         });
     }
 
-    // 檔名更新監聽
     els.startNum.addEventListener('input', () => {
         rawStickers.forEach((_, i) => {
             const el = document.getElementById(`name-${i}`);
@@ -614,32 +625,31 @@
         });
     });
 
-    // 統一縮放函式
-    function resizeToOutput(canvas) {
-        const tw = parseInt(els.outW.value) || 370;
-        const th = parseInt(els.outH.value) || 320;
-        const c = document.createElement('canvas');
-        c.width = tw; c.height = th;
+    function resizeToOutput(canvas, w, h) {
+        const c = document.createElement('canvas'); c.width = w; c.height = h;
         const ctx = c.getContext('2d');
-        // 保持比例置中
-        const scale = Math.min(tw/canvas.width, th/canvas.height);
+        const scale = Math.min(w/canvas.width, h/canvas.height);
         const dw = canvas.width*scale; const dh = canvas.height*scale;
-        ctx.drawImage(canvas, (tw-dw)/2, (th-dh)/2, dw, dh);
+        ctx.drawImage(canvas, (w-dw)/2, (h-dh)/2, dw, dh);
         return c.toDataURL();
     }
 
     els.dlBtn.onclick = () => {
         const zip = new JSZip();
+        const w = parseInt(els.outW.value) || 370;
+        const h = parseInt(els.outH.value) || 320;
         const dateStr = new Date().toISOString().slice(0,10).replace(/-/g,'');
         rawStickers.forEach((cvs, i) => {
-            const url = resizeToOutput(cvs);
+            const url = resizeToOutput(cvs, w, h);
             zip.file(getFilename(i), url.split(',')[1], {base64:true});
         });
         zip.generateAsync({type:"blob"}).then(b => saveAs(b, `LineStickers_${dateStr}.zip`));
     };
 
     window.downloadSingle = (i) => {
-        const url = resizeToOutput(rawStickers[i]);
+        const w = parseInt(els.outW.value) || 370;
+        const h = parseInt(els.outH.value) || 320;
+        const url = resizeToOutput(rawStickers[i], w, h);
         saveAs(dataURLtoBlob(url), getFilename(i));
     };
 
@@ -648,10 +658,9 @@
         while(n--)a[n]=b.charCodeAt(n);return new Blob([a],{type:m});
     }
     function loadImage(s){return new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.src=s;});}
-
-    // 預載
+    
+    // 初始化
     loadAIModel();
-
 </script>
 </body>
 </html>

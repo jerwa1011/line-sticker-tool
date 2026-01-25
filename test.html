@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>LINE 貼圖製作大師 (V19: RMBG-1.4 AI 加強版)</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+    <style>
+        /* --- 配色系統 --- */
+        :root {
+            --primary: #06C755;
+            --primary-hover: #05a546;
+            --tab-color: #3498db;
+            --main-color: #ff5252;
+            --bg: #181818;
+            --card-bg: #252525;
+            --panel-bg: #2f2f2f;
+            --text-main: #e0e0e0;
+            --text-sub: #aaaaaa;
+            --border: #444444;
+            --input-bg: #333333;
+            --preview-bg: #1a1a1a;
+            --shadow: rgba(0,0,0,0.3);
+            --group-bg: rgba(255,255,255,0.05);
+        }
+
+        body.light-mode {
+            --bg: #f8f6f2;
+            --card-bg: #ffffff;
+            --panel-bg: #f4f4f4;
+            --text-main: #333333;
+            --text-sub: #666666;
+            --border: #e0e0e0;
+            --input-bg: #ffffff;
+            --preview-bg: #eeeeee;
+            --shadow: rgba(0,0,0,0.05);
+            --group-bg: #f9f9f9;
+        }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", sans-serif; 
+            background: var(--bg); padding: 20px; color: var(--text-main); 
+            transition: background 0.3s, color 0.3s;
+            padding-bottom: 60px;
+        }
+
+        /* 版面結構 */
+        .header { display: flex; justify-content: space-between; align-items: center; max-width: 1300px; margin: 0 auto 20px auto; }
+        .container { 
+            max-width: 1300px; margin: 0 auto; 
+            display: grid; grid-template-columns: 380px 1fr; gap: 25px; 
+            align-items: start;
+        }
+        @media (max-width: 950px) { .container { grid-template-columns: 1fr; } }
+        
+        /* 卡片 */
+        .card { 
+            background: var(--card-bg); padding: 20px; border-radius: 16px; 
+            box-shadow: 0 4px 20px var(--shadow); display: flex; flex-direction: column; gap: 15px; 
+        }
+        
+        /* 左側欄位固定 (Sticky) */
+        .sticky-sidebar {
+            position: sticky; top: 20px; 
+            max-height: calc(100vh - 40px); overflow-y: auto;
+            scrollbar-width: thin;
+        }
+
+        .section { 
+            border: 1px solid var(--border); border-radius: 10px; padding: 15px; 
+            background: var(--panel-bg); position: relative; margin-bottom: 10px;
+        }
+        .section-title { 
+            font-size: 0.95rem; font-weight: 700; color: var(--primary); 
+            margin-bottom: 10px; display: flex; align-items: center; 
+            border-left: 4px solid var(--primary); padding-left: 8px; 
+        }
+
+        h1 { margin: 0; font-size: 1.6rem; color: var(--text-main); font-weight: 800; letter-spacing: -0.5px; }
+        
+        /* 上傳區 */
+        .upload-box { 
+            border: 2px dashed var(--border); border-radius: 10px; padding: 20px; text-align: center; 
+            cursor: pointer; background: var(--input-bg); transition: 0.3s;
+        }
+        .upload-box:hover, .upload-box.dragover { border-color: var(--primary); background: rgba(6, 199, 85, 0.08); transform: scale(1.01); }
+        .upload-box span { color: var(--text-sub); font-size: 0.95rem; pointer-events: none; }
+
+        /* 輸入控制 */
+        .row { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; } 
+        .col { flex: 1; display: flex; align-items: center; gap: 8px; }
+        
+        .label-group { display: flex; align-items: center; width: 85px; flex-shrink: 0; }
+        .label-text { font-weight: 600; font-size: 0.9rem; color: var(--text-main); white-space: nowrap; }
+        
+        .info-btn {
+            display: inline-flex; justify-content: center; align-items: center;
+            width: 16px; height: 16px; border-radius: 50%;
+            border: 1px solid var(--text-sub); color: var(--text-sub);
+            font-size: 11px; font-weight: bold; cursor: pointer;
+            margin-left: 6px; transition: 0.2s;
+        }
+        .info-btn:hover { border-color: var(--primary); color: var(--primary); background: rgba(6,199,85,0.1); }
+
+        input[type="number"], input[type="text"], select { 
+            padding: 8px; border: 1px solid var(--border); border-radius: 6px; 
+            font-size: 1rem; 
+            background: var(--input-bg); color: var(--text-main);
+            transition: border-color 0.2s;
+        }
+        input:focus, select:focus { outline: none; border-color: var(--primary); }
+        input:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        .input-mini { width: 60px !important; text-align: center; }
+        .input-short { width: 80px !important; text-align: center; }
+        
+        input[type="range"] { width: 100%; accent-color: var(--primary); height: 20px; cursor: pointer; }
+        input[type="color"] { width: 100%; height: 36px; border: none; cursor: pointer; padding: 0; border-radius: 6px; }
+
+        /* Tabs */
+        .mode-tabs { display: flex; gap: 5px; background: var(--border); padding: 4px; border-radius: 8px; margin-bottom: 12px; }
+        .mode-tab { flex: 1; padding: 8px; text-align: center; cursor: pointer; border-radius: 6px; font-size: 0.9rem; font-weight: bold; color: var(--text-sub); transition: 0.2s; }
+        .mode-tab.active { background: var(--card-bg); color: var(--primary); box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .tab-content { display: none; animation: fadeIn 0.3s; }
+        .tab-content.active { display: block; }
+
+        /* 按鈕 */
+        .btn { width: 100%; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1rem; transition: 0.2s; }
+        .btn-green { background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 10px rgba(6,199,85,0.2); }
+        .btn-green:hover { background: var(--primary-hover); transform: translateY(-1px); }
+        .btn-green:disabled { background: #555; color: #888; cursor: not-allowed; transform: none; box-shadow: none; }
+        .theme-btn { 
+            background: transparent; border: 1px solid var(--border); color: var(--text-main); 
+            padding: 6px 15px; border-radius: 20px; cursor: pointer; font-size: 0.9rem; font-weight: 500;
+        }
+
+        #origPreviewBox { text-align: center; margin-bottom: 10px; display: none; background: var(--input-bg); padding: 8px; border-radius: 8px; border: 1px solid var(--border); }
+        #origPreviewBox img { max-height: 140px; object-fit: contain; }
+        
+        /* 右側預覽區 */
+        #previewContainer { 
+            background: var(--preview-bg); padding: 20px; border-radius: 12px; min-height: 400px; 
+            display: grid; gap: 15px; align-content: start; border: 1px solid var(--border);
+        }
+
+        /* 貼圖卡片 */
+        .sticker-card { display: flex; flex-direction: column; gap: 8px; }
+        .sticker-img-box {
+            position: relative; width: 100%; aspect-ratio: 1;
+            border: 1px solid #444; border-radius: 10px;
+            display: flex; align-items: center; justify-content: center; overflow: hidden;
+            background-image: linear-gradient(45deg, #333 25%, transparent 25%), linear-gradient(-45deg, #333 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #333 75%), linear-gradient(-45deg, transparent 75%, #333 75%);
+            background-size: 20px 20px; background-color: #222;
+            cursor: zoom-in; transition: 0.2s;
+        }
+        .sticker-img-box.bg-light { background: #ffffff; background-image: none; border-color: #ddd; }
+        .sticker-img-box.bg-line { background: #849ebf; background-image: none; border-color: #6a8caf; }
+        
+        .sticker-img-box:hover { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary); }
+        .sticker-img-box img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        
+        .dl-icon-btn {
+            position: absolute; bottom: 8px; right: 8px;
+            width: 32px; height: 32px;
+            background: var(--primary); color: white;
+            border-radius: 50%;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 1.1rem; cursor: pointer;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.4);
+            transition: transform 0.2s; z-index: 10;
+        }
+        .dl-icon-btn:hover { transform: scale(1.1); }
+        .dl-icon-btn:active { transform: scale(0.9); }
+
+        .sticker-name { text-align: center; color: var(--text-sub); font-size: 0.85rem; font-family: monospace; }
+
+        .tags-row { display: flex; justify-content: center; gap: 8px; }
+        .tag-btn {
+            border: 1px solid var(--border); background: var(--input-bg); color: var(--text-sub);
+            padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; cursor: pointer;
+            transition: 0.2s; font-weight: bold;
+        }
+        .tag-btn:hover { border-color: var(--text-main); color: var(--text-main); }
+        .tag-btn.active-main { background: var(--main-color); border-color: var(--main-color); color: white; }
+        .tag-btn.active-tab { background: var(--tab-color); border-color: var(--tab-color); color: white; }
+
+        /* 匯出設定區 */
+        .export-bar { 
+            background: var(--panel-bg); border: 1px solid var(--border); 
+            padding: 15px; border-radius: 12px; margin-bottom: 20px; 
+            display: flex; gap: 15px; flex-wrap: wrap; align-items: stretch;
+        }
+        .export-group-box {
+            background: var(--group-bg); border: 1px solid var(--border);
+            border-radius: 8px; padding: 10px 15px;
+            display: flex; flex-direction: column; justify-content: center;
+        }
+        .export-group-box label { font-size: 0.85rem; color: var(--primary); margin-bottom: 8px; font-weight: bold; }
+        .export-label-row { display: flex; align-items: center; margin-bottom: 8px; }
+        .export-label-text { font-size: 0.85rem; color: var(--primary); font-weight: bold; }
+
+        .bg-toggles { display: flex; gap: 8px; justify-content: flex-end; margin-bottom: 10px; }
+        .bg-toggle-btn { width: 24px; height: 24px; border-radius: 50%; cursor: pointer; border: 2px solid #555; transition: 0.2s; }
+        .bg-toggle-btn:hover { transform: scale(1.1); }
+        .bg-toggle-btn.active { border-color: var(--primary); transform: scale(1.1); box-shadow: 0 0 5px var(--primary); }
+
+        .status-bar { padding: 10px; border-radius: 8px; font-size: 0.9rem; background: #e3f2fd; color: #0d47a1; margin-top: 10px; display: flex; align-items: center; gap: 8px; }
+        .status-error { background: #ffebee; color: #c62828; }
+        .status-success { background: #e8f5e9; color: #2e7d32; }
+
+        #manualLoad { display: none; margin-top: 10px; padding: 10px; border: 1px solid #fab1a0; background: #fff5f5; border-radius: 8px; font-size: 0.9rem; color: #333; }
+        
+        .footer { text-align: center; margin-top: 40px; color: var(--text-sub); font-size: 0.85rem; border-top: 1px solid var(--border); padding-top: 20px; }
+
+        /* Modals */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.95); animation: fadeIn 0.3s; }
+        .modal-content { margin: auto; display: block; max-width: 90%; max-height: 90vh; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); border-radius: 8px; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        .modal-close { position: absolute; top: 20px; right: 35px; color: #fff; font-size: 40px; font-weight: bold; cursor: pointer; }
+        
+        .help-modal-content {
+            background: var(--card-bg); color: var(--text-main);
+            padding: 25px; border-radius: 12px; width: 320px;
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: left; border: 1px solid var(--border);
+        }
+        .help-title { color: var(--primary); font-size: 1.1rem; font-weight: bold; margin-bottom: 12px; }
+        .help-text { font-size: 1rem; line-height: 1.6; color: var(--text-main); white-space: pre-wrap; }
+
+        @keyframes fadeIn { from {opacity: 0} to {opacity: 1} }
+    </style>
+</head>
+<body class="">
+
+<div class="header">
+    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V19 AI加強版</span></h1>
+    <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️ 切換明亮</button>
+</div>
+
+<div class="container">
+    <div class="card sticky-sidebar">
+        
+        <div class="section">
+            <span class="section-title">1. 上傳圖片</span>
+            <div class="upload-box" id="dropZone" onclick="document.getElementById('imgInput').click()">
+                <span id="fileName">📷 點擊選取或拖放圖片</span>
+                <input type="file" id="imgInput" accept="image/*" style="display:none">
+            </div>
+            <div id="origPreviewBox">
+                <img id="origPreviewImg" src="" alt="原圖">
+            </div>
+        </div>
+
+        <div class="section">
+            <span class="section-title">
+                2. 裁切分割
+                <span class="info-btn" onclick="showHelp('crop')">?</span>
+            </span>
+            <div class="row">
+                <div class="col">
+                    <span class="label-text">垂直(列)</span>
+                    <input type="number" id="rows" value="4" min="1" class="input-mini" onchange="resetSelections()">
+                </div>
+                <div class="col">
+                    <span class="label-text">水平(行)</span>
+                    <input type="number" id="cols" value="5" min="1" class="input-mini" onchange="resetSelections()">
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <span class="section-title">3. 去背與後製</span>
+            <div class="mode-tabs">
+                <div class="mode-tab" onclick="switchMode('ai')" id="tab-ai">🤖 AI 模式</div>
+                <div class="mode-tab active" onclick="switchMode('color')" id="tab-color">🎨 顏色模式</div>
+            </div>
+
+            <div id="content-ai" class="tab-content">
+                <div class="row">
+                    <div class="label-group"><span class="label-text">模型</span></div>
+                    <select id="aiModelSel" style="flex:1;">
+                        <option value="u2netp">🚀 輕量版 (快速 / 4MB)</option>
+                        <option value="rmbg14">🔥 RMBG-1.4 (SOTA / 176MB)</option>
+                        <option value="u2net">💪 U2Net (舊版高畫質 / 176MB)</option>
+                    </select>
+                </div>
+                <div id="status" class="status-bar">🔄 等待操作...</div>
+                
+                <div id="manualLoad">
+                    <strong>⚠️ 自動載入失敗</strong>
+                    <div style="margin-top:5px;">
+                        <button class="btn btn-outline" style="font-size:0.8rem; padding:4px 8px;" onclick="document.getElementById('modelInput').click()">📂 載入 .onnx</button>
+                    </div>
+                    <input type="file" id="modelInput" accept=".onnx" style="display:none">
+                </div>
+
+                <div class="row" style="margin-top:8px;">
+                    <div class="label-group"><span class="label-text">靈敏度</span></div>
+                    <input type="range" id="aiThreshold" min="0.05" max="0.95" step="0.05" value="0.2">
+                    <span class="input-mini" id="val-aiThreshold" style="text-align:right;">0.2</span>
+                </div>
+            </div>
+
+            <div id="content-color" class="tab-content active">
+                <div class="row">
+                    <input type="color" id="targetColor" value="#FFFFFF" style="flex:1;">
+                    <button class="btn btn-outline" style="flex:1; padding:5px; border:1px solid var(--border); color:var(--text-main); background:var(--input-bg);" onclick="setColor('#FFFFFF')">白</button>
+                    <button class="btn btn-outline" style="flex:1; padding:5px; border:1px solid var(--border); color:var(--text-main); background:var(--input-bg);" onclick="setColor('#00FF00')">綠</button>
+                </div>
+                <div class="row">
+                    <div class="label-group">
+                        <span class="label-text">寬容度</span>
+                        <span class="info-btn" onclick="showHelp('tolerance')">?</span>
+                    </div>
+                    <input type="range" id="tolerance" min="0" max="100" value="40">
+                    <span class="input-mini" id="val-tolerance" style="text-align:right;">40%</span>
+                </div>
+            </div>
+
+            <hr style="border:0; border-top:1px dashed var(--border); margin:12px 0;">
+
+            <div class="row">
+                <div class="label-group">
+                    <span class="label-text">柔化</span>
+                    <span class="info-btn" onclick="showHelp('smoothness')">?</span>
+                </div>
+                <input type="range" id="smoothness" min="0" max="10" step="0.5" value="0">
+                <span class="input-mini" id="val-smoothness" style="text-align:right;">0</span>
+            </div>
+            <div class="row">
+                <div class="label-group">
+                    <span class="label-text">除溢色</span>
+                    <span class="info-btn" onclick="showHelp('despill')">?</span>
+                </div>
+                <input type="range" id="despill" min="0" max="10" step="0.5" value="0">
+                <span class="input-mini" id="val-despill" style="text-align:right;">0</span>
+            </div>
+            <div class="row">
+                <div class="label-group">
+                    <span class="label-text">描邊</span>
+                    <span class="info-btn" onclick="showHelp('contour')">?</span>
+                </div>
+                <input type="range" id="contour" min="0" max="20" step="1" value="5">
+                <span class="input-mini" id="val-contour" style="text-align:right;">5</span>
+            </div>
+            <div class="row">
+                <div class="label-group">
+                    <span class="label-text">陰影</span>
+                    <span class="info-btn" onclick="showHelp('shadow')">?</span>
+                </div>
+                <input type="range" id="shadowBlur" min="0" max="20" step="1" value="0">
+                <span class="input-mini" id="val-shadowBlur" style="text-align:right;">0</span>
+            </div>
+            
+            <div class="row">
+                <div class="label-group">
+                    <span class="label-text">留白</span>
+                    <span class="info-btn" onclick="showHelp('padding')">?</span>
+                </div>
+                <input type="range" id="padding" min="0" max="20" step="1" value="0">
+                <span class="input-mini" id="val-padding" style="text-align:right;">0%</span>
+            </div>
+        </div>
+
+        <button id="runBtn" class="btn btn-green" disabled>請先上傳圖片</button>
+    </div>
+
+    <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h2>🖼️ 匯出與預覽</h2>
+            <div class="bg-toggles">
+                <div class="bg-toggle-btn active" style="background:#222;" onclick="setPreviewBg(this, 'dark')" title="暗黑底"></div>
+                <div class="bg-toggle-btn" style="background:#849ebf;" onclick="setPreviewBg(this, 'line')" title="LINE 聊天室"></div>
+                <div class="bg-toggle-btn" style="background:#ffffff;" onclick="setPreviewBg(this, 'light')" title="白底"></div>
+            </div>
+        </div>
+        
+        <div class="export-bar">
+            <div class="export-group-box" style="min-width: 100px; flex: 0 0 auto;">
+                <div class="export-label-row">
+                    <span class="export-label-text">起始檔名</span>
+                    <span class="info-btn" onclick="showHelp('startNum')">?</span>
+                </div>
+                <input type="text" id="startNum" value="001" class="input-short" placeholder="001">
+            </div>
+            
+            <div class="export-group-box" style="flex:1;">
+                <div class="export-label-row">
+                    <span class="export-label-text">尺寸模式</span>
+                    <span class="info-btn" onclick="showHelp('sizeMode')">?</span>
+                </div>
+                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                    <select id="sizePreset" style="flex:1; min-width:80px;">
+                        <option value="custom">✍️ 自訂</option>
+                        <option value="sticker">😃 貼圖</option>
+                        <option value="emoji">😘 表情</option>
+                    </select>
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <input type="number" id="outW" value="370" class="input-mini">
+                        <span>x</span>
+                        <input type="number" id="outH" value="320" class="input-mini">
+                    </div>
+                </div>
+            </div>
+
+            <div style="display:flex; align-items:center;">
+                <button id="dlBtn" class="btn btn-green" style="height:100%; padding:0 20px; white-space:nowrap;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+                        <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
+                    </svg>
+                    下載全部 ZIP
+                </button>
+            </div>
+        </div>
+
+        <div id="previewContainer">
+            <div style="grid-column:1/-1; text-align:center; color:#666; padding:50px;">
+                請點擊左側「開始製作」
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="footer" id="footerText"></div>
+
+<div id="imageModal" class="modal" onclick="closeModal()">
+    <span class="modal-close">&times;</span>
+    <img class="modal-content" id="modalImg">
+</div>
+
+<div id="helpModal" class="modal" onclick="closeHelp()">
+    <div class="help-modal-content" onclick="event.stopPropagation()">
+        <div class="help-title">💡 功能說明</div>
+        <div id="helpText" class="help-text"></div>
+        <button class="btn btn-green" style="margin-top:20px; width:100%;" onclick="closeHelp()">知道了</button>
+    </div>
+</div>
+
+<script>
+    // --- 定義模型配置 (包含 URL 與 建議輸入尺寸) ---
+    const MODEL_CONFIG = {
+        'u2netp': { 
+            url: 'https://cdn.jsdelivr.net/gh/danielgatis/rembg@master/u2netp.onnx', 
+            size: 320 
+        },
+        'u2net': { 
+            url: 'https://huggingface.co/schyy/u2net-onnx/resolve/main/u2net.onnx', 
+            size: 320 
+        },
+        'rmbg14': { 
+            // 使用 HuggingFace 的 resolve 連結，支援 CORS
+            url: 'https://huggingface.co/briaai/RMBG-1.4/resolve/main/onnx/model.onnx',
+            size: 1024 // RMBG 建議 1024 以達到最佳邊緣效果
+        }
+    };
+    
+    // 設定 ONNX Runtime Web 環境
+    ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/";
+
+    let currentMode = 'color';
+    let session = null;
+    let rawStickers = [];
+    let isDark = true;
+    let selectedMainIdx = -1;
+    let selectedTabIdx = -1;
+    let previewBgClass = 'bg-dark'; // Default
+
+    const HELP_TEXTS = {
+        'crop': '將整張大圖分割成多張小圖。\n例如「垂直4列、水平5行」，就會切成 4x5 = 20 張貼圖。',
+        'tolerance': '決定顏色去背的強度。\n數值越高：去除越多相近色。\n數值越小：只去除完全一樣的顏色。',
+        'smoothness': '讓去背後的邊緣變平滑，消除鋸齒狀，讓貼圖看起來更圓潤自然。',
+        'despill': '消除物體邊緣殘留的背景色（例如綠幕的綠邊或白底的白邊），讓邊緣更乾淨。',
+        'contour': '在圖案周圍加上白框，像貼紙一樣的效果。數值代表白框的粗細 (px)。',
+        'shadow': '在圖案下方加入柔和的陰影，讓貼圖在淺色背景中更立體、更明顯。',
+        'padding': '將圖案稍微縮小 (內縮)，確保描邊或圖案不會貼到畫布最邊緣被切掉。',
+        'startNum': '設定第一張貼圖的檔名編號。\n例如輸入 "001"，下載的檔案就會是 001.png, 002.png...',
+        'sizeMode': '設定下載圖片的解析度。\n• 自訂：自由輸入\n• 貼圖：固定 370x320\n• 表情貼：固定 270x270'
+    };
+
+    const els = {
+        imgIn: document.getElementById('imgInput'),
+        origPrev: document.getElementById('origPreviewImg'),
+        origBox: document.getElementById('origPreviewBox'),
+        dropZone: document.getElementById('dropZone'),
+        runBtn: document.getElementById('runBtn'),
+        preview: document.getElementById('previewContainer'),
+        status: document.getElementById('status'),
+        manual: document.getElementById('manualLoad'),
+        rows: document.getElementById('rows'),
+        cols: document.getElementById('cols'),
+        aiModel: document.getElementById('aiModelSel'),
+        aiThresh: document.getElementById('aiThreshold'),
+        targetColor: document.getElementById('targetColor'),
+        tolerance: document.getElementById('tolerance'),
+        smoothness: document.getElementById('smoothness'),
+        despill: document.getElementById('despill'),
+        contour: document.getElementById('contour'),
+        shadowBlur: document.getElementById('shadowBlur'),
+        padding: document.getElementById('padding'),
+        startNum: document.getElementById('startNum'),
+        outW: document.getElementById('outW'),
+        outH: document.getElementById('outH'),
+        sizePreset: document.getElementById('sizePreset'),
+        dlBtn: document.getElementById('dlBtn'),
+        contentAi: document.getElementById('content-ai'),
+        contentColor: document.getElementById('content-color'),
+        tabAi: document.getElementById('tab-ai'),
+        tabColor: document.getElementById('tab-color'),
+        footer: document.getElementById('footerText'),
+        modal: document.getElementById('imageModal'),
+        modalImg: document.getElementById('modalImg'),
+        helpModal: document.getElementById('helpModal'),
+        helpText: document.getElementById('helpText')
+    };
+
+    const today = new Date().toISOString().slice(0, 10);
+    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V19 (RMBG Integrated) | ${today}`;
+
+    // --- Local Storage: Load Settings ---
+    function loadSettings() {
+        const settings = JSON.parse(localStorage.getItem('stickerToolSettings'));
+        if (settings) {
+            if(settings.rows) els.rows.value = settings.rows;
+            if(settings.cols) els.cols.value = settings.cols;
+            if(settings.contour) els.contour.value = settings.contour;
+            if(settings.tolerance) els.tolerance.value = settings.tolerance;
+            if(settings.padding) els.padding.value = settings.padding;
+            if(settings.shadowBlur) els.shadowBlur.value = settings.shadowBlur;
+            // Update labels
+            updateLabels();
+        }
+    }
+    
+    function saveSettings() {
+        const settings = {
+            rows: els.rows.value,
+            cols: els.cols.value,
+            contour: els.contour.value,
+            tolerance: els.tolerance.value,
+            padding: els.padding.value,
+            shadowBlur: els.shadowBlur.value
+        };
+        localStorage.setItem('stickerToolSettings', JSON.stringify(settings));
+    }
+
+    function updateLabels() {
+        ['aiThreshold', 'tolerance', 'smoothness', 'despill', 'contour', 'shadowBlur', 'padding'].forEach(id => {
+            let val = document.getElementById(id).value;
+            if(id === 'tolerance' || id === 'padding') val += '%';
+            document.getElementById(`val-${id}`).textContent = val;
+        });
+    }
+
+    // UX Functions
+    window.showHelp = (key) => { els.helpText.innerText = HELP_TEXTS[key]; els.helpModal.style.display = "block"; };
+    window.closeHelp = () => { els.helpModal.style.display = "none"; };
+
+    window.setPreviewBg = (btn, mode) => {
+        document.querySelectorAll('.bg-toggle-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        const boxes = document.querySelectorAll('.sticker-img-box');
+        boxes.forEach(box => {
+            box.classList.remove('bg-light', 'bg-line');
+            if (mode === 'light') box.classList.add('bg-light');
+            if (mode === 'line') box.classList.add('bg-line');
+        });
+        previewBgClass = mode === 'light' ? 'bg-light' : (mode === 'line' ? 'bg-line' : '');
+    };
+
+    function updateButtonState() {
+        const hasFile = !!els.imgIn.files[0];
+        if (!hasFile) {
+            els.runBtn.disabled = true;
+            els.runBtn.textContent = "請先上傳圖片";
+            return;
+        }
+        if (currentMode === 'ai') {
+            if (session) {
+                els.runBtn.disabled = false;
+                els.runBtn.textContent = "開始製作 (AI 預覽)";
+            } else {
+                els.runBtn.disabled = true;
+                els.runBtn.textContent = "等待模型載入...";
+            }
+        } else {
+            els.runBtn.disabled = false;
+            els.runBtn.textContent = "開始製作 (顏色模式)";
+        }
+    }
+
+    // Events
+    els.dropZone.addEventListener('dragover', (e) => { e.preventDefault(); els.dropZone.classList.add('dragover'); });
+    els.dropZone.addEventListener('dragleave', () => { els.dropZone.classList.remove('dragover'); });
+    els.dropZone.addEventListener('drop', (e) => {
+        e.preventDefault(); els.dropZone.classList.remove('dragover');
+        if (e.dataTransfer.files[0]) {
+            els.imgIn.files = e.dataTransfer.files;
+            els.imgIn.dispatchEvent(new Event('change'));
+        }
+    });
+
+    els.sizePreset.addEventListener('change', () => {
+        const val = els.sizePreset.value;
+        if (val === 'sticker') {
+            els.outW.value = 370; els.outH.value = 320;
+            els.outW.disabled = true; els.outH.disabled = true;
+        } else if (val === 'emoji') {
+            els.outW.value = 270; els.outH.value = 270;
+            els.outW.disabled = true; els.outH.disabled = true;
+        } else {
+            els.outW.disabled = false; els.outH.disabled = false;
+        }
+    });
+
+    ['aiThreshold', 'tolerance', 'smoothness', 'despill', 'contour', 'shadowBlur', 'padding'].forEach(id => {
+        document.getElementById(id).addEventListener('input', (e) => {
+            updateLabels();
+            saveSettings(); // Auto save
+        });
+    });
+    
+    ['rows', 'cols'].forEach(id => {
+        document.getElementById(id).addEventListener('change', saveSettings);
+    });
+
+    window.toggleTheme = () => {
+        isDark = !isDark;
+        if (isDark) {
+            document.body.classList.remove('light-mode');
+            document.getElementById('themeBtn').textContent = '☀️ 切換明亮';
+        } else {
+            document.body.classList.add('light-mode');
+            document.getElementById('themeBtn').textContent = '🌙 切換暗黑';
+        }
+    };
+
+    window.switchMode = (mode) => {
+        currentMode = mode;
+        els.tabAi.classList.toggle('active', mode === 'ai');
+        els.tabColor.classList.toggle('active', mode === 'color');
+        els.contentAi.classList.toggle('active', mode === 'ai');
+        els.contentColor.classList.toggle('active', mode === 'color');
+        updateButtonState();
+    };
+
+    window.setColor = (hex) => els.targetColor.value = hex;
+
+    window.resetSelections = () => {
+        selectedMainIdx = -1;
+        selectedTabIdx = -1;
+        const allBtns = document.querySelectorAll('.tag-btn');
+        allBtns.forEach(btn => {
+            btn.classList.remove('active-main');
+            btn.classList.remove('active-tab');
+        });
+    };
+
+    // --- AI Model Loading Logic ---
+    async function loadAIModel() {
+        const key = els.aiModel.value;
+        const config = MODEL_CONFIG[key]; // 取得設定
+        
+        els.status.className = 'status-bar';
+        if (key === 'rmbg14' || key === 'u2net') {
+            els.status.textContent = `🔄 下載 ${key} (${config.size}px)... 檔案較大請稍候`;
+        } else {
+            els.status.textContent = `🔄 下載 ${key}...`;
+        }
+        
+        els.manual.style.display = 'none';
+        session = null; 
+        updateButtonState();
+
+        try {
+            // 建立 Session
+            session = await ort.InferenceSession.create(config.url, { executionProviders: ['wasm', 'webgl'] });
+            
+            // 把目前的 config 存到 session 物件上，方便後續調用尺寸
+            session.imgSize = config.size; 
+
+            els.status.className = 'status-bar status-success';
+            els.status.textContent = `✅ ${key} 就緒`;
+            updateButtonState();
+        } catch(e) {
+            console.warn("Error", e);
+            els.status.className = 'status-bar status-error';
+            els.status.textContent = "❌ 下載失敗 (請檢查網路或嘗試手動載入)";
+            els.manual.style.display = 'block';
+            updateButtonState();
+        }
+    }
+    
+    document.getElementById('modelInput').addEventListener('change', async (e) => {
+        if(!e.target.files[0]) return;
+        try {
+            els.status.textContent = "讀取檔案...";
+            const blobUrl = URL.createObjectURL(e.target.files[0]);
+            session = await ort.InferenceSession.create(blobUrl, { executionProviders: ['wasm', 'webgl'] });
+            
+            // 手動載入預設為 320，若使用者載入 RMBG 可能會效果較差，但不會崩潰
+            session.imgSize = 320; 
+
+            els.status.className = 'status-bar status-success';
+            els.status.textContent = "✅ 模型已載入";
+            els.manual.style.display = 'none';
+            updateButtonState();
+        } catch(err) { alert("模型檔案無效"); }
+    });
+
+    els.aiModel.addEventListener('change', loadAIModel);
+
+    els.imgIn.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if(file) {
+            document.getElementById('fileName').textContent = file.name;
+            els.origPrev.src = URL.createObjectURL(file);
+            els.origBox.style.display = 'block';
+            els.preview.innerHTML = "<div style='grid-column:1/-1;text-align:center;color:#666;padding:50px;'>請點擊左側「開始製作」</div>";
+            rawStickers = [];
+            selectedMainIdx = -1;
+            selectedTabIdx = -1;
+            updateButtonState();
+        }
+    });
+
+    window.setTag = (type, index) => {
+        if (type === 'main') {
+            if (selectedMainIdx === index) selectedMainIdx = -1;
+            else selectedMainIdx = index;
+        } else if (type === 'tab') {
+            if (selectedTabIdx === index) selectedTabIdx = -1;
+            else selectedTabIdx = index;
+        }
+        updateTagClasses();
+    };
+
+    function updateTagClasses() {
+        const total = rawStickers.length;
+        for (let i = 0; i < total; i++) {
+            const btnMain = document.getElementById(`btn-main-${i}`);
+            const btnTab = document.getElementById(`btn-tab-${i}`);
+            if (btnMain) {
+                if (i === selectedMainIdx) btnMain.classList.add('active-main');
+                else btnMain.classList.remove('active-main');
+            }
+            if (btnTab) {
+                if (i === selectedTabIdx) btnTab.classList.add('active-tab');
+                else btnTab.classList.remove('active-tab');
+            }
+        }
+    }
+
+    els.runBtn.addEventListener('click', async () => {
+        const file = els.imgIn.files[0];
+        if(!file) return;
+        
+        els.runBtn.disabled = true;
+        els.runBtn.style.cursor = 'wait';
+        els.runBtn.textContent = "🚀 正在處理影像...";
+        els.preview.innerHTML = "<div style='grid-column:1/-1;text-align:center;color:#ccc;'>製作中...請稍候</div>";
+        
+        selectedMainIdx = -1;
+        selectedTabIdx = -1;
+
+        // 小延遲讓 UI 有機會更新
+        setTimeout(async () => {
+            try {
+                const originalImg = await loadImage(URL.createObjectURL(file));
+                
+                let maskCanvas;
+                if(currentMode === 'ai') maskCanvas = await generateAIMask(originalImg);
+                else maskCanvas = generateColorMask(originalImg);
+
+                const smooth = parseFloat(els.smoothness.value);
+                const despill = parseFloat(els.despill.value);
+                if(smooth > 0 || despill > 0) maskCanvas = processMask(maskCanvas, smooth, despill);
+
+                const noBgImg = applyMaskToImage(originalImg, maskCanvas);
+                const rows = parseInt(els.rows.value);
+                const cols = parseInt(els.cols.value);
+                const contour = parseInt(els.contour.value);
+                const padding = parseInt(els.padding.value); 
+                const shadow = parseInt(els.shadowBlur.value);
+
+                rawStickers = await cutAndContour(noBgImg, rows, cols, contour, padding, shadow);
+                renderPreview(rows, cols);
+
+            } catch(e) {
+                console.error(e);
+                alert("錯誤: " + e.message);
+            } finally {
+                updateButtonState();
+                els.runBtn.style.cursor = 'pointer';
+            }
+        }, 50);
+    });
+
+    // --- AI Inference Logic ---
+    async function generateAIMask(img) {
+        // 取得當前模型需要的尺寸 (若無設定則預設 320)
+        const size = session.imgSize || 320; 
+        
+        const cvs = document.createElement('canvas'); 
+        cvs.width = size; 
+        cvs.height = size;
+        const ctx = cvs.getContext('2d');
+        
+        // 保持比例縮放，置中
+        const scale = Math.min(size/img.width, size/img.height);
+        const nw = img.width * scale; 
+        const nh = img.height * scale;
+        const ox = (size - nw) / 2; 
+        const oy = (size - nh) / 2;
+        
+        // 背景填黑 (對於去背模型來說，黑色背景通常比較好處理 padding)
+        ctx.fillStyle = "black"; 
+        ctx.fillRect(0, 0, size, size);
+        
+        // 畫圖 (使用高品質平滑)
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, ox, oy, nw, nh);
+
+        const imgData = ctx.getImageData(0, 0, size, size);
+        const input = new Float32Array(size * size * 3);
+        
+        // 標準化 (Standard ImageNet Normalization)
+        for(let i=0; i<imgData.data.length; i+=4) {
+            input[i/4] = (imgData.data[i]/255 - 0.485)/0.229;
+            input[i/4+size*size] = (imgData.data[i+1]/255 - 0.456)/0.224;
+            input[i/4+2*size*size] = (imgData.data[i+2]/255 - 0.406)/0.225;
+        }
+
+        const tensor = new ort.Tensor('float32', input, [1, 3, size, size]);
+        
+        // 執行推論
+        const res = await session.run({ [session.inputNames[0]]: tensor });
+        const out = res[session.outputNames[0]].data;
+
+        // 處理輸出遮罩
+        const maskCvs = document.createElement('canvas'); 
+        maskCvs.width = size; 
+        maskCvs.height = size;
+        const mCtx = maskCvs.getContext('2d');
+        const mDat = mCtx.createImageData(size, size);
+        
+        // 找出最大值/最小值做正規化 (有些模型輸出範圍不一定是 0-1)
+        let maxVal = -Infinity; 
+        let minVal = Infinity; 
+        for(let v of out) {
+            if(v > maxVal) maxVal = v;
+            if(v < minVal) minVal = v;
+        }
+        
+        // 簡單的 Min-Max Normalization
+        const range = maxVal - minVal;
+        const boost = range > 0 ? (1 / range) : 1;
+        const thresh = parseFloat(els.aiThresh.value);
+
+        for(let i=0; i<out.length; i++) {
+            // 將數值歸一化到 0~1
+            let val = (out[i] - minVal) * boost;
+            
+            // 應用閥值 (Threshold)
+            let a = val > thresh ? 255 : 0; 
+            mDat.data[i*4+3] = a; // 只修改 Alpha 通道
+        }
+        mCtx.putImageData(mDat, 0, 0);
+
+        // 將遮罩放大回原始尺寸
+        const fullMask = document.createElement('canvas'); 
+        fullMask.width = img.width; 
+        fullMask.height = img.height;
+        const fCtx = fullMask.getContext('2d');
+        
+        fCtx.imageSmoothingEnabled = true;
+        fCtx.imageSmoothingQuality = 'high';
+        
+        // 把 maskCvs 中，當初畫圖的區域 (ox, oy, nw, nh) 畫回 fullMask 的 (0, 0, w, h)
+        fCtx.drawImage(maskCvs, ox, oy, nw, nh, 0, 0, img.width, img.height);
+        
+        return fullMask;
+    }
+
+    function generateColorMask(img) {
+        const cvs = document.createElement('canvas'); cvs.width = img.width; cvs.height = img.height;
+        const ctx = cvs.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        const dat = ctx.getImageData(0,0,cvs.width,cvs.height);
+        const d = dat.data;
+        const hex = els.targetColor.value;
+        const tr = parseInt(hex.slice(1,3), 16); const tg = parseInt(hex.slice(3,5), 16); const tb = parseInt(hex.slice(5,7), 16);
+        const tol = parseInt(els.tolerance.value) / 100 * 442;
+
+        for(let i=0; i<d.length; i+=4) {
+            const dist = Math.sqrt((d[i]-tr)**2 + (d[i+1]-tg)**2 + (d[i+2]-tb)**2);
+            d[i+3] = dist < tol ? 0 : 255; 
+        }
+        ctx.putImageData(dat, 0, 0);
+        return cvs;
+    }
+
+    function processMask(mask, smooth, shrink) {
+        const cvs = document.createElement('canvas'); cvs.width = mask.width; cvs.height = mask.height;
+        const ctx = cvs.getContext('2d');
+        if(shrink > 0) {
+            ctx.filter = `blur(${shrink}px)`; ctx.drawImage(mask, 0, 0);
+            const imgData = ctx.getImageData(0,0,cvs.width, cvs.height);
+            const d = imgData.data;
+            for(let i=3; i<d.length; i+=4) d[i] = (d[i] < 150) ? 0 : 255;
+            ctx.putImageData(imgData, 0, 0); ctx.filter = 'none';
+        } else ctx.drawImage(mask, 0, 0);
+
+        if(smooth > 0) {
+            const temp = document.createElement('canvas'); temp.width = cvs.width; temp.height = cvs.height;
+            const tCtx = temp.getContext('2d'); tCtx.drawImage(cvs, 0, 0);
+            ctx.clearRect(0,0,cvs.width,cvs.height);
+            ctx.filter = `blur(${smooth}px)`; ctx.drawImage(temp, 0, 0); ctx.filter = 'none';
+        }
+        return cvs;
+    }
+
+    function applyMaskToImage(img, mask) {
+        const cvs = document.createElement('canvas'); cvs.width = img.width; cvs.height = img.height;
+        const ctx = cvs.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        ctx.globalCompositeOperation = 'destination-in';
+        ctx.drawImage(mask, 0, 0);
+        return cvs;
+    }
+
+    async function cutAndContour(img, rows, cols, contour, paddingPct, shadow) {
+        const w = img.width; const h = img.height;
+        const tileW = Math.floor(w/cols); const tileH = Math.floor(h/rows);
+        const res = [];
+        const cvs = document.createElement('canvas'); const ctx = cvs.getContext('2d');
+
+        for(let r=0; r<rows; r++) {
+            for(let c=0; c<cols; c++) {
+                cvs.width = tileW; cvs.height = tileH;
+                ctx.clearRect(0,0,tileW,tileH);
+                ctx.drawImage(img, c*tileW, r*tileH, tileW, tileH, 0, 0, tileW, tileH);
+                
+                const tImg = await loadImage(cvs.toDataURL());
+                const pad = (paddingPct / 100) * tileW; 
+                const sCvs = document.createElement('canvas'); 
+                const margin = shadow * 2; 
+                sCvs.width = tileW; sCvs.height = tileH; 
+                const sCtx = sCvs.getContext('2d');
+                
+                const drawW = tileW - pad * 2 - contour * 2 - margin;
+                const drawH = tileH - pad * 2 - contour * 2 - margin;
+                const safeW = Math.max(1, drawW);
+                const safeH = Math.max(1, drawH);
+                const dx = (tileW - safeW) / 2;
+                const dy = (tileH - safeH) / 2;
+
+                if(shadow > 0) {
+                    sCtx.save();
+                    sCtx.shadowColor = "rgba(0,0,0,0.5)";
+                    sCtx.shadowBlur = shadow;
+                    sCtx.shadowOffsetX = 2; 
+                    sCtx.shadowOffsetY = 2;
+                    sCtx.drawImage(tImg, dx, dy, safeW, safeH);
+                    sCtx.restore();
+                }
+
+                if(contour > 0) {
+                    const tempCvs = document.createElement('canvas');
+                    tempCvs.width = sCvs.width; tempCvs.height = sCvs.height;
+                    const tCtx = tempCvs.getContext('2d');
+                    
+                    tCtx.drawImage(tImg, dx, dy, safeW, safeH);
+                    tCtx.globalCompositeOperation = 'source-in'; tCtx.fillStyle = 'white'; tCtx.fillRect(0,0,tempCvs.width,tempCvs.height);
+                    
+                    const outlineCvs = document.createElement('canvas'); outlineCvs.width = sCvs.width; outlineCvs.height = sCvs.height;
+                    const oCtx = outlineCvs.getContext('2d');
+                    const steps = 12;
+                    for(let i=0; i<steps; i++) {
+                        const ang = (i/steps)*2*Math.PI;
+                        oCtx.drawImage(tempCvs, Math.cos(ang)*contour, Math.sin(ang)*contour);
+                    }
+                    oCtx.drawImage(tempCvs, 0, 0);
+                    sCtx.drawImage(outlineCvs, 0, 0);
+                }
+                
+                sCtx.drawImage(tImg, dx, dy, safeW, safeH);
+                res.push(sCvs);
+            }
+        }
+        return res;
+    }
+
+    function getFilename(idx) {
+        const str = els.startNum.value.trim();
+        const pad = str.length;
+        const start = parseInt(str) || 1;
+        return String(start + idx).padStart(pad, '0') + '.png';
+    }
+
+    function renderPreview(rows, cols) {
+        els.preview.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+        els.preview.innerHTML = '';
+        rawStickers.forEach((cvs, i) => {
+            const url = resizeToOutput(cvs, 150, 150);
+            const div = document.createElement('div');
+            div.className = 'sticker-card';
+            div.innerHTML = `
+                <div class="sticker-img-box ${previewBgClass}" onclick="viewImage('${url}')">
+                    <img src="${url}">
+                    <div class="dl-icon-btn" onclick="downloadSingle(${i}, event)">⬇</div>
+                </div>
+                <div class="sticker-name" id="name-${i}">${getFilename(i)}</div>
+                <div class="tags-row">
+                    <span class="tag-btn" id="btn-main-${i}" onclick="setTag('main', ${i})">main</span>
+                    <span class="tag-btn" id="btn-tab-${i}" onclick="setTag('tab', ${i})">tab</span>
+                </div>
+            `;
+            els.preview.appendChild(div);
+        });
+    }
+
+    els.startNum.addEventListener('input', () => {
+        rawStickers.forEach((_, i) => {
+            const el = document.getElementById(`name-${i}`);
+            if(el) el.textContent = getFilename(i);
+        });
+    });
+
+    function resizeToOutput(canvas, w, h) {
+        const c = document.createElement('canvas'); c.width = w; c.height = h;
+        const ctx = c.getContext('2d');
+        const scale = Math.min(w/canvas.width, h/canvas.height);
+        const dw = canvas.width*scale; const dh = canvas.height*scale;
+        ctx.drawImage(canvas, (w-dw)/2, (h-dh)/2, dw, dh);
+        return c.toDataURL();
+    }
+
+    els.dlBtn.onclick = () => {
+        const zip = new JSZip();
+        const w = parseInt(els.outW.value) || 370;
+        const h = parseInt(els.outH.value) || 320;
+        const dateStr = new Date().toISOString().slice(0,10).replace(/-/g,'');
+        
+        rawStickers.forEach((cvs, i) => {
+            const url = resizeToOutput(cvs, w, h);
+            zip.file(getFilename(i), url.split(',')[1], {base64:true});
+        });
+
+        if (selectedMainIdx !== -1 && rawStickers[selectedMainIdx]) {
+            const mainUrl = resizeToOutput(rawStickers[selectedMainIdx], 240, 240);
+            zip.file("main.png", mainUrl.split(',')[1], {base64:true});
+        }
+
+        if (selectedTabIdx !== -1 && rawStickers[selectedTabIdx]) {
+            const tabUrl = resizeToOutput(rawStickers[selectedTabIdx], 96, 74);
+            zip.file("tab.png", tabUrl.split(',')[1], {base64:true});
+        }
+
+        zip.generateAsync({type:"blob"}).then(b => saveAs(b, `LineStickers_${dateStr}.zip`));
+    };
+
+    window.downloadSingle = (i, event) => {
+        if(event) event.stopPropagation();
+        const w = parseInt(els.outW.value) || 370;
+        const h = parseInt(els.outH.value) || 320;
+        const url = resizeToOutput(rawStickers[i], w, h);
+        saveAs(dataURLtoBlob(url), getFilename(i));
+    };
+
+    window.viewImage = (url) => {
+        els.modalImg.src = url;
+        els.modal.style.display = "block";
+    };
+    window.closeModal = () => {
+        els.modal.style.display = "none";
+    };
+    
+    document.addEventListener('keydown', (e) => {
+        if (e.key === "Escape") closeModal();
+    });
+
+    function dataURLtoBlob(u) {
+        var arr=u.split(','),m=arr[0].match(/:(.*?);/)[1],b=atob(arr[1]),n=b.length,a=new Uint8Array(n);
+        while(n--)a[n]=b.charCodeAt(n);return new Blob([a],{type:m});
+    }
+    function loadImage(s){return new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.src=s;});}
+    
+    loadAIModel();
+    // Load saved settings
+    loadSettings();
+    updateLabels();
+</script>
+</body>
+</html>

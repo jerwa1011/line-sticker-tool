@@ -3,10 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LINE 貼圖製作大師 (V25-18: 橡皮擦精修版)</title>
+    <title>LINE 貼圖製作大師 (V25-19: AI 智能升級版)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/upng-js/2.1.0/UPNG.min.js"></script>
 
     <style>
         /* --- 配色系統 --- */
@@ -25,6 +28,7 @@
             --shadow: rgba(0,0,0,0.3);
             --group-bg: rgba(255,255,255,0.05);
             --header-hover: #3a3a3a;
+            --accent: #5e60ce; /* AI 功能專用色 */
         }
 
         body.light-mode {
@@ -118,6 +122,19 @@
             font-size: 1.1rem; font-weight: 700; color: var(--text-main); 
             margin-bottom: 15px; display: flex; align-items: center; gap: 8px;
         }
+
+        /* AI 按鈕特效 */
+        .btn-ai {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; border: none; width: 100%; padding: 12px;
+            border-radius: 8px; font-weight: bold; cursor: pointer;
+            box-shadow: 0 4px 15px rgba(118, 75, 162, 0.4);
+            transition: 0.3s; margin-bottom: 15px;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .btn-ai:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(118, 75, 162, 0.6); }
+        .btn-ai:disabled { background: #555; transform: none; box-shadow: none; cursor: wait; }
+        .ai-status { font-size: 0.8rem; color: var(--accent); margin-bottom: 10px; text-align: center; min-height: 1.2em;}
 
         /* 右側原始圖預覽區 */
         .orig-ref-container {
@@ -326,7 +343,7 @@
 <body class="">
 
 <div class="header">
-    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-18 橡皮擦精修版</span></h1>
+    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-19 AI 智能升級版</span></h1>
     <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️ 切換明亮</button>
 </div>
 
@@ -390,11 +407,16 @@
 
             <div id="step-pane-3" class="step-pane">
                 <div class="section-box">
-                    <div class="section-title">🎨 去背與後製</div>
+                    <div class="section-title">✨ AI 去背與後製</div>
                     
+                    <button class="btn-ai" id="aiBtn" onclick="runAIBackgroundRemoval()">
+                        <span>🤖 AI 智能全圖去背</span>
+                    </button>
+                    <div id="aiStatus" class="ai-status"></div>
+
                     <div class="row">
                         <div class="label-group">
-                            <span class="label-text">去背顏色</span>
+                            <span class="label-text">手動補強</span>
                             <span class="info-btn" onclick="showHelp('color')">?</span>
                         </div>
                         <input type="color" id="targetColor" value="#FFFFFF" style="flex:1;">
@@ -568,6 +590,13 @@
                     </div>
                 </div>
             </div>
+            
+            <div class="export-group-box" style="flex: 0 0 auto; display: flex; align-items: center;">
+                <label style="font-size: 0.85rem; cursor: pointer; display: flex; align-items: center;">
+                    <input type="checkbox" id="compressPNG" checked style="margin-right: 5px;">
+                    📉 智能壓縮<br>(防止退件)
+                </label>
+            </div>
 
             <div style="display:flex; align-items:center;">
                 <button id="dlBtn" class="btn btn-green" style="height:100%; padding:0 20px;">下載全部 ZIP</button>
@@ -649,6 +678,7 @@
     let isErasing = false;
     let isDrawing = false;
     let tempMaskCanvas = null; // 暫存橡皮擦遮罩
+    let aiProcessed = false; // 標記是否已使用 AI 處理
 
     const els = {
         imgIn: document.getElementById('imgInput'),
@@ -679,6 +709,7 @@
         outH: document.getElementById('outH'),
         sizePreset: document.getElementById('sizePreset'),
         dlBtn: document.getElementById('dlBtn'),
+        compressPNG: document.getElementById('compressPNG'),
         footer: document.getElementById('footerText'),
         modal: document.getElementById('imageModal'),
         modalImg: document.getElementById('modalImg'),
@@ -690,7 +721,9 @@
         editModal: document.getElementById('editModal'),
         editCanvas: document.getElementById('editCanvas'),
         eraserBtn: document.getElementById('eraserBtn'),
-        eraserSize: document.getElementById('eraserSize')
+        eraserSize: document.getElementById('eraserSize'),
+        aiBtn: document.getElementById('aiBtn'),
+        aiStatus: document.getElementById('aiStatus')
     };
 
     const HELP_TEXTS = {
@@ -708,7 +741,80 @@
         'autoCenter': '【開啟】自動偵測內容並置中放大。\n【關閉】保留原始裁切位置。'
     };
 
-    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-18 | ${new Date().toISOString().slice(0, 10)}`;
+    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-19 (AI Edition) | ${new Date().toISOString().slice(0, 10)}`;
+
+    // --- AI 去背功能核心 ---
+    async function runAIBackgroundRemoval() {
+        if (!currentRawImg) return alert('請先上傳圖片');
+        const confirmMsg = "🤖 AI 去背需要下載模型 (約 50-100MB)，首次執行可能較慢。\n\n建議：\n1. 請確保目前預覽框中的圖片是你想要去背的範圍。\n2. 去背後原始背景將被透明化，你可以繼續進行切割。";
+        if (!confirm(confirmMsg)) return;
+
+        els.aiBtn.disabled = true;
+        els.aiStatus.textContent = "⏳ 初始化 AI 模型中 (請稍候)...";
+
+        try {
+            // 動態載入 imgly 庫 (使用 CDN 模組)
+            // 這裡使用動態 import 載入 ES Module
+            const { removeBackground } = await import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.3.0/+esm');
+            
+            els.aiStatus.textContent = "🧠 AI 正在分析影像並去背...";
+            
+            // 獲取當前可視 Canvas 內容進行處理
+            const sourceImg = await getSourceImage(); 
+            // 將圖片轉為 Blob 供 AI 處理
+            const blob = await new Promise(resolve => {
+                const c = document.createElement('canvas');
+                c.width = sourceImg.width;
+                c.height = sourceImg.height;
+                c.getContext('2d').drawImage(sourceImg, 0, 0);
+                c.toBlob(resolve, 'image/png');
+            });
+
+            // 執行去背
+            const resultBlob = await removeBackground(blob, {
+                progress: (key, current, total) => {
+                   const pct = Math.round((current/total)*100);
+                   els.aiStatus.textContent = `🚀 AI 處理中: ${key} (${pct}%)`;
+                }
+            });
+
+            els.aiStatus.textContent = "✅ 去背完成！正在更新預覽...";
+            
+            // 將結果轉回 Image 物件並替換 currentRawImg
+            const url = URL.createObjectURL(resultBlob);
+            currentRawImg = await loadImage(url);
+            
+            // 重置位移，因為我們現在是對處理後的圖片操作
+            imgTrans = { x: 0, y: 0, scale: 1.0 };
+            
+            // 標記 AI 已處理，這可以讓我們自動調整某些參數
+            aiProcessed = true;
+            // 自動將容許度設為 0 (因為背景已經透明了，不需要 Chroma Key)
+            els.tolerance.value = 0;
+            updateLabels();
+
+            drawRefAndGrid();
+            els.aiStatus.textContent = "✨ AI 處理完畢！背景已移除。";
+            
+        } catch (error) {
+            console.error(error);
+            els.aiStatus.textContent = "❌ AI 處理失敗，請檢查網路或重試。";
+            alert("AI 處理發生錯誤：" + error.message);
+        } finally {
+            els.aiBtn.disabled = false;
+        }
+    }
+
+    // --- PNG 壓縮核心 (UPNG.js) ---
+    async function compressImage(canvas, quality = 256) {
+        // quality: 0 (Lossless) or number of colors (e.g., 256 for 8-bit)
+        const ctx = canvas.getContext('2d');
+        const d = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        // 轉為 PNG ArrayBuffer (UPNG.encode(rgba buffer, w, h, cnum, [dels]))
+        // cnum = 0 為無損，256 為 8-bit 索引色 (檔案大幅縮小)
+        const pngBuffer = UPNG.encode([d.data.buffer], canvas.width, canvas.height, quality);
+        return pngBuffer;
+    }
 
     window.changeStep = (delta) => {
         const newStep = currentStep + delta;
@@ -950,6 +1056,10 @@
             els.preview.innerHTML = "<div style='grid-column:1/-1;text-align:center;color:#666;padding:50px;'>請點擊第3步的「開始製作」</div>";
             rawStickers = [];
             stickerOverrides = {};
+            aiProcessed = false;
+            els.aiStatus.textContent = "";
+            els.tolerance.value = 40; // Reset
+            updateLabels();
             els.runBtn.disabled = false;
         }
     });
@@ -1014,7 +1124,17 @@
         
         const tileImg = await loadImage(cvs.toDataURL());
         
-        let mask = generateColorMask(tileImg, settings.targetColor, settings.tolerance);
+        let mask;
+        // 如果已經 AI 去背，則不需要顏色遮罩，直接取 Alpha
+        if (aiProcessed && settings.tolerance === 0) {
+            // 直接使用圖片本身的透明度，不進行 Color Keying
+            const mCvs = document.createElement('canvas'); mCvs.width = tileW; mCvs.height = tileH;
+            mCvs.getContext('2d').drawImage(tileImg, 0, 0);
+            mask = mCvs;
+        } else {
+             mask = generateColorMask(tileImg, settings.targetColor, settings.tolerance);
+        }
+
         if (settings.shrink > 0) mask = applyShrink(mask, settings.shrink);
         if (settings.smoothness > 0) mask = applySmooth(mask, settings.smoothness);
         let noBgImg = applyMaskToImage(tileImg, mask);
@@ -1390,7 +1510,7 @@
         const isEmojiMode = els.sizePreset.value === 'emoji';
 
         rawStickers.forEach((cvs, i) => {
-            const url = resizeToOutput(cvs, 150, 150);
+            const url = resizeToOutput(cvs, 150, 150).toDataURL();
             const div = document.createElement('div');
             div.className = 'sticker-card';
             const mainClass = isEmojiMode ? 'tag-btn disabled' : 'tag-btn';
@@ -1439,37 +1559,65 @@
         const dw = canvas.width*scale;
         const dh = canvas.height*scale;
         ctx.drawImage(canvas, (w-dw)/2, (h-dh)/2, dw, dh);
-        return c.toDataURL();
+        return c; // Return canvas for processing
     }
 
-    els.dlBtn.onclick = () => {
+    els.dlBtn.onclick = async () => {
         const zip = new JSZip();
         const w = parseInt(els.outW.value) || 370;
         const h = parseInt(els.outH.value) || 320;
         const dateStr = new Date().toISOString().slice(0,10).replace(/-/g,'');
+        const isCompress = els.compressPNG.checked;
         
-        rawStickers.forEach((cvs, i) => {
-            const url = resizeToOutput(cvs, w, h);
-            zip.file(getFilename(i), url.split(',')[1], {base64:true});
-        });
+        els.dlBtn.textContent = "📦 打包中...";
+        els.dlBtn.disabled = true;
+
+        for (let i = 0; i < rawStickers.length; i++) {
+            const cvs = rawStickers[i];
+            const outCvs = resizeToOutput(cvs, w, h);
+            
+            if (isCompress) {
+                // 使用 UPNG 壓縮 (256色, 8-bit)
+                const pngBuffer = await compressImage(outCvs, 256);
+                zip.file(getFilename(i), pngBuffer);
+            } else {
+                const url = outCvs.toDataURL();
+                zip.file(getFilename(i), url.split(',')[1], {base64:true});
+            }
+        }
         
         if (selectedMainIdx !== -1 && rawStickers[selectedMainIdx]) {
-            const mainUrl = resizeToOutput(rawStickers[selectedMainIdx], 240, 240);
-            zip.file("main.png", mainUrl.split(',')[1], {base64:true});
+            const mainCvs = resizeToOutput(rawStickers[selectedMainIdx], 240, 240);
+            if(isCompress) zip.file("main.png", await compressImage(mainCvs, 256));
+            else zip.file("main.png", mainCvs.toDataURL().split(',')[1], {base64:true});
         }
         if (selectedTabIdx !== -1 && rawStickers[selectedTabIdx]) {
-            const tabUrl = resizeToOutput(rawStickers[selectedTabIdx], 96, 74);
-            zip.file("tab.png", tabUrl.split(',')[1], {base64:true});
+            const tabCvs = resizeToOutput(rawStickers[selectedTabIdx], 96, 74);
+            if(isCompress) zip.file("tab.png", await compressImage(tabCvs, 256));
+            else zip.file("tab.png", tabCvs.toDataURL().split(',')[1], {base64:true});
         }
-        zip.generateAsync({type:"blob"}).then(b => saveAs(b, `LineStickers_${dateStr}.zip`));
+        
+        zip.generateAsync({type:"blob"}).then(b => {
+            saveAs(b, `LineStickers_${dateStr}.zip`);
+            els.dlBtn.textContent = "下載全部 ZIP";
+            els.dlBtn.disabled = false;
+        });
     };
 
-    window.downloadSingle = (i, event) => {
+    window.downloadSingle = async (i, event) => {
         if(event) event.stopPropagation();
         const w = parseInt(els.outW.value) || 370;
         const h = parseInt(els.outH.value) || 320;
-        const url = resizeToOutput(rawStickers[i], w, h);
-        saveAs(dataURLtoBlob(url), getFilename(i));
+        const outCvs = resizeToOutput(rawStickers[i], w, h);
+        const isCompress = els.compressPNG.checked;
+
+        if (isCompress) {
+            const pngBuffer = await compressImage(outCvs, 256);
+            saveAs(new Blob([pngBuffer], {type: "image/png"}), getFilename(i));
+        } else {
+            const url = outCvs.toDataURL();
+            saveAs(dataURLtoBlob(url), getFilename(i));
+        }
     };
     
     window.viewImage = (url) => {

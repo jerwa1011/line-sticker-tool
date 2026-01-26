@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LINE 貼圖製作大師 (V25-16: 緊湊欄位版)</title>
+    <title>LINE 貼圖製作大師 (V25-17: 單張精修版)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -233,7 +233,7 @@
         .theme-btn { background: transparent; border: 1px solid var(--border); color: var(--text-main); padding: 5px 12px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; font-weight: 500; }
 
         #previewContainer { background: var(--preview-bg); padding: 20px; border-radius: 12px; min-height: 400px; display: grid; gap: 15px; align-content: start; border: 1px solid var(--border); }
-        .sticker-card { display: flex; flex-direction: column; gap: 8px; }
+        .sticker-card { display: flex; flex-direction: column; gap: 8px; position: relative; }
         .sticker-img-box {
             position: relative; width: 100%; aspect-ratio: 1; border: 1px solid #444; border-radius: 10px;
             display: flex; align-items: center; justify-content: center; overflow: hidden;
@@ -253,6 +253,15 @@
             background: var(--primary); color: white; border-radius: 50%; display: flex; justify-content: center; align-items: center;
             font-size: 1rem; cursor: pointer; box-shadow: 0 3px 8px rgba(0,0,0,0.4); z-index: 10;
         }
+        
+        /* 編輯按鈕樣式 */
+        .edit-icon-btn {
+            position: absolute; top: 8px; right: 8px; width: 28px; height: 28px;
+            background: #444; color: white; border-radius: 50%; display: flex; justify-content: center; align-items: center;
+            font-size: 0.9rem; cursor: pointer; box-shadow: 0 3px 8px rgba(0,0,0,0.4); z-index: 10;
+            border: 1px solid #666;
+        }
+        .edit-icon-btn:hover { background: var(--header-hover); }
 
         .sticker-name { text-align: center; color: var(--text-sub); font-size: 0.8rem; font-family: monospace; }
         .tags-row { display: flex; justify-content: center; gap: 6px; }
@@ -290,6 +299,18 @@
         .help-modal-content { background: var(--card-bg); color: var(--text-main); padding: 20px; border-radius: 12px; width: 300px; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); border: 1px solid var(--border); }
         .help-text { font-size: 0.95rem; line-height: 1.5; color: var(--text-main); white-space: pre-wrap; }
 
+        /* 單張編輯 Modal 樣式 */
+        .edit-modal-content {
+            background: var(--card-bg); width: 400px; max-width: 90%; margin: 50px auto; padding: 20px; border-radius: 12px; position: relative;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid var(--border);
+        }
+        .edit-preview-box {
+            width: 100%; height: 250px; background-image: linear-gradient(45deg, #333 25%, transparent 25%), linear-gradient(-45deg, #333 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #333 75%), linear-gradient(-45deg, transparent 75%, #333 75%);
+            background-size: 20px 20px; background-color: #222; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 20px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .edit-preview-box canvas { max-width: 100%; max-height: 100%; object-fit: contain; }
+
         @keyframes fadeIn { from {opacity: 0} to {opacity: 1} }
         @keyframes slideDown { from {opacity:0; transform: translateY(-5px);} to {opacity:1; transform: translateY(0);} }
     </style>
@@ -297,7 +318,7 @@
 <body class="">
 
 <div class="header">
-    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-16 緊湊欄位版</span></h1>
+    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-17 單張精修版</span></h1>
     <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️ 切換明亮</button>
 </div>
 
@@ -561,8 +582,44 @@
     </div>
 </div>
 
+<div id="editModal" class="modal">
+    <div class="edit-modal-content">
+        <h3 style="margin-top:0;">✏️ 單張微調 (Sticker #<span id="editIdx"></span>)</h3>
+        <div class="edit-preview-box">
+            <canvas id="editCanvas"></canvas>
+        </div>
+        
+        <div class="row">
+            <div class="label-group"><span class="label-text">寬容度</span></div>
+            <input type="range" id="e_tolerance" min="0" max="100">
+            <span class="input-mini" id="v_e_tolerance"></span>
+        </div>
+        <div class="row">
+            <div class="label-group"><span class="label-text">柔化</span></div>
+            <input type="range" id="e_smoothness" min="0" max="10" step="0.5">
+            <span class="input-mini" id="v_e_smoothness"></span>
+        </div>
+        <div class="row">
+            <div class="label-group"><span class="label-text">邊緣內縮</span></div>
+            <input type="range" id="e_shrink" min="0" max="10" step="0.5">
+            <span class="input-mini" id="v_e_shrink"></span>
+        </div>
+        <div class="row">
+            <div class="label-group"><span class="label-text">邊緣淨化</span></div>
+            <input type="range" id="e_defringe" min="0" max="20" step="1">
+            <span class="input-mini" id="v_e_defringe"></span>
+        </div>
+
+        <div style="display:flex; gap:10px; margin-top:20px;">
+            <button class="btn btn-secondary" onclick="closeEditModal()">取消</button>
+            <button class="btn btn-green" onclick="saveEdit()">✅ 保存修改</button>
+        </div>
+    </div>
+</div>
+
 <script>
     let rawStickers = [];
+    let stickerOverrides = {}; // 儲存單張設定
     let isDark = true;
     let selectedMainIdx = -1, selectedTabIdx = -1;
     let previewBgClass = 'bg-dark';
@@ -570,6 +627,7 @@
     let isRefExpanded = false;
     let imgTrans = { x: 0, y: 0, scale: 1.0 };
     let currentRawImg = null; 
+    let currentEditIdx = -1; // 當前編輯的索引
 
     const els = {
         imgIn: document.getElementById('imgInput'),
@@ -607,7 +665,9 @@
         helpText: document.getElementById('helpText'),
         autoCenter: document.getElementById('autoCenter'),
         showGrid: document.getElementById('showGrid'),
-        microMode: document.getElementById('microMode')
+        microMode: document.getElementById('microMode'),
+        editModal: document.getElementById('editModal'),
+        editCanvas: document.getElementById('editCanvas')
     };
 
     const HELP_TEXTS = {
@@ -625,7 +685,7 @@
         'autoCenter': '【開啟】自動偵測內容並置中放大。\n【關閉】保留原始裁切位置。'
     };
 
-    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-16 | ${new Date().toISOString().slice(0, 10)}`;
+    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-17 | ${new Date().toISOString().slice(0, 10)}`;
 
     window.changeStep = (delta) => {
         const newStep = currentStep + delta;
@@ -781,7 +841,25 @@
             if(id === 'tolerance' || id === 'padding' || id === 'shadowOpacity') val += '%';
             document.getElementById(`val-${id}`).textContent = val;
         });
+        
+        // 更新 Modal 內的 Label
+        ['e_tolerance', 'e_smoothness', 'e_shrink', 'e_defringe'].forEach(id => {
+            const el = document.getElementById(id);
+            if(el) {
+                let val = el.value;
+                if(id === 'e_tolerance') val += '%';
+                document.getElementById(`v_${id}`).textContent = val;
+            }
+        });
     }
+
+    // Modal Events
+    ['e_tolerance', 'e_smoothness', 'e_shrink', 'e_defringe'].forEach(id => {
+        document.getElementById(id).addEventListener('input', () => {
+            updateLabels();
+            updateEditPreview(); // 即時更新預覽
+        });
+    });
 
     function loadSettings() {
         const s = JSON.parse(localStorage.getItem('stickerToolSettings'));
@@ -855,57 +933,57 @@
             els.refContainer.classList.remove('collapsed');
             els.preview.innerHTML = "<div style='grid-column:1/-1;text-align:center;color:#666;padding:50px;'>請點擊第3步的「開始製作」</div>";
             rawStickers = [];
+            stickerOverrides = {}; // 清空設定
             els.runBtn.disabled = false;
         }
     });
+
+    // 取得當前的影像 (已變形)
+    async function getSourceImage() {
+        const virtualCvs = document.createElement('canvas');
+        virtualCvs.width = currentRawImg.width;
+        virtualCvs.height = currentRawImg.height;
+        const vCtx = virtualCvs.getContext('2d');
+        vCtx.drawImage(
+            currentRawImg, 
+            imgTrans.x, 
+            imgTrans.y, 
+            currentRawImg.width * imgTrans.scale, 
+            currentRawImg.height * imgTrans.scale
+        );
+        return await loadImage(virtualCvs.toDataURL());
+    }
 
     els.runBtn.addEventListener('click', async () => {
         if(!currentRawImg) { alert("請先在第一步上傳圖片！"); window.changeStep(1-currentStep); return; }
         els.runBtn.disabled = true; els.runBtn.textContent = "🚀 處理中...";
         els.preview.innerHTML = "<div style='grid-column:1/-1;text-align:center;color:#ccc;'>製作中...</div>";
+        stickerOverrides = {}; // 重置單張設定
+        
         setTimeout(async () => {
             try {
-                const virtualCvs = document.createElement('canvas');
-                virtualCvs.width = currentRawImg.width;
-                virtualCvs.height = currentRawImg.height;
-                const vCtx = virtualCvs.getContext('2d');
-                
-                vCtx.drawImage(
-                    currentRawImg, 
-                    imgTrans.x, 
-                    imgTrans.y, 
-                    currentRawImg.width * imgTrans.scale, 
-                    currentRawImg.height * imgTrans.scale
-                );
-                
-                const sourceImg = await loadImage(virtualCvs.toDataURL());
-                let mask = generateColorMask(sourceImg);
-                
-                const shrinkVal = parseFloat(els.shrink.value);
-                if (shrinkVal > 0) mask = applyShrink(mask, shrinkVal);
+                const sourceImg = await getSourceImage();
+                const globalSettings = {
+                    contour: parseInt(els.contour.value),
+                    contourColor: els.contourColor.value,
+                    padding: parseInt(els.padding.value),
+                    shadowBlur: parseInt(els.shadowBlur.value),
+                    shadowDist: parseInt(els.shadowDist.value),
+                    shadowOpacity: parseInt(els.shadowOpacity.value) / 100,
+                    shadowColor: els.shadowColor.value,
+                    autoCenter: els.autoCenter.checked,
+                    tolerance: parseInt(els.tolerance.value),
+                    shrink: parseFloat(els.shrink.value),
+                    smoothness: parseFloat(els.smoothness.value),
+                    defringe: parseFloat(els.defringe.value),
+                    targetColor: els.targetColor.value
+                };
 
-                const smoothVal = parseFloat(els.smoothness.value);
-                if (smoothVal > 0) mask = applySmooth(mask, smoothVal);
-
-                let noBgImg = applyMaskToImage(sourceImg, mask);
-
-                const defringeVal = parseFloat(els.defringe.value);
-                if (defringeVal > 0) {
-                    noBgImg = applyDefringe(noBgImg, els.targetColor.value, defringeVal);
-                }
-                
                 rawStickers = await cutAndContour(
-                    noBgImg, 
+                    sourceImg, 
                     parseInt(els.rows.value), 
                     parseInt(els.cols.value), 
-                    parseInt(els.contour.value), 
-                    els.contourColor.value, 
-                    parseInt(els.padding.value), 
-                    parseInt(els.shadowBlur.value),
-                    parseInt(els.shadowDist.value),
-                    parseInt(els.shadowOpacity.value) / 100,
-                    els.shadowColor.value,
-                    els.autoCenter.checked
+                    globalSettings
                 );
                 renderPreview(parseInt(els.rows.value), parseInt(els.cols.value));
             } catch(e) { console.error(e); alert("錯誤: " + e.message); }
@@ -913,228 +991,279 @@
         }, 50);
     });
 
-    function generateColorMask(img) {
-        const cvs = document.createElement('canvas');
-        cvs.width = img.width;
-        cvs.height = img.height;
+    // 核心處理函式 (重構以支援單張處理)
+    async function processStickerTile(sourceImg, r, c, tileW, tileH, settings) {
+        const cvs = document.createElement('canvas'); cvs.width = tileW; cvs.height = tileH;
         const ctx = cvs.getContext('2d');
-        ctx.drawImage(img, 0, 0);
-        const dat = ctx.getImageData(0,0,cvs.width,cvs.height);
-        const d = dat.data;
-        const hex = els.targetColor.value;
-        const tr = parseInt(hex.slice(1,3), 16);
-        const tg = parseInt(hex.slice(3,5), 16);
-        const tb = parseInt(hex.slice(5,7), 16);
-        const tol = parseInt(els.tolerance.value) / 100 * 442;
+        ctx.clearRect(0,0,tileW,tileH);
+        ctx.drawImage(sourceImg, c*tileW, r*tileH, tileW, tileH, 0, 0, tileW, tileH);
         
-        for(let i=0; i<d.length; i+=4) {
-            const dist = Math.sqrt((d[i]-tr)**2 + (d[i+1]-tg)**2 + (d[i+2]-tb)**2);
-            d[i+3] = dist < tol ? 0 : 255; 
-        }
-        ctx.putImageData(dat, 0, 0);
-        return cvs;
-    }
+        const tileImg = await loadImage(cvs.toDataURL());
+        
+        // 1. 去背
+        let mask = generateColorMask(tileImg, settings.targetColor, settings.tolerance);
+        if (settings.shrink > 0) mask = applyShrink(mask, settings.shrink);
+        if (settings.smoothness > 0) mask = applySmooth(mask, settings.smoothness);
+        let noBgImg = applyMaskToImage(tileImg, mask);
+        if (settings.defringe > 0) noBgImg = applyDefringe(noBgImg, settings.targetColor, settings.defringe);
 
-    function applyShrink(mask, amount) {
-        if (amount <= 0) return mask;
-        const cvs = document.createElement('canvas');
-        cvs.width = mask.width;
-        cvs.height = mask.height;
-        const ctx = cvs.getContext('2d');
-        ctx.drawImage(mask, 0, 0);
-        const srcData = ctx.getImageData(0, 0, cvs.width, cvs.height);
-        const destData = ctx.createImageData(cvs.width, cvs.height);
-        const w = cvs.width;
-        const h = cvs.height;
-        const radius = Math.ceil(amount);
+        // 2. 後製 (描邊/陰影/自動置中)
+        const sCvs = document.createElement('canvas'); sCvs.width = tileW; sCvs.height = tileH; 
+        const sCtx = sCvs.getContext('2d');
         
-        for (let y = 0; y < h; y++) {
-            for (let x = 0; x < w; x++) {
-                let minAlpha = 255;
-                for (let ky = -radius; ky <= radius; ky++) {
-                    for (let kx = -radius; kx <= radius; kx++) {
-                        const nx = x + kx;
-                        const ny = y + ky;
-                        if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
-                            const alpha = srcData.data[(ny * w + nx) * 4 + 3];
-                            if (alpha < minAlpha) minAlpha = alpha;
-                        }
-                    }
-                }
-                const idx = (y * w + x) * 4;
-                destData.data[idx+3] = minAlpha; 
+        const pad = (settings.padding / 100) * tileW; 
+        const margin = settings.shadowBlur * 2 + settings.shadowDist * 2; 
+        const drawW = tileW - pad * 2 - settings.contour * 2 - margin;
+        const drawH = tileH - pad * 2 - settings.contour * 2 - margin;
+        const safeW = Math.max(1, drawW); const safeH = Math.max(1, drawH);
+        const safeX = (tileW - safeW) / 2; const safeY = (tileH - safeH) / 2;
+
+        let finalImg = await loadImage(noBgImg.toDataURL()); // 轉回 Image 物件方便操作
+        let fx = safeX, fy = safeY, fw = safeW, fh = safeH;
+
+        if (settings.autoCenter) {
+            const bbox = getContentBox(finalImg);
+            if (bbox) {
+                const scale = Math.min(safeW / bbox.w, safeH / bbox.h);
+                fw = bbox.w * scale; fh = bbox.h * scale;
+                fx = safeX + (safeW - fw) / 2; fy = safeY + (safeH - fh) / 2;
+                const contentCvs = document.createElement('canvas');
+                contentCvs.width = fw; contentCvs.height = fh;
+                const cCtx = contentCvs.getContext('2d');
+                cCtx.drawImage(finalImg, bbox.x, bbox.y, bbox.w, bbox.h, 0, 0, fw, fh);
+                finalImg = await loadImage(contentCvs.toDataURL());
+            } else { finalImg = null; }
+        } else {
+            const scale = Math.min(safeW / tileW, safeH / tileH);
+            fw = tileW * scale; fh = tileH * scale;
+            fx = safeX + (safeW - fw) / 2; fy = safeY + (safeH - fh) / 2;
+        }
+
+        if (finalImg) {
+            if(settings.shadowBlur > 0 || settings.shadowDist > 0) {
+                sCtx.save(); sCtx.shadowColor = hexToRgba(settings.shadowColor, settings.shadowOpacity);
+                sCtx.shadowBlur = settings.shadowBlur; sCtx.shadowOffsetX = settings.shadowDist; sCtx.shadowOffsetY = settings.shadowDist;
+                sCtx.drawImage(finalImg, fx, fy, fw, fh); sCtx.restore();
             }
-        }
-        ctx.putImageData(destData, 0, 0);
-        return cvs;
-    }
-
-    function applySmooth(mask, smooth) {
-        const cvs = document.createElement('canvas');
-        cvs.width = mask.width;
-        cvs.height = mask.height;
-        const ctx = cvs.getContext('2d');
-        const temp = document.createElement('canvas');
-        temp.width = cvs.width;
-        temp.height = cvs.height;
-        const tCtx = temp.getContext('2d');
-        tCtx.drawImage(mask, 0, 0);
-        ctx.filter = `blur(${smooth}px)`;
-        ctx.drawImage(temp, 0, 0);
-        ctx.filter = 'none';
-        return cvs;
-    }
-
-    function applyMaskToImage(img, mask) {
-        const cvs = document.createElement('canvas');
-        cvs.width = img.width;
-        cvs.height = img.height;
-        const ctx = cvs.getContext('2d');
-        ctx.drawImage(img, 0, 0);
-        ctx.globalCompositeOperation = 'destination-in';
-        ctx.drawImage(mask, 0, 0);
-        return cvs;
-    }
-
-    function applyDefringe(imgCvs, targetHex, strength) {
-        if (strength <= 0) return imgCvs;
-        const ctx = imgCvs.getContext('2d');
-        const w = imgCvs.width;
-        const h = imgCvs.height;
-        const imgData = ctx.getImageData(0, 0, w, h);
-        const d = imgData.data;
-        const tr = parseInt(targetHex.slice(1, 3), 16);
-        const tg = parseInt(targetHex.slice(3, 5), 16);
-        const tb = parseInt(targetHex.slice(5, 7), 16);
-        const power = strength / 5;
-        
-        for (let i = 0; i < d.length; i += 4) {
-            const alpha = d[i + 3];
-            if (alpha > 0) { 
-                const r = d[i], g = d[i + 1], b = d[i + 2];
-                const dist = Math.sqrt((r - tr) ** 2 + (g - tg) ** 2 + (b - tb) ** 2);
-                if (dist < 150) { 
-                    const factor = (1 - dist / 150) * power;
-                    d[i + 3] = Math.max(0, alpha - (alpha * factor * 2));
+            if(settings.contour > 0) {
+                const tempCvs = document.createElement('canvas'); tempCvs.width = sCvs.width; tempCvs.height = sCvs.height;
+                const tCtx = tempCvs.getContext('2d'); tCtx.drawImage(finalImg, fx, fy, fw, fh);
+                tCtx.globalCompositeOperation = 'source-in'; tCtx.fillStyle = settings.contourColor; tCtx.fillRect(0,0,tempCvs.width,tempCvs.height);
+                const outlineCvs = document.createElement('canvas'); outlineCvs.width = sCvs.width; outlineCvs.height = sCvs.height;
+                const oCtx = outlineCvs.getContext('2d'); const steps = 12;
+                for(let i=0; i<steps; i++) {
+                    const ang = (i/steps)*2*Math.PI; oCtx.drawImage(tempCvs, Math.cos(ang)*settings.contour, Math.sin(ang)*settings.contour);
                 }
+                oCtx.drawImage(tempCvs, 0, 0); sCtx.drawImage(outlineCvs, 0, 0);
             }
+            sCtx.drawImage(finalImg, fx, fy, fw, fh);
         }
-        ctx.putImageData(imgData, 0, 0);
-        return imgCvs;
+        return sCvs;
     }
 
-    async function cutAndContour(img, rows, cols, contour, contourColor, paddingPct, shadowBlur, shadowDist, shadowOpac, shadowColor, autoCenter) {
-        const w = img.width;
-        const h = img.height;
-        const tileW = Math.floor(w/cols);
-        const tileH = Math.floor(h/rows);
+    async function cutAndContour(img, rows, cols, globalSettings) {
+        const w = img.width; const h = img.height;
+        const tileW = Math.floor(w/cols); const tileH = Math.floor(h/rows);
         const res = [];
-        const cvs = document.createElement('canvas');
-        const ctx = cvs.getContext('2d');
-
+        
         for(let r=0; r<rows; r++) {
             for(let c=0; c<cols; c++) {
-                cvs.width = tileW;
-                cvs.height = tileH;
-                ctx.clearRect(0,0,tileW,tileH);
-                ctx.drawImage(img, c*tileW, r*tileH, tileW, tileH, 0, 0, tileW, tileH);
-                const tileImg = await loadImage(cvs.toDataURL());
-                
-                const sCvs = document.createElement('canvas');
-                sCvs.width = tileW;
-                sCvs.height = tileH; 
-                const sCtx = sCvs.getContext('2d');
-                const pad = (paddingPct / 100) * tileW; 
-                const margin = shadowBlur * 2 + shadowDist * 2; 
-                
-                const drawW = tileW - pad * 2 - contour * 2 - margin;
-                const drawH = tileH - pad * 2 - contour * 2 - margin;
-                const safeW = Math.max(1, drawW);
-                const safeH = Math.max(1, drawH);
-                const safeX = (tileW - safeW) / 2;
-                const safeY = (tileH - safeH) / 2;
-
-                let finalImg = tileImg;
-                let fx = safeX, fy = safeY, fw = safeW, fh = safeH;
-
-                if (autoCenter) {
-                    const bbox = getContentBox(tileImg);
-                    if (bbox) {
-                        const scale = Math.min(safeW / bbox.w, safeH / bbox.h);
-                        fw = bbox.w * scale;
-                        fh = bbox.h * scale;
-                        fx = safeX + (safeW - fw) / 2;
-                        fy = safeY + (safeH - fh) / 2;
-                        const contentCvs = document.createElement('canvas');
-                        contentCvs.width = fw;
-                        contentCvs.height = fh;
-                        const cCtx = contentCvs.getContext('2d');
-                        cCtx.drawImage(tileImg, bbox.x, bbox.y, bbox.w, bbox.h, 0, 0, fw, fh);
-                        finalImg = await loadImage(contentCvs.toDataURL());
-                    } else { finalImg = null; }
-                } else {
-                    const scale = Math.min(safeW / tileW, safeH / tileH);
-                    fw = tileW * scale;
-                    fh = tileH * scale;
-                    fx = safeX + (safeW - fw) / 2;
-                    fy = safeY + (safeH - fh) / 2;
-                }
-
-                if (finalImg) {
-                    if(shadowBlur > 0 || shadowDist > 0) {
-                        sCtx.save();
-                        sCtx.shadowColor = hexToRgba(shadowColor, shadowOpac);
-                        sCtx.shadowBlur = shadowBlur;
-                        sCtx.shadowOffsetX = shadowDist;
-                        sCtx.shadowOffsetY = shadowDist;
-                        sCtx.drawImage(finalImg, fx, fy, fw, fh); 
-                        sCtx.restore();
-                    }
-                    if(contour > 0) {
-                        const tempCvs = document.createElement('canvas');
-                        tempCvs.width = sCvs.width;
-                        tempCvs.height = sCvs.height;
-                        const tCtx = tempCvs.getContext('2d');
-                        tCtx.drawImage(finalImg, fx, fy, fw, fh);
-                        tCtx.globalCompositeOperation = 'source-in'; 
-                        tCtx.fillStyle = contourColor; 
-                        tCtx.fillRect(0,0,tempCvs.width,tempCvs.height);
-                        const outlineCvs = document.createElement('canvas'); 
-                        outlineCvs.width = sCvs.width;
-                        outlineCvs.height = sCvs.height;
-                        const oCtx = outlineCvs.getContext('2d');
-                        const steps = 12;
-                        for(let i=0; i<steps; i++) {
-                            const ang = (i/steps)*2*Math.PI;
-                            oCtx.drawImage(tempCvs, Math.cos(ang)*contour, Math.sin(ang)*contour);
-                        }
-                        oCtx.drawImage(tempCvs, 0, 0);
-                        sCtx.drawImage(outlineCvs, 0, 0);
-                    }
-                    sCtx.drawImage(finalImg, fx, fy, fw, fh);
-                }
+                const idx = r * cols + c;
+                // 合併設定：如果有 Override 則使用，否則用 Global
+                const localSettings = stickerOverrides[idx] ? { ...globalSettings, ...stickerOverrides[idx] } : globalSettings;
+                const sCvs = await processStickerTile(img, r, c, tileW, tileH, localSettings);
                 res.push(sCvs);
             }
         }
         return res;
     }
 
+    // --- 單張編輯邏輯 ---
+    window.openEditModal = (idx) => {
+        currentEditIdx = idx;
+        const globalSettings = {
+            tolerance: parseInt(els.tolerance.value),
+            smoothness: parseFloat(els.smoothness.value),
+            shrink: parseFloat(els.shrink.value),
+            defringe: parseFloat(els.defringe.value)
+        };
+        // 載入該貼圖的設定 (若無則用全域)
+        const settings = stickerOverrides[idx] ? { ...globalSettings, ...stickerOverrides[idx] } : globalSettings;
+        
+        document.getElementById('editIdx').textContent = idx + 1;
+        document.getElementById('e_tolerance').value = settings.tolerance;
+        document.getElementById('e_smoothness').value = settings.smoothness;
+        document.getElementById('e_shrink').value = settings.shrink;
+        document.getElementById('e_defringe').value = settings.defringe;
+        
+        updateLabels();
+        els.editModal.style.display = 'block';
+        updateEditPreview();
+    };
+
+    window.closeEditModal = () => { els.editModal.style.display = 'none'; };
+
+    async function updateEditPreview() {
+        if(currentEditIdx === -1 || !currentRawImg) return;
+        
+        const sourceImg = await getSourceImage();
+        const rows = parseInt(els.rows.value);
+        const cols = parseInt(els.cols.value);
+        const tileW = Math.floor(sourceImg.width / cols);
+        const tileH = Math.floor(sourceImg.height / rows);
+        const r = Math.floor(currentEditIdx / cols);
+        const c = currentEditIdx % cols;
+
+        // 收集目前 Modal 的設定 + Global 的外觀設定(陰影/描邊等保持一致)
+        const tempSettings = {
+            contour: parseInt(els.contour.value),
+            contourColor: els.contourColor.value,
+            padding: parseInt(els.padding.value),
+            shadowBlur: parseInt(els.shadowBlur.value),
+            shadowDist: parseInt(els.shadowDist.value),
+            shadowOpacity: parseInt(els.shadowOpacity.value) / 100,
+            shadowColor: els.shadowColor.value,
+            autoCenter: els.autoCenter.checked,
+            targetColor: els.targetColor.value,
+            // 這些是正在編輯的：
+            tolerance: parseInt(document.getElementById('e_tolerance').value),
+            smoothness: parseFloat(document.getElementById('e_smoothness').value),
+            shrink: parseFloat(document.getElementById('e_shrink').value),
+            defringe: parseFloat(document.getElementById('e_defringe').value)
+        };
+
+        const resultCvs = await processStickerTile(sourceImg, r, c, tileW, tileH, tempSettings);
+        
+        // 顯示在 Modal Canvas
+        const editCvs = els.editCanvas;
+        editCvs.width = 250; editCvs.height = 250; // 固定預覽大小
+        const ctx = editCvs.getContext('2d');
+        const scale = Math.min(250/resultCvs.width, 250/resultCvs.height);
+        const w = resultCvs.width * scale;
+        const h = resultCvs.height * scale;
+        ctx.clearRect(0,0,250,250);
+        ctx.drawImage(resultCvs, (250-w)/2, (250-h)/2, w, h);
+    }
+
+    window.saveEdit = async () => {
+        stickerOverrides[currentEditIdx] = {
+            tolerance: parseInt(document.getElementById('e_tolerance').value),
+            smoothness: parseFloat(document.getElementById('e_smoothness').value),
+            shrink: parseFloat(document.getElementById('e_shrink').value),
+            defringe: parseFloat(document.getElementById('e_defringe').value)
+        };
+        
+        // 重新生成該張貼圖並更新 rawStickers
+        const sourceImg = await getSourceImage();
+        const rows = parseInt(els.rows.value);
+        const cols = parseInt(els.cols.value);
+        const tileW = Math.floor(sourceImg.width / cols);
+        const tileH = Math.floor(sourceImg.height / rows);
+        const r = Math.floor(currentEditIdx / cols);
+        const c = currentEditIdx % cols;
+        
+        const globalSettings = {
+            contour: parseInt(els.contour.value),
+            contourColor: els.contourColor.value,
+            padding: parseInt(els.padding.value),
+            shadowBlur: parseInt(els.shadowBlur.value),
+            shadowDist: parseInt(els.shadowDist.value),
+            shadowOpacity: parseInt(els.shadowOpacity.value) / 100,
+            shadowColor: els.shadowColor.value,
+            autoCenter: els.autoCenter.checked,
+            targetColor: els.targetColor.value
+        };
+        const settings = { ...globalSettings, ...stickerOverrides[currentEditIdx] };
+        
+        rawStickers[currentEditIdx] = await processStickerTile(sourceImg, r, c, tileW, tileH, settings);
+        
+        closeEditModal();
+        renderPreview(rows, cols); // 更新主列表
+    };
+
+    // Helper Functions
+    function generateColorMask(img, targetHex, toleranceVal) {
+        const cvs = document.createElement('canvas'); cvs.width = img.width; cvs.height = img.height;
+        const ctx = cvs.getContext('2d'); ctx.drawImage(img, 0, 0);
+        const dat = ctx.getImageData(0,0,cvs.width,cvs.height); const d = dat.data;
+        const tr = parseInt(targetHex.slice(1,3), 16); const tg = parseInt(targetHex.slice(3,5), 16); const tb = parseInt(targetHex.slice(5,7), 16);
+        const tol = toleranceVal / 100 * 442;
+        for(let i=0; i<d.length; i+=4) {
+            const dist = Math.sqrt((d[i]-tr)**2 + (d[i+1]-tg)**2 + (d[i+2]-tb)**2);
+            d[i+3] = dist < tol ? 0 : 255; 
+        }
+        ctx.putImageData(dat, 0, 0); return cvs;
+    }
+
+    function applyShrink(mask, amount) {
+        if (amount <= 0) return mask;
+        const cvs = document.createElement('canvas'); cvs.width = mask.width; cvs.height = mask.height;
+        const ctx = cvs.getContext('2d'); ctx.drawImage(mask, 0, 0);
+        const srcData = ctx.getImageData(0, 0, cvs.width, cvs.height);
+        const destData = ctx.createImageData(cvs.width, cvs.height);
+        const w = cvs.width; const h = cvs.height; const radius = Math.ceil(amount);
+        for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+                let minAlpha = 255;
+                for (let ky = -radius; ky <= radius; ky++) {
+                    for (let kx = -radius; kx <= radius; kx++) {
+                        const nx = x + kx; const ny = y + ky;
+                        if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
+                            const alpha = srcData.data[(ny * w + nx) * 4 + 3];
+                            if (alpha < minAlpha) minAlpha = alpha;
+                        }
+                    }
+                }
+                const idx = (y * w + x) * 4; destData.data[idx+3] = minAlpha; 
+            }
+        }
+        ctx.putImageData(destData, 0, 0); return cvs;
+    }
+
+    function applySmooth(mask, smooth) {
+        const cvs = document.createElement('canvas'); cvs.width = mask.width; cvs.height = mask.height;
+        const ctx = cvs.getContext('2d');
+        const temp = document.createElement('canvas'); temp.width = cvs.width; temp.height = cvs.height;
+        const tCtx = temp.getContext('2d'); tCtx.drawImage(mask, 0, 0);
+        ctx.filter = `blur(${smooth}px)`; ctx.drawImage(temp, 0, 0); ctx.filter = 'none';
+        return cvs;
+    }
+
+    function applyMaskToImage(img, mask) {
+        const cvs = document.createElement('canvas'); cvs.width = img.width; cvs.height = img.height;
+        const ctx = cvs.getContext('2d'); ctx.drawImage(img, 0, 0);
+        ctx.globalCompositeOperation = 'destination-in'; ctx.drawImage(mask, 0, 0); return cvs;
+    }
+
+    function applyDefringe(imgCvs, targetHex, strength) {
+        if (strength <= 0) return imgCvs;
+        const ctx = imgCvs.getContext('2d'); const w = imgCvs.width; const h = imgCvs.height;
+        const imgData = ctx.getImageData(0, 0, w, h); const d = imgData.data;
+        const tr = parseInt(targetHex.slice(1, 3), 16); const tg = parseInt(targetHex.slice(3, 5), 16); const tb = parseInt(targetHex.slice(5, 7), 16);
+        const power = strength / 5;
+        for (let i = 0; i < d.length; i += 4) {
+            const alpha = d[i + 3];
+            if (alpha > 0) { 
+                const r = d[i], g = d[i + 1], b = d[i + 2];
+                const dist = Math.sqrt((r - tr) ** 2 + (g - tg) ** 2 + (b - tb) ** 2);
+                if (dist < 150) { 
+                    const factor = (1 - dist / 150) * power; d[i + 3] = Math.max(0, alpha - (alpha * factor * 2));
+                }
+            }
+        }
+        ctx.putImageData(imgData, 0, 0); return imgCvs;
+    }
+
     function hexToRgba(hex, alpha) {
-        const r = parseInt(hex.slice(1,3), 16);
-        const g = parseInt(hex.slice(3,5), 16);
-        const b = parseInt(hex.slice(5,7), 16);
+        const r = parseInt(hex.slice(1,3), 16); const g = parseInt(hex.slice(3,5), 16); const b = parseInt(hex.slice(5,7), 16);
         return `rgba(${r},${g},${b},${alpha})`;
     }
 
     function getContentBox(img) {
-        const cvs = document.createElement('canvas');
-        cvs.width = img.width;
-        cvs.height = img.height;
-        const ctx = cvs.getContext('2d');
-        ctx.drawImage(img, 0, 0);
+        const cvs = document.createElement('canvas'); cvs.width = img.width; cvs.height = img.height;
+        const ctx = cvs.getContext('2d'); ctx.drawImage(img, 0, 0);
         const data = ctx.getImageData(0, 0, cvs.width, cvs.height).data;
         let minX = cvs.width, minY = cvs.height, maxX = 0, maxY = 0, found = false;
-        
         for (let y = 0; y < cvs.height; y++) {
             for (let x = 0; x < cvs.width; x++) {
                 if (data[(y * cvs.width + x) * 4 + 3] > 10) { 
@@ -1157,7 +1286,23 @@
             div.className = 'sticker-card';
             const mainClass = isEmojiMode ? 'tag-btn disabled' : 'tag-btn';
             
-            div.innerHTML = `<div class="sticker-img-box ${previewBgClass}" onclick="viewImage('${url}')"><img src="${url}"><div class="dl-icon-btn" onclick="downloadSingle(${i}, event)">⬇</div></div><div class="sticker-name" id="name-${i}">${getFilename(i)}</div><div class="tags-row"><span class="${mainClass}" id="btn-main-${i}" onclick="setTag('main', ${i})">main</span><span class="tag-btn" id="btn-tab-${i}" onclick="setTag('tab', ${i})">tab</span></div>`;
+            // 是否有修改過
+            const isEdited = stickerOverrides[i] !== undefined;
+            const nameSuffix = isEdited ? ' *' : '';
+            const nameColor = isEdited ? 'color: var(--primary); font-weight:bold;' : '';
+
+            div.innerHTML = `
+                <div class="sticker-img-box ${previewBgClass}" onclick="viewImage('${url}')">
+                    <img src="${url}">
+                    <div class="edit-icon-btn" title="編輯此張貼圖" onclick="openEditModal(${i}); event.stopPropagation();">✏️</div>
+                    <div class="dl-icon-btn" onclick="downloadSingle(${i}, event)">⬇</div>
+                </div>
+                <div class="sticker-name" id="name-${i}" style="${nameColor}">${getFilename(i)}${nameSuffix}</div>
+                <div class="tags-row">
+                    <span class="${mainClass}" id="btn-main-${i}" onclick="setTag('main', ${i})">main</span>
+                    <span class="tag-btn" id="btn-tab-${i}" onclick="setTag('tab', ${i})">tab</span>
+                </div>
+            `;
             els.preview.appendChild(div);
         });
         updateTagClasses();
@@ -1248,7 +1393,6 @@
         document.getElementById('themeBtn').textContent = isDark ? '☀️ 切換明亮' : '🌙 切換暗黑';
     };
     
-    // 初始化呼叫一次以確保尺寸正確
     if (els.sizePreset.value === 'sticker') { els.outW.value = 370; els.outH.value = 320; }
     else if (els.sizePreset.value === 'emoji') { els.outW.value = 270; els.outH.value = 270; }
 

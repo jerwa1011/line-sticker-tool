@@ -10,6 +10,7 @@
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/upng-js/2.1.0/UPNG.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js"></script>
         
     <style>
         /* --- 配色系統 --- */
@@ -743,70 +744,113 @@
 
     els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-19 (AI Edition) | ${new Date().toISOString().slice(0, 10)}`;
 
-// --- AI 去背功能核心 (UMD 全域變數版 - 最穩定) ---
+// --- AI 去背功能核心 (Google MediaPipe 版 - 穩定極速) ---
     async function runAIBackgroundRemoval() {
         if (!currentRawImg) return alert('請先上傳圖片');
 
-        // 1. 檢查核心是否已由 <script> 標籤載入
-        if (typeof imglyBackgroundRemoval === 'undefined') {
-            alert("❌ AI 核心程式無法載入！\n\n可能原因：\n1. 您的網路阻擋了 CDN 連線 (cdn.jsdelivr.net)。\n2. 請嘗試重新整理網頁。\n3. 請檢查是否有安裝擋廣告外掛阻擋了 Script 執行。");
+        // 1. 檢查 Google MediaPipe 是否載入
+        if (typeof SelfieSegmentation === 'undefined') {
+            alert("❌ Google AI 核心尚未載入，請檢查網路連線。");
             return;
         }
 
-        const confirmMsg = "🤖 AI 去背需要下載模型 (約 80MB)。\n\n建議：\n1. 請確保目前預覽框中的圖片是你想要去背的範圍。\n2. 去背後原始背景將被透明化，你可以繼續進行切割。";
+        const confirmMsg = "🤖 Google AI 去背 (極速版)\n\n此模式使用 Google MediaPipe 技術，能快速識別主體並移除背景。\n\n是否開始？";
         if (!confirm(confirmMsg)) return;
 
         els.aiBtn.disabled = true;
-        els.aiStatus.textContent = "⏳ 初始化 AI 引擎...";
+        els.aiStatus.textContent = "⏳ 正在啟動 Google AI 引擎...";
 
         try {
-            els.aiStatus.textContent = "🧠 正在準備圖片...";
-            
-            // 2. 準備圖片 Blob
-            const sourceImg = await getSourceImage(); 
-            const blob = await new Promise(resolve => {
-                const c = document.createElement('canvas');
-                c.width = sourceImg.width;
-                c.height = sourceImg.height;
-                c.getContext('2d').drawImage(sourceImg, 0, 0);
-                c.toBlob(resolve, 'image/png');
+            // 2. 初始化 Google SelfieSegmentation
+            const selfieSegmentation = new SelfieSegmentation({
+                locateFile: (file) => {
+                    return `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`;
+                }
             });
 
-            // 3. 設定 CDN 路徑 (讓它知道去哪裡抓模型檔)
-            const config = {
-                publicPath: 'https://unpkg.com/@imgly/background-removal@1.3.0/dist/',
-                progress: (key, current, total) => {
-                   const pct = total ? Math.round((current/total)*100) : 0;
-                   if (key.includes('model')) {
-                       els.aiStatus.textContent = `📉 下載模型中: ${pct}% (首次執行需稍候)`;
-                   } else {
-                       els.aiStatus.textContent = `🚀 處理中: ${key}`;
-                   }
-                }
-            };
+            selfieSegmentation.setOptions({
+                modelSelection: 1, // 1 = 高精度模式 (Landscape), 0 = 快速模式
+            });
 
-            // 4. 執行去背 (直接呼叫全域物件)
-            els.aiStatus.textContent = "🧠 AI 運算中 (請稍候)...";
-            const resultBlob = await imglyBackgroundRemoval.removeBackground(blob, config);
+            // 3. 定義處理結果的回呼函式
+            const promise = new Promise((resolve) => {
+                selfieSegmentation.onResults((results) => {
+                    resolve(results);
+                });
+            });
 
-            els.aiStatus.textContent = "✅ 去背完成！正在更新預覽...";
+            els.aiStatus.textContent = "🧠 AI 正在分析影像...";
+
+            // 4. 準備圖片並發送給 AI
+            // MediaPipe 需要 HTMLImageElement 或 Canvas
+            const sourceImg = await getSourceImage(); // 這是 Image 物件
             
-            // 5. 更新結果
-            const url = URL.createObjectURL(resultBlob);
+            // 由於 MediaPipe 是非同步的，我們發送後等待 onResults
+            await selfieSegmentation.send({image: sourceImg});
+            
+            // 等待結果
+            const results = await promise;
+
+            els.aiStatus.textContent = "✅ 去背完成！正在合成...";
+
+            // 5. 根據遮罩 (Segmentation Mask) 製作透明圖
+            const w = sourceImg.width;
+            const h = sourceImg.height;
+
+            // 建立暫存 Canvas 繪製遮罩
+            const maskCanvas = document.createElement('canvas');
+            maskCanvas.width = w;
+            maskCanvas.height = h;
+            const maskCtx = maskCanvas.getContext('2d');
+            
+            // 繪製 AI 產生的遮罩 (人像部分為白，背景為黑)
+            maskCtx.drawImage(results.segmentationMask, 0, 0, w, h);
+
+            // 建立最終 Canvas
+            const finalCanvas = document.createElement('canvas');
+            finalCanvas.width = w;
+            finalCanvas.height = h;
+            const finalCtx = finalCanvas.getContext('2d');
+
+            // 步驟 A: 畫上原始圖片
+            finalCtx.drawImage(sourceImg, 0, 0);
+
+            // 步驟 B: 使用 'destination-in' 混合模式
+            // 這會保留 "遮罩有顏色的地方"，移除 "遮罩透明/黑色" 的地方
+            // 但 MediaPipe 的遮罩是黑白的，我們需要先處理一下遮罩讓背景變透明嗎？
+            // 其實 MediaPipe 輸出的是 ImageBitmap，我們可以直接用 globalCompositeOperation
+            
+            // 修正：MediaPipe mask 黑色是背景，白色是人。
+            // 我們需要保留白色區域。
+            
+            // 使用 source-in 模式：只保留與新繪製內容重疊的原始內容
+            // 先把 mask 畫上去當作裁切版
+            finalCtx.globalCompositeOperation = 'destination-in';
+            finalCtx.drawImage(results.segmentationMask, 0, 0, w, h);
+            
+            // 恢復混合模式
+            finalCtx.globalCompositeOperation = 'source-over';
+
+            // 6. 更新結果回主程式
+            const url = finalCanvas.toDataURL();
             currentRawImg = await loadImage(url);
             
+            // 重置位移與參數
             imgTrans = { x: 0, y: 0, scale: 1.0 };
             aiProcessed = true;
-            els.tolerance.value = 0;
+            els.tolerance.value = 0; // 自動將容許度設為 0
             updateLabels();
 
             drawRefAndGrid();
-            els.aiStatus.textContent = "✨ AI 處理完畢！背景已移除。";
+            els.aiStatus.textContent = "✨ Google AI 處理完畢！";
             
+            // 關閉實例釋放記憶體
+            await selfieSegmentation.close();
+
         } catch (error) {
             console.error(error);
             els.aiStatus.textContent = "❌ 失敗：" + error.message;
-            alert("AI 執行錯誤：\n" + error.message + "\n\n請按 F12 開啟 Console 查看詳細錯誤。");
+            alert("AI 執行錯誤：\n" + error.message);
         } finally {
             els.aiBtn.disabled = false;
         }
@@ -1663,6 +1707,6 @@
     loadSettings();
     updateLabels();
 </script>
-<script src="https://unpkg.com/@imgly/background-removal@1.3.0/dist/imgly-background-removal.min.js"></script>
+
 </body>
 </html>

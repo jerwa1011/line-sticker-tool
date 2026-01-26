@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LINE 貼圖製作大師 (V25-24: 介面修復版)</title>
+    <title>LINE 貼圖製作大師 (V25-25: 顯示修復版)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -124,11 +124,10 @@
             margin-bottom: 15px; display: flex; align-items: center; gap: 8px;
         }
 
-        /* 右側原始圖預覽區 */
+        /* 右側原始圖預覽區 - 強制顯示 */
         .orig-ref-container {
             border: 1px solid var(--border); border-radius: 8px; background: var(--panel-bg);
             margin-bottom: 15px; 
-            /* 修正：取消 display: none，改為 min-height 佔位 */
             min-height: 100px;
             display: flex; flex-direction: column;
             overflow: hidden; transition: all 0.3s ease;
@@ -358,7 +357,7 @@
 <body class="">
 
 <div class="header">
-    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-24 介面修復版</span></h1>
+    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-25 顯示修復版</span></h1>
     <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️ 切換明亮</button>
 </div>
 
@@ -789,7 +788,7 @@
         'autoCenter': '【開啟】自動偵測內容並置中放大。\n【關閉】保留原始裁切位置。'
     };
 
-    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-24 (Fixed Layout) | ${new Date().toISOString().slice(0, 10)}`;
+    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-25 (Fixed Layout & Safety) | ${new Date().toISOString().slice(0, 10)}`;
 
     // --- PNG 壓縮核心 (UPNG.js) ---
     async function compressImage(canvas, quality = 256) {
@@ -846,7 +845,15 @@
     };
 
     window.resetMove = () => {
-        imgTrans = { x: 0, y: 0, scale: 1.0 };
+        if(!currentRawImg) return;
+        // 自動縮放邏輯：讓圖片高度適應預覽視窗 (約200px)
+        // 這樣上傳大圖時就不會只看到左上角
+        const targetH = 200;
+        const scale = targetH / currentRawImg.height;
+        // 如果圖片比視窗小，就用 1.0，否則縮小
+        const newScale = Math.min(1.0, scale);
+        
+        imgTrans = { x: 0, y: 0, scale: newScale };
         drawRefAndGrid();
     };
 
@@ -1039,10 +1046,17 @@
         if(file) {
             document.getElementById('fileName').textContent = file.name;
             currentRawImg = await loadImage(URL.createObjectURL(file));
+            
+            // 強制顯示右側欄位 (以防 CSS 隱藏)
+            if(els.refContainer) els.refContainer.style.display = 'flex';
+            if(els.refContainer) els.refContainer.classList.remove('collapsed');
+            
+            // 安全地隱藏佔位文字
+            if(els.placeholderText) els.placeholderText.style.display = 'none'; 
+            
+            // 重置並自動縮放
             resetMove(); 
-            // els.refContainer.style.display = 'block'; // 已改為 CSS 控制
-            els.refContainer.classList.remove('collapsed');
-            els.placeholderText.style.display = 'none'; // 隱藏佔位文字
+            
             els.preview.innerHTML = "<div style='grid-column:1/-1;text-align:center;color:#666;padding:50px;'>請點擊第3步的「開始製作」</div>";
             rawStickers = [];
             stickerOverrides = {};

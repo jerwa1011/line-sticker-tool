@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LINE 貼圖製作大師 (V25-7: 完美修復版)</title>
+    <title>LINE 貼圖製作大師 (V25-8: 參考圖摺疊版)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -119,14 +119,37 @@
             margin-bottom: 15px; display: flex; align-items: center; gap: 8px;
         }
 
-        /* 右側原始圖預覽區 */
+        /* 右側原始圖預覽區 (Accordion 改版) */
         .orig-ref-container {
             border: 1px solid var(--border); border-radius: 8px; background: var(--panel-bg);
-            padding: 10px; margin-bottom: 15px; display: none; /* 初始隱藏，上傳後顯示 */
+            margin-bottom: 15px; display: none; /* 初始隱藏，上傳後顯示 */
+            overflow: hidden; transition: all 0.3s ease;
         }
-        .orig-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-        .orig-label { font-size: 0.9rem; font-weight: bold; color: var(--text-sub); display: flex; align-items: center; gap: 5px; }
+        .orig-header { 
+            display: flex; justify-content: space-between; align-items: center; 
+            padding: 10px; cursor: pointer; user-select: none;
+            background: rgba(0,0,0,0.1); border-bottom: 1px solid transparent;
+            transition: background 0.2s;
+        }
+        .orig-header:hover { background: var(--header-hover); }
         
+        .orig-label { 
+            font-size: 0.95rem; font-weight: bold; color: var(--text-main); 
+            display: flex; align-items: center; gap: 8px; 
+        }
+        .orig-toggle-icon {
+            font-size: 0.8rem; color: var(--text-sub); transition: transform 0.3s;
+        }
+        
+        /* 摺疊狀態 */
+        .orig-ref-container.collapsed .orig-body { display: none; }
+        .orig-ref-container.collapsed .orig-toggle-icon { transform: rotate(-90deg); }
+        .orig-ref-container:not(.collapsed) .orig-header { border-bottom: 1px solid var(--border); }
+
+        .orig-controls { display: flex; align-items: center; gap: 10px; }
+
+        .orig-body { padding: 10px; animation: slideDown 0.3s ease-out; }
+
         #origPreviewBox { 
             text-align: center; background: var(--input-bg); 
             padding: 5px; border-radius: 6px; border: 1px solid var(--border); 
@@ -140,7 +163,7 @@
             display: block; 
         }
         #gridCanvas {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; /* 讓點擊穿透 Canvas */
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; 
         }
         #eyedropperHint { 
             position: absolute; bottom: 5px; right: 5px; 
@@ -246,12 +269,13 @@
         .help-text { font-size: 0.95rem; line-height: 1.5; color: var(--text-main); white-space: pre-wrap; }
 
         @keyframes fadeIn { from {opacity: 0} to {opacity: 1} }
+        @keyframes slideDown { from {opacity:0; transform: translateY(-5px);} to {opacity:1; transform: translateY(0);} }
     </style>
 </head>
 <body class="">
 
 <div class="header">
-    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-7 完美修復版</span></h1>
+    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-8 參考圖摺疊版</span></h1>
     <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️ 切換明亮</button>
 </div>
 
@@ -419,21 +443,26 @@
     <div class="card">
         
         <div class="orig-ref-container" id="refContainer">
-            <div class="orig-header">
+            <div class="orig-header" onclick="toggleRefAccordion()">
                 <div class="orig-label">
-                    📌 原始圖參考
-                    <label style="margin-left:15px; display:flex; align-items:center; font-weight:normal; font-size:0.85rem; cursor:pointer;">
-                        <input type="checkbox" id="showGrid" checked style="width:16px; height:16px; margin-right:5px;"> 顯示裁切格線
+                    <span class="orig-toggle-icon" id="refIcon">▼</span> 📌 原始圖參考
+                </div>
+                <div class="orig-controls" onclick="event.stopPropagation()">
+                    <label style="display:flex; align-items:center; font-weight:normal; font-size:0.85rem; cursor:pointer;">
+                        <input type="checkbox" id="showGrid" checked style="width:16px; height:16px; margin-right:5px;"> 顯示格線
                     </label>
+                    <button class="btn btn-secondary" style="width:auto; padding:2px 8px; font-size:0.8rem;" onclick="toggleOrigSize()">縮放</button>
                 </div>
-                <button class="btn btn-secondary" style="width:auto; padding:2px 8px; font-size:0.8rem;" onclick="toggleOrigSize()">縮放</button>
             </div>
-            <div id="origPreviewBox">
-                <div id="origWrapper">
-                    <img id="origPreviewImg" src="" alt="請上傳圖片">
-                    <canvas id="gridCanvas"></canvas>
+            
+            <div class="orig-body">
+                <div id="origPreviewBox">
+                    <div id="origWrapper">
+                        <img id="origPreviewImg" src="" alt="請上傳圖片">
+                        <canvas id="gridCanvas"></canvas>
+                    </div>
+                    <div id="eyedropperHint">💡 點擊圖片可吸取顏色</div>
                 </div>
-                <div id="eyedropperHint">💡 點擊圖片可吸取顏色</div>
             </div>
         </div>
 
@@ -549,7 +578,7 @@
         'autoCenter': '【開啟】自動偵測內容並置中放大。\n【關閉】保留原始裁切位置。'
     };
 
-    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-7 | ${new Date().toISOString().slice(0, 10)}`;
+    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-8 | ${new Date().toISOString().slice(0, 10)}`;
 
     // --- 嚮導邏輯 ---
     window.changeStep = (delta) => {
@@ -577,6 +606,15 @@
         }
     };
 
+    // --- 手風琴切換 (Accordion Toggle) ---
+    window.toggleRefAccordion = () => {
+        els.refContainer.classList.toggle('collapsed');
+        // 如果展開了，確保格線重新繪製 (避免尺寸錯誤)
+        if(!els.refContainer.classList.contains('collapsed')) {
+            setTimeout(drawGrid, 100);
+        }
+    };
+
     // --- 吸管工具 ---
     els.origPrev.addEventListener('click', async (e) => {
         if(!els.imgIn.files[0]) return;
@@ -601,7 +639,7 @@
     window.toggleOrigSize = () => {
         isRefExpanded = !isRefExpanded;
         els.origPrev.style.maxHeight = isRefExpanded ? 'none' : '200px';
-        setTimeout(drawGrid, 100); // 縮放後重畫格線
+        setTimeout(drawGrid, 100);
     };
 
     // --- 格線繪製 ---
@@ -667,7 +705,6 @@
         localStorage.setItem('stickerToolSettings', JSON.stringify(s));
     }
 
-    // --- 新增：更新 Tag 樣式函式 ---
     function updateTagClasses() {
         document.querySelectorAll('.tag-btn').forEach(btn => {
             btn.classList.remove('active-main');
@@ -685,20 +722,19 @@
         }
     }
 
-    // --- 更新：setTag 與 resetSelections ---
     window.setTag = (type, index) => {
         if (type === 'main') {
             selectedMainIdx = (selectedMainIdx === index) ? -1 : index;
         } else {
             selectedTabIdx = (selectedTabIdx === index) ? -1 : index;
         }
-        updateTagClasses(); // 呼叫更新函式
+        updateTagClasses();
     };
 
     window.resetSelections = () => {
         selectedMainIdx = -1; 
         selectedTabIdx = -1; 
-        updateTagClasses(); // 呼叫更新函式
+        updateTagClasses();
     };
 
     ['tolerance', 'smoothness', 'shrink', 'defringe', 'contour', 'shadowBlur', 'shadowDist', 'shadowOpacity', 'padding'].forEach(id => {
@@ -713,7 +749,11 @@
             const url = URL.createObjectURL(file);
             els.origPrev.src = url;
             els.origPrev.onload = () => drawGrid();
+            
+            // 顯示並自動展開
             els.refContainer.style.display = 'block';
+            els.refContainer.classList.remove('collapsed');
+            
             els.preview.innerHTML = "<div style='grid-column:1/-1;text-align:center;color:#666;padding:50px;'>請點擊第3步的「開始製作」</div>";
             rawStickers = [];
             els.runBtn.disabled = false;
@@ -960,7 +1000,7 @@
             div.innerHTML = `<div class="sticker-img-box ${previewBgClass}" onclick="viewImage('${url}')"><img src="${url}"><div class="dl-icon-btn" onclick="downloadSingle(${i}, event)">⬇</div></div><div class="sticker-name" id="name-${i}">${getFilename(i)}</div><div class="tags-row"><span class="tag-btn" id="btn-main-${i}" onclick="setTag('main', ${i})">main</span><span class="tag-btn" id="btn-tab-${i}" onclick="setTag('tab', ${i})">tab</span></div>`;
             els.preview.appendChild(div);
         });
-        updateTagClasses(); // 確保重新渲染後，選取狀態依然存在
+        updateTagClasses();
     }
 
     window.setPreviewBg = (btn, mode) => { 

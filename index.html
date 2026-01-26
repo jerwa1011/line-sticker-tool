@@ -3,14 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LINE 貼圖製作大師 (V25-20: AI 靈敏度控制版)</title>
+    <title>LINE 貼圖製作大師 (V25-21: 批次參數同步版)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/upng-js/2.1.0/UPNG.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js"></script>
         
     <style>
         /* --- 配色系統 --- */
@@ -29,7 +28,6 @@
             --shadow: rgba(0,0,0,0.3);
             --group-bg: rgba(255,255,255,0.05);
             --header-hover: #3a3a3a;
-            --accent: #5e60ce; /* AI 功能專用色 */
         }
 
         body.light-mode {
@@ -123,19 +121,6 @@
             font-size: 1.1rem; font-weight: 700; color: var(--text-main); 
             margin-bottom: 15px; display: flex; align-items: center; gap: 8px;
         }
-
-        /* AI 按鈕與區塊特效 */
-        .btn-ai {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white; border: none; width: 100%; padding: 12px;
-            border-radius: 8px; font-weight: bold; cursor: pointer;
-            box-shadow: 0 4px 15px rgba(118, 75, 162, 0.4);
-            transition: 0.3s; margin-bottom: 10px;
-            display: flex; align-items: center; justify-content: center; gap: 8px;
-        }
-        .btn-ai:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(118, 75, 162, 0.6); }
-        .btn-ai:disabled { background: #555; transform: none; box-shadow: none; cursor: wait; }
-        .ai-status { font-size: 0.8rem; color: var(--accent); margin-bottom: 10px; text-align: center; min-height: 1.2em;}
 
         /* 右側原始圖預覽區 */
         .orig-ref-container {
@@ -344,7 +329,7 @@
 <body class="">
 
 <div class="header">
-    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-20 AI 靈敏度控制版</span></h1>
+    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-21 批次參數同步版</span></h1>
     <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️ 切換明亮</button>
 </div>
 
@@ -408,26 +393,7 @@
 
             <div id="step-pane-3" class="step-pane">
                 <div class="section-box">
-                    <div class="section-title">✨ AI 去背與後製</div>
-                    
-                    <div style="background:var(--group-bg); padding:10px; border-radius:8px; margin-bottom:15px; border:1px solid var(--border);">
-                        <button class="btn-ai" id="aiBtn" onclick="runAIBackgroundRemoval()">
-                            <span>🤖 執行 AI 智能去背</span>
-                        </button>
-                        <div id="aiStatus" class="ai-status"></div>
-                        
-                        <div class="row" style="margin-bottom:0;">
-                            <div class="label-group" style="width:auto;">
-                                <span class="label-text">保留強度</span>
-                            </div>
-                            <input type="range" id="aiThreshold" min="10" max="90" value="30" style="flex:1; margin:0 10px;">
-                            <span class="input-mini" id="val-aiThreshold">30%</span>
-                        </div>
-                        <div style="font-size:0.75rem; color:var(--text-sub); margin-top:5px; text-align:center;">
-                            💡 覺得切過頭？請將滑桿<b>往左調</b> (數值變小)<br>
-                            💡 背景沒切乾淨？請將滑桿<b>往右調</b> (數值變大)
-                        </div>
-                    </div>
+                    <div class="section-title">🎨 去背與後製</div>
 
                     <div class="row">
                         <div class="label-group">
@@ -672,9 +638,10 @@
             <span class="input-mini" id="v_e_defringe"></span>
         </div>
 
-        <div style="display:flex; gap:10px; margin-top:20px;">
-            <button class="btn btn-secondary" onclick="closeEditModal()">取消</button>
-            <button class="btn btn-green" onclick="saveEdit()">✅ 保存修改</button>
+        <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:20px;">
+            <button class="btn btn-secondary" style="flex:1;" onclick="closeEditModal()">取消</button>
+            <button class="btn btn-secondary" style="flex:1; background:#5e60ce; color:white; border-color:#5e60ce;" onclick="applyToAll()">⚡ 應用至全部</button>
+            <button class="btn btn-green" style="flex:1;" onclick="saveEdit()">✅ 保存修改</button>
         </div>
     </div>
 </div>
@@ -693,7 +660,6 @@
     let isErasing = false;
     let isDrawing = false;
     let tempMaskCanvas = null; // 暫存橡皮擦遮罩
-    let aiProcessed = false; // 標記是否已使用 AI 處理
 
     const els = {
         imgIn: document.getElementById('imgInput'),
@@ -736,9 +702,7 @@
         editModal: document.getElementById('editModal'),
         editCanvas: document.getElementById('editCanvas'),
         eraserBtn: document.getElementById('eraserBtn'),
-        eraserSize: document.getElementById('eraserSize'),
-        aiBtn: document.getElementById('aiBtn'),
-        aiStatus: document.getElementById('aiStatus')
+        eraserSize: document.getElementById('eraserSize')
     };
 
     const HELP_TEXTS = {
@@ -756,114 +720,7 @@
         'autoCenter': '【開啟】自動偵測內容並置中放大。\n【關閉】保留原始裁切位置。'
     };
 
-    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-20 (AI Edition) | ${new Date().toISOString().slice(0, 10)}`;
-
-    // --- AI 去背功能核心 (可控靈敏度版) ---
-    async function runAIBackgroundRemoval() {
-        if (!currentRawImg) return alert('請先上傳圖片');
-
-        if (typeof SelfieSegmentation === 'undefined') {
-            alert("❌ Google AI 核心尚未載入，請檢查網路連線。");
-            return;
-        }
-
-        els.aiBtn.disabled = true;
-        els.aiStatus.textContent = "⏳ AI 運算中...";
-
-        try {
-            const selfieSegmentation = new SelfieSegmentation({
-                locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`
-            });
-
-            selfieSegmentation.setOptions({
-                modelSelection: 1, // 1 = 高精度模式
-            });
-
-            const promise = new Promise((resolve) => {
-                selfieSegmentation.onResults(resolve);
-            });
-
-            const sourceImg = await getSourceImage();
-            await selfieSegmentation.send({image: sourceImg});
-            const results = await promise;
-
-            // --- 核心修改：像素級閾值控制 ---
-            const w = sourceImg.width;
-            const h = sourceImg.height;
-
-            // 1. 取得 AI 產生的原始遮罩
-            const maskCanvas = document.createElement('canvas');
-            maskCanvas.width = w;
-            maskCanvas.height = h;
-            const maskCtx = maskCanvas.getContext('2d');
-            maskCtx.drawImage(results.segmentationMask, 0, 0, w, h);
-            
-            // 2. 取得遮罩的像素資料
-            const maskData = maskCtx.getImageData(0, 0, w, h);
-            const pixels = maskData.data;
-
-            // 3. 讀取使用者的靈敏度設定 (10% ~ 90%)
-            const userThreshold = parseInt(document.getElementById('aiThreshold').value);
-            const thresholdByte = (userThreshold / 100) * 255; 
-
-            // 4. 建立最終的 Alpha 通道
-            for (let i = 0; i < pixels.length; i += 4) {
-                const confidence = pixels[i]; // 遮罩的亮度 (R通道) 代表信心度
-                
-                if (confidence > thresholdByte) {
-                    // 信心度夠高 -> 保留 (設為全白，不透明)
-                    pixels[i] = 255;     // R
-                    pixels[i+1] = 255;   // G
-                    pixels[i+2] = 255;   // B
-                    pixels[i+3] = 255;   // Alpha (完全不透明)
-                } else {
-                    // 信心度不夠 -> 刪除 (設為全透明)
-                    pixels[i+3] = 0; 
-                }
-            }
-            // 把處理好的像素放回遮罩 Canvas
-            maskCtx.putImageData(maskData, 0, 0);
-
-            // 5. 合成最終圖片
-            const finalCanvas = document.createElement('canvas');
-            finalCanvas.width = w;
-            finalCanvas.height = h;
-            const finalCtx = finalCanvas.getContext('2d');
-
-            // 先畫原圖
-            finalCtx.drawImage(sourceImg, 0, 0);
-            
-            // 再用 'destination-in' 模式套用我們剛處理好的硬邊遮罩
-            finalCtx.globalCompositeOperation = 'destination-in';
-            finalCtx.drawImage(maskCanvas, 0, 0);
-            finalCtx.globalCompositeOperation = 'source-over';
-
-            // 更新結果
-            const url = finalCanvas.toDataURL();
-            currentRawImg = await loadImage(url);
-            
-            imgTrans = { x: 0, y: 0, scale: 1.0 };
-            aiProcessed = true;
-            els.tolerance.value = 0;
-            updateLabels();
-
-            drawRefAndGrid();
-            els.aiStatus.textContent = `✅ 完成！強度: ${userThreshold}%`;
-            
-            await selfieSegmentation.close();
-
-        } catch (error) {
-            console.error(error);
-            alert("AI 執行錯誤：\n" + error.message);
-        } finally {
-            els.aiBtn.disabled = false;
-        }
-    }
-
-    // 監聽滑桿數值變化顯示
-    document.getElementById('aiThreshold').addEventListener('input', function(e) {
-        document.getElementById('val-aiThreshold').textContent = e.target.value + '%';
-    });
+    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-21 (Batch Edit Edition) | ${new Date().toISOString().slice(0, 10)}`;
 
     // --- PNG 壓縮核心 (UPNG.js) ---
     async function compressImage(canvas, quality = 256) {
@@ -1116,10 +973,6 @@
             els.preview.innerHTML = "<div style='grid-column:1/-1;text-align:center;color:#666;padding:50px;'>請點擊第3步的「開始製作」</div>";
             rawStickers = [];
             stickerOverrides = {};
-            aiProcessed = false;
-            els.aiStatus.textContent = "";
-            els.tolerance.value = 40; // Reset
-            updateLabels();
             els.runBtn.disabled = false;
         }
     });
@@ -1184,16 +1037,7 @@
         
         const tileImg = await loadImage(cvs.toDataURL());
         
-        let mask;
-        // 如果已經 AI 去背，則不需要顏色遮罩，直接取 Alpha
-        if (aiProcessed && settings.tolerance === 0) {
-            // 直接使用圖片本身的透明度，不進行 Color Keying
-            const mCvs = document.createElement('canvas'); mCvs.width = tileW; mCvs.height = tileH;
-            mCvs.getContext('2d').drawImage(tileImg, 0, 0);
-            mask = mCvs;
-        } else {
-             mask = generateColorMask(tileImg, settings.targetColor, settings.tolerance);
-        }
+        let mask = generateColorMask(tileImg, settings.targetColor, settings.tolerance);
 
         if (settings.shrink > 0) mask = applyShrink(mask, settings.shrink);
         if (settings.smoothness > 0) mask = applySmooth(mask, settings.smoothness);
@@ -1310,6 +1154,69 @@
     };
 
     window.closeEditModal = () => { els.editModal.style.display = 'none'; };
+
+    // --- 新增：應用至全部 ---
+    window.applyToAll = async () => {
+        if (currentEditIdx === -1) return;
+        
+        const confirmMsg = "確定要將目前的「去背與修邊參數」套用到所有圖片嗎？\n(注意：這不會複製橡皮擦塗抹的內容)";
+        if (!confirm(confirmMsg)) return;
+        
+        const newSettings = {
+            tolerance: parseInt(document.getElementById('e_tolerance').value),
+            smoothness: parseFloat(document.getElementById('e_smoothness').value),
+            shrink: parseFloat(document.getElementById('e_shrink').value),
+            defringe: parseFloat(document.getElementById('e_defringe').value),
+        };
+
+        // 套用到所有 stickerOverrides (保留原本的 maskData)
+        for(let i=0; i<rawStickers.length; i++) {
+            if (!stickerOverrides[i]) stickerOverrides[i] = {};
+            
+            stickerOverrides[i].tolerance = newSettings.tolerance;
+            stickerOverrides[i].smoothness = newSettings.smoothness;
+            stickerOverrides[i].shrink = newSettings.shrink;
+            stickerOverrides[i].defringe = newSettings.defringe;
+            // 不複製 maskData
+        }
+
+        // 重新製作所有貼圖
+        els.runBtn.disabled = true;
+        els.runBtn.textContent = "🔄 批次處理中...";
+        
+        const sourceImg = await getSourceImage();
+        const rows = parseInt(els.rows.value);
+        const cols = parseInt(els.cols.value);
+        const tileW = Math.floor(sourceImg.width / cols);
+        const tileH = Math.floor(sourceImg.height / rows);
+        
+        const globalSettings = {
+            contour: parseInt(els.contour.value),
+            contourColor: els.contourColor.value,
+            padding: parseInt(els.padding.value),
+            shadowBlur: parseInt(els.shadowBlur.value),
+            shadowDist: parseInt(els.shadowDist.value),
+            shadowOpacity: parseInt(els.shadowOpacity.value) / 100,
+            shadowColor: els.shadowColor.value,
+            autoCenter: els.autoCenter.checked,
+            targetColor: els.targetColor.value
+        };
+
+        for(let r=0; r<rows; r++) {
+            for(let c=0; c<cols; c++) {
+                const idx = r * cols + c;
+                if(idx >= rawStickers.length) continue;
+                const settings = { ...globalSettings, ...stickerOverrides[idx] };
+                rawStickers[idx] = await processStickerTile(sourceImg, r, c, tileW, tileH, settings);
+            }
+        }
+        
+        els.runBtn.disabled = false;
+        els.runBtn.textContent = "🚀 開始製作";
+        
+        renderPreview(rows, cols);
+        alert("✅ 已套用參數至所有圖片！");
+    };
 
     window.toggleEraser = () => {
         isErasing = !isErasing;
@@ -1716,6 +1623,5 @@
     loadSettings();
     updateLabels();
 </script>
-
 </body>
 </html>

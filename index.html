@@ -10,6 +10,8 @@
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/upng-js/2.1.0/UPNG.min.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.3.0/dist/imgly-background-removal.min.js"></script>
 
     <style>
         /* --- 配色系統 --- */
@@ -743,24 +745,28 @@
 
     els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-19 (AI Edition) | ${new Date().toISOString().slice(0, 10)}`;
 
-    // --- AI 去背功能核心 ---
+// --- AI 去背功能核心 (修正版) ---
     async function runAIBackgroundRemoval() {
         if (!currentRawImg) return alert('請先上傳圖片');
-        const confirmMsg = "🤖 AI 去背需要下載模型 (約 50-100MB)，首次執行可能較慢。\n\n建議：\n1. 請確保目前預覽框中的圖片是你想要去背的範圍。\n2. 去背後原始背景將被透明化，你可以繼續進行切割。";
-        if (!confirm(confirmMsg)) return;
+        
+        // 檢查是否是在 file:// 協議下執行，並給予警告
+        if (window.location.protocol === 'file:') {
+            const confirmMsg = "⚠️ 警告：偵測到您直接開啟 HTML 檔案 (file://)。\n\n瀏覽器安全性可能會阻擋 AI 模型下載。\n如果不成功，請嘗試使用 VS Code 的 'Live Server' 或將檔案上傳至網頁空間執行。\n\n是否仍要嘗試執行？";
+            if (!confirm(confirmMsg)) return;
+        } else {
+            const confirmMsg = "🤖 AI 去背需要下載模型 (約 50-100MB)，首次執行可能較慢。\n\n建議：\n1. 請確保目前預覽框中的圖片是你想要去背的範圍。\n2. 去背後原始背景將被透明化，你可以繼續進行切割。";
+            if (!confirm(confirmMsg)) return;
+        }
 
         els.aiBtn.disabled = true;
         els.aiStatus.textContent = "⏳ 初始化 AI 模型中 (請稍候)...";
 
         try {
-            // 動態載入 imgly 庫 (使用 CDN 模組)
-            // 這裡使用動態 import 載入 ES Module
-            const { removeBackground } = await import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.3.0/+esm');
-            
             els.aiStatus.textContent = "🧠 AI 正在分析影像並去背...";
             
             // 獲取當前可視 Canvas 內容進行處理
             const sourceImg = await getSourceImage(); 
+            
             // 將圖片轉為 Blob 供 AI 處理
             const blob = await new Promise(resolve => {
                 const c = document.createElement('canvas');
@@ -770,13 +776,17 @@
                 c.toBlob(resolve, 'image/png');
             });
 
-            // 執行去背
-            const resultBlob = await removeBackground(blob, {
+            // 設定資源路徑 (解決 file:// 找不到模型資源的問題)
+            const config = {
+                publicPath: 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.3.0/dist/',
                 progress: (key, current, total) => {
                    const pct = Math.round((current/total)*100);
                    els.aiStatus.textContent = `🚀 AI 處理中: ${key} (${pct}%)`;
                 }
-            });
+            };
+
+            // 執行去背 (使用全域變數)
+            const resultBlob = await imglyBackgroundRemoval.removeBackground(blob, config);
 
             els.aiStatus.textContent = "✅ 去背完成！正在更新預覽...";
             
@@ -784,12 +794,12 @@
             const url = URL.createObjectURL(resultBlob);
             currentRawImg = await loadImage(url);
             
-            // 重置位移，因為我們現在是對處理後的圖片操作
+            // 重置位移
             imgTrans = { x: 0, y: 0, scale: 1.0 };
             
-            // 標記 AI 已處理，這可以讓我們自動調整某些參數
+            // 標記 AI 已處理
             aiProcessed = true;
-            // 自動將容許度設為 0 (因為背景已經透明了，不需要 Chroma Key)
+            // 自動將容許度設為 0
             els.tolerance.value = 0;
             updateLabels();
 
@@ -798,8 +808,8 @@
             
         } catch (error) {
             console.error(error);
-            els.aiStatus.textContent = "❌ AI 處理失敗，請檢查網路或重試。";
-            alert("AI 處理發生錯誤：" + error.message);
+            els.aiStatus.textContent = "❌ AI 處理失敗：" + error.message;
+            alert("AI 執行失敗。\n\n原因可能是瀏覽器安全性阻擋了模型下載。\n\n解決方法：\n請安裝 VS Code 的 'Live Server' 擴充套件，並用右鍵 'Open with Live Server' 開啟此網頁。");
         } finally {
             els.aiBtn.disabled = false;
         }

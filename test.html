@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LINE 貼圖製作大師 (V25-17: 單張精修版)</title>
+    <title>LINE 貼圖製作大師 (V25-18: 橡皮擦精修版)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -194,13 +194,8 @@
         .row { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; } 
         .col { flex: 1; display: flex; align-items: center; gap: 6px; }
         
-        .label-group { 
-            display: flex; align-items: center; width: 85px; flex-shrink: 0; 
-        }
-        .label-text { 
-            font-weight: 600; font-size: 0.9rem; color: var(--text-main); 
-            white-space: nowrap; margin-right: 4px;
-        }
+        .label-group { display: flex; align-items: center; width: 85px; flex-shrink: 0; }
+        .label-text { font-weight: 600; font-size: 0.9rem; color: var(--text-main); white-space: nowrap; margin-right: 4px; }
         
         .info-btn {
             display: inline-flex; justify-content: center; align-items: center;
@@ -301,15 +296,28 @@
 
         /* 單張編輯 Modal 樣式 */
         .edit-modal-content {
-            background: var(--card-bg); width: 400px; max-width: 90%; margin: 50px auto; padding: 20px; border-radius: 12px; position: relative;
+            background: var(--card-bg); width: 450px; max-width: 90%; margin: 50px auto; padding: 20px; border-radius: 12px; position: relative;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid var(--border);
         }
         .edit-preview-box {
-            width: 100%; height: 250px; background-image: linear-gradient(45deg, #333 25%, transparent 25%), linear-gradient(-45deg, #333 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #333 75%), linear-gradient(-45deg, transparent 75%, #333 75%);
+            width: 100%; height: 300px; background-image: linear-gradient(45deg, #333 25%, transparent 25%), linear-gradient(-45deg, #333 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #333 75%), linear-gradient(-45deg, transparent 75%, #333 75%);
             background-size: 20px 20px; background-color: #222; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 20px;
-            display: flex; align-items: center; justify-content: center;
+            display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative;
         }
         .edit-preview-box canvas { max-width: 100%; max-height: 100%; object-fit: contain; }
+        
+        /* 橡皮擦游標 */
+        .cursor-eraser { cursor: crosshair !important; }
+        
+        /* 橡皮擦控制列 */
+        .eraser-tools {
+            display: flex; align-items: center; gap: 10px; margin-bottom: 10px; padding: 10px; background: var(--input-bg); border-radius: 8px; border: 1px solid var(--border);
+        }
+        .tool-btn {
+            background: transparent; border: 1px solid var(--border); color: var(--text-sub);
+            padding: 5px 10px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 5px;
+        }
+        .tool-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
 
         @keyframes fadeIn { from {opacity: 0} to {opacity: 1} }
         @keyframes slideDown { from {opacity:0; transform: translateY(-5px);} to {opacity:1; transform: translateY(0);} }
@@ -318,7 +326,7 @@
 <body class="">
 
 <div class="header">
-    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-17 單張精修版</span></h1>
+    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-18 橡皮擦精修版</span></h1>
     <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️ 切換明亮</button>
 </div>
 
@@ -585,7 +593,17 @@
 <div id="editModal" class="modal">
     <div class="edit-modal-content">
         <h3 style="margin-top:0;">✏️ 單張微調 (Sticker #<span id="editIdx"></span>)</h3>
-        <div class="edit-preview-box">
+        
+        <div class="eraser-tools">
+            <button class="tool-btn" id="eraserBtn" onclick="toggleEraser()">🧽 橡皮擦</button>
+            <div style="flex:1; display:flex; align-items:center; gap:5px;">
+                <span style="font-size:0.8rem; color:#aaa;">大小:</span>
+                <input type="range" id="eraserSize" min="1" max="50" value="10" style="flex:1;">
+            </div>
+            <button class="tool-btn" style="border:none; color:#ff5252;" onclick="clearEraser()">❌ 清除塗抹</button>
+        </div>
+
+        <div class="edit-preview-box" id="editPreviewBox">
             <canvas id="editCanvas"></canvas>
         </div>
         
@@ -627,7 +645,10 @@
     let isRefExpanded = false;
     let imgTrans = { x: 0, y: 0, scale: 1.0 };
     let currentRawImg = null; 
-    let currentEditIdx = -1; // 當前編輯的索引
+    let currentEditIdx = -1;
+    let isErasing = false;
+    let isDrawing = false;
+    let tempMaskCanvas = null; // 暫存橡皮擦遮罩
 
     const els = {
         imgIn: document.getElementById('imgInput'),
@@ -667,7 +688,9 @@
         showGrid: document.getElementById('showGrid'),
         microMode: document.getElementById('microMode'),
         editModal: document.getElementById('editModal'),
-        editCanvas: document.getElementById('editCanvas')
+        editCanvas: document.getElementById('editCanvas'),
+        eraserBtn: document.getElementById('eraserBtn'),
+        eraserSize: document.getElementById('eraserSize')
     };
 
     const HELP_TEXTS = {
@@ -685,7 +708,7 @@
         'autoCenter': '【開啟】自動偵測內容並置中放大。\n【關閉】保留原始裁切位置。'
     };
 
-    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-17 | ${new Date().toISOString().slice(0, 10)}`;
+    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-18 | ${new Date().toISOString().slice(0, 10)}`;
 
     window.changeStep = (delta) => {
         const newStep = currentStep + delta;
@@ -803,22 +826,17 @@
     els.gridCanvas.style.pointerEvents = "auto"; 
     els.gridCanvas.addEventListener('click', (e) => {
         if(!currentRawImg) return;
-        
         const rect = e.target.getBoundingClientRect();
         const clickX = e.clientX - rect.left;
         const clickY = e.clientY - rect.top;
-        
         const scaleX = els.refCanvas.width / rect.width;
         const scaleY = els.refCanvas.height / rect.height;
         const canvasX = clickX * scaleX;
         const canvasY = clickY * scaleY;
-        
         const ctx = els.refCanvas.getContext('2d');
         const p = ctx.getImageData(canvasX, canvasY, 1, 1).data;
-        
         const hex = "#" + ((1 << 24) + (p[0] << 16) + (p[1] << 8) + p[2]).toString(16).slice(1);
         els.targetColor.value = hex;
-        
         const hint = document.getElementById('eyedropperHint');
         hint.textContent = `已吸取顏色: ${hex}`;
         setTimeout(() => hint.textContent = "💡 點擊圖片可吸取顏色", 2000);
@@ -842,7 +860,6 @@
             document.getElementById(`val-${id}`).textContent = val;
         });
         
-        // 更新 Modal 內的 Label
         ['e_tolerance', 'e_smoothness', 'e_shrink', 'e_defringe'].forEach(id => {
             const el = document.getElementById(id);
             if(el) {
@@ -853,11 +870,10 @@
         });
     }
 
-    // Modal Events
     ['e_tolerance', 'e_smoothness', 'e_shrink', 'e_defringe'].forEach(id => {
         document.getElementById(id).addEventListener('input', () => {
             updateLabels();
-            updateEditPreview(); // 即時更新預覽
+            updateEditPreview();
         });
     });
 
@@ -933,12 +949,11 @@
             els.refContainer.classList.remove('collapsed');
             els.preview.innerHTML = "<div style='grid-column:1/-1;text-align:center;color:#666;padding:50px;'>請點擊第3步的「開始製作」</div>";
             rawStickers = [];
-            stickerOverrides = {}; // 清空設定
+            stickerOverrides = {};
             els.runBtn.disabled = false;
         }
     });
 
-    // 取得當前的影像 (已變形)
     async function getSourceImage() {
         const virtualCvs = document.createElement('canvas');
         virtualCvs.width = currentRawImg.width;
@@ -958,7 +973,7 @@
         if(!currentRawImg) { alert("請先在第一步上傳圖片！"); window.changeStep(1-currentStep); return; }
         els.runBtn.disabled = true; els.runBtn.textContent = "🚀 處理中...";
         els.preview.innerHTML = "<div style='grid-column:1/-1;text-align:center;color:#ccc;'>製作中...</div>";
-        stickerOverrides = {}; // 重置單張設定
+        stickerOverrides = {};
         
         setTimeout(async () => {
             try {
@@ -991,7 +1006,6 @@
         }, 50);
     });
 
-    // 核心處理函式 (重構以支援單張處理)
     async function processStickerTile(sourceImg, r, c, tileW, tileH, settings) {
         const cvs = document.createElement('canvas'); cvs.width = tileW; cvs.height = tileH;
         const ctx = cvs.getContext('2d');
@@ -1000,17 +1014,24 @@
         
         const tileImg = await loadImage(cvs.toDataURL());
         
-        // 1. 去背
         let mask = generateColorMask(tileImg, settings.targetColor, settings.tolerance);
         if (settings.shrink > 0) mask = applyShrink(mask, settings.shrink);
         if (settings.smoothness > 0) mask = applySmooth(mask, settings.smoothness);
         let noBgImg = applyMaskToImage(tileImg, mask);
+        
+        // 橡皮擦 (Mask Data 應用)
+        if (settings.maskData) {
+            const eraserImg = await loadImage(settings.maskData);
+            const mCtx = noBgImg.getContext('2d');
+            mCtx.globalCompositeOperation = 'destination-out';
+            mCtx.drawImage(eraserImg, 0, 0, tileW, tileH);
+            mCtx.globalCompositeOperation = 'source-over';
+        }
+
         if (settings.defringe > 0) noBgImg = applyDefringe(noBgImg, settings.targetColor, settings.defringe);
 
-        // 2. 後製 (描邊/陰影/自動置中)
         const sCvs = document.createElement('canvas'); sCvs.width = tileW; sCvs.height = tileH; 
         const sCtx = sCvs.getContext('2d');
-        
         const pad = (settings.padding / 100) * tileW; 
         const margin = settings.shadowBlur * 2 + settings.shadowDist * 2; 
         const drawW = tileW - pad * 2 - settings.contour * 2 - margin;
@@ -1018,7 +1039,7 @@
         const safeW = Math.max(1, drawW); const safeH = Math.max(1, drawH);
         const safeX = (tileW - safeW) / 2; const safeY = (tileH - safeH) / 2;
 
-        let finalImg = await loadImage(noBgImg.toDataURL()); // 轉回 Image 物件方便操作
+        let finalImg = await loadImage(noBgImg.toDataURL());
         let fx = safeX, fy = safeY, fw = safeW, fh = safeH;
 
         if (settings.autoCenter) {
@@ -1065,11 +1086,9 @@
         const w = img.width; const h = img.height;
         const tileW = Math.floor(w/cols); const tileH = Math.floor(h/rows);
         const res = [];
-        
         for(let r=0; r<rows; r++) {
             for(let c=0; c<cols; c++) {
                 const idx = r * cols + c;
-                // 合併設定：如果有 Override 則使用，否則用 Global
                 const localSettings = stickerOverrides[idx] ? { ...globalSettings, ...stickerOverrides[idx] } : globalSettings;
                 const sCvs = await processStickerTile(img, r, c, tileW, tileH, localSettings);
                 res.push(sCvs);
@@ -1078,7 +1097,7 @@
         return res;
     }
 
-    // --- 單張編輯邏輯 ---
+    // --- 單張編輯 + 橡皮擦邏輯 ---
     window.openEditModal = (idx) => {
         currentEditIdx = idx;
         const globalSettings = {
@@ -1087,7 +1106,6 @@
             shrink: parseFloat(els.shrink.value),
             defringe: parseFloat(els.defringe.value)
         };
-        // 載入該貼圖的設定 (若無則用全域)
         const settings = stickerOverrides[idx] ? { ...globalSettings, ...stickerOverrides[idx] } : globalSettings;
         
         document.getElementById('editIdx').textContent = idx + 1;
@@ -1096,12 +1114,94 @@
         document.getElementById('e_shrink').value = settings.shrink;
         document.getElementById('e_defringe').value = settings.defringe;
         
+        // 載入遮罩 (如果有的話)
+        tempMaskCanvas = document.createElement('canvas');
+        
+        // 需要等預覽圖生成才知道尺寸，所以先更新預覽
         updateLabels();
         els.editModal.style.display = 'block';
+        
+        // 關閉橡皮擦
+        isErasing = false;
+        els.eraserBtn.classList.remove('active');
+        els.editCanvas.classList.remove('cursor-eraser');
+        
         updateEditPreview();
     };
 
     window.closeEditModal = () => { els.editModal.style.display = 'none'; };
+
+    window.toggleEraser = () => {
+        isErasing = !isErasing;
+        els.eraserBtn.classList.toggle('active', isErasing);
+        els.editCanvas.classList.toggle('cursor-eraser', isErasing);
+    };
+
+    window.clearEraser = () => {
+        if(tempMaskCanvas) {
+            const ctx = tempMaskCanvas.getContext('2d');
+            ctx.clearRect(0,0,tempMaskCanvas.width, tempMaskCanvas.height);
+            updateEditPreview();
+        }
+    };
+
+    // 橡皮擦繪圖事件
+    els.editCanvas.addEventListener('mousedown', startDraw);
+    els.editCanvas.addEventListener('mousemove', draw);
+    els.editCanvas.addEventListener('mouseup', stopDraw);
+    els.editCanvas.addEventListener('mouseout', stopDraw);
+
+    // 觸控支援
+    els.editCanvas.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        const touch = e.touches[0];
+        const mouseEvent = new MouseEvent("mousedown", {
+            clientX: touch.clientX, clientY: touch.clientY
+        });
+        els.editCanvas.dispatchEvent(mouseEvent);
+    });
+    els.editCanvas.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        const touch = e.touches[0];
+        const mouseEvent = new MouseEvent("mousemove", {
+            clientX: touch.clientX, clientY: touch.clientY
+        });
+        els.editCanvas.dispatchEvent(mouseEvent);
+    });
+    els.editCanvas.addEventListener('touchend', (e) => {
+        const mouseEvent = new MouseEvent("mouseup", {});
+        els.editCanvas.dispatchEvent(mouseEvent);
+    });
+
+    function startDraw(e) {
+        if(!isErasing) return;
+        isDrawing = true;
+        draw(e);
+    }
+
+    function draw(e) {
+        if(!isErasing || !isDrawing) return;
+        
+        const rect = els.editCanvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        // 映射座標到真實尺寸
+        const scaleX = tempMaskCanvas.width / rect.width;
+        const scaleY = tempMaskCanvas.height / rect.height;
+        
+        const ctx = tempMaskCanvas.getContext('2d');
+        const size = parseInt(els.eraserSize.value);
+        
+        ctx.beginPath();
+        ctx.arc(x * scaleX, y * scaleY, size * scaleX, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(0,0,0,1)';
+        ctx.fill();
+        
+        updateEditPreview(); // 重繪預覽
+    }
+
+    function stopDraw() { isDrawing = false; }
 
     async function updateEditPreview() {
         if(currentEditIdx === -1 || !currentRawImg) return;
@@ -1114,7 +1214,18 @@
         const r = Math.floor(currentEditIdx / cols);
         const c = currentEditIdx % cols;
 
-        // 收集目前 Modal 的設定 + Global 的外觀設定(陰影/描邊等保持一致)
+        // 初始化遮罩 (如果大小不對)
+        if(tempMaskCanvas.width !== tileW || tempMaskCanvas.height !== tileH) {
+            tempMaskCanvas.width = tileW;
+            tempMaskCanvas.height = tileH;
+            
+            // 如果之前有存過 Mask，載入它
+            if(stickerOverrides[currentEditIdx] && stickerOverrides[currentEditIdx].maskData) {
+                const img = await loadImage(stickerOverrides[currentEditIdx].maskData);
+                tempMaskCanvas.getContext('2d').drawImage(img, 0, 0, tileW, tileH);
+            }
+        }
+
         const tempSettings = {
             contour: parseInt(els.contour.value),
             contourColor: els.contourColor.value,
@@ -1125,24 +1236,23 @@
             shadowColor: els.shadowColor.value,
             autoCenter: els.autoCenter.checked,
             targetColor: els.targetColor.value,
-            // 這些是正在編輯的：
             tolerance: parseInt(document.getElementById('e_tolerance').value),
             smoothness: parseFloat(document.getElementById('e_smoothness').value),
             shrink: parseFloat(document.getElementById('e_shrink').value),
-            defringe: parseFloat(document.getElementById('e_defringe').value)
+            defringe: parseFloat(document.getElementById('e_defringe').value),
+            maskData: tempMaskCanvas.toDataURL() // 將當前繪製的遮罩傳入
         };
 
         const resultCvs = await processStickerTile(sourceImg, r, c, tileW, tileH, tempSettings);
         
-        // 顯示在 Modal Canvas
         const editCvs = els.editCanvas;
-        editCvs.width = 250; editCvs.height = 250; // 固定預覽大小
+        editCvs.width = 300; editCvs.height = 300; // 固定預覽大小
         const ctx = editCvs.getContext('2d');
-        const scale = Math.min(250/resultCvs.width, 250/resultCvs.height);
+        const scale = Math.min(300/resultCvs.width, 300/resultCvs.height);
         const w = resultCvs.width * scale;
         const h = resultCvs.height * scale;
-        ctx.clearRect(0,0,250,250);
-        ctx.drawImage(resultCvs, (250-w)/2, (250-h)/2, w, h);
+        ctx.clearRect(0,0,300,300);
+        ctx.drawImage(resultCvs, (300-w)/2, (300-h)/2, w, h);
     }
 
     window.saveEdit = async () => {
@@ -1150,10 +1260,10 @@
             tolerance: parseInt(document.getElementById('e_tolerance').value),
             smoothness: parseFloat(document.getElementById('e_smoothness').value),
             shrink: parseFloat(document.getElementById('e_shrink').value),
-            defringe: parseFloat(document.getElementById('e_defringe').value)
+            defringe: parseFloat(document.getElementById('e_defringe').value),
+            maskData: tempMaskCanvas.toDataURL() // 保存遮罩
         };
         
-        // 重新生成該張貼圖並更新 rawStickers
         const sourceImg = await getSourceImage();
         const rows = parseInt(els.rows.value);
         const cols = parseInt(els.cols.value);
@@ -1178,10 +1288,9 @@
         rawStickers[currentEditIdx] = await processStickerTile(sourceImg, r, c, tileW, tileH, settings);
         
         closeEditModal();
-        renderPreview(rows, cols); // 更新主列表
+        renderPreview(rows, cols);
     };
 
-    // Helper Functions
     function generateColorMask(img, targetHex, toleranceVal) {
         const cvs = document.createElement('canvas'); cvs.width = img.width; cvs.height = img.height;
         const ctx = cvs.getContext('2d'); ctx.drawImage(img, 0, 0);

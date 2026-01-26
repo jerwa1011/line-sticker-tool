@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LINE 貼圖製作大師 (V25-4: 分步嚮導版)</title>
+    <title>LINE 貼圖製作大師 (V25-5: 對照預覽版)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -63,9 +63,10 @@
             position: relative;
         }
         
+        /* 左側固定高度 */
         .sticky-sidebar {
             position: sticky; top: 10px; 
-            height: calc(100vh - 40px); /* 固定高度以便內部滾動 */
+            height: calc(100vh - 40px);
             display: flex; flex-direction: column;
         }
         
@@ -108,7 +109,7 @@
             display: flex; gap: 10px; margin-top: auto; padding-top: 10px; border-top: 1px solid var(--border);
         }
 
-        /* 內容區塊樣式 */
+        /* 內容區塊 */
         .section-box { 
             border: 1px solid var(--border); border-radius: 8px; 
             background: var(--panel-bg); margin-bottom: 15px; padding: 15px;
@@ -118,11 +119,34 @@
             margin-bottom: 15px; display: flex; align-items: center; gap: 8px;
         }
 
-        /* 元件樣式 */
+        /* 右側原始圖預覽區 */
+        .orig-ref-container {
+            border: 1px solid var(--border); border-radius: 8px; background: var(--panel-bg);
+            padding: 10px; margin-bottom: 15px; display: none; /* 初始隱藏，上傳後顯示 */
+        }
+        .orig-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .orig-label { font-size: 0.9rem; font-weight: bold; color: var(--text-sub); display: flex; align-items: center; gap: 5px; }
+        
+        #origPreviewBox { 
+            text-align: center; background: var(--input-bg); 
+            padding: 5px; border-radius: 6px; border: 1px solid var(--border); 
+            position: relative; overflow: hidden;
+        }
+        #origPreviewImg { 
+            max-height: 200px; max-width: 100%; object-fit: contain; cursor: crosshair; 
+            display: block; margin: 0 auto;
+        }
+        #eyedropperHint { 
+            position: absolute; bottom: 5px; right: 5px; 
+            background: rgba(0,0,0,0.6); color: white; 
+            font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; pointer-events: none; 
+        }
+
+        /* 一般元件 */
         h1 { margin: 0; font-size: 1.4rem; color: var(--text-main); font-weight: 800; letter-spacing: -0.5px; }
         
         .upload-box { 
-            border: 2px dashed var(--border); border-radius: 8px; padding: 25px 15px; text-align: center; 
+            border: 2px dashed var(--border); border-radius: 8px; padding: 40px 15px; text-align: center; 
             cursor: pointer; background: var(--input-bg); transition: 0.3s;
         }
         .upload-box:hover { border-color: var(--primary); background: rgba(6, 199, 85, 0.08); transform: scale(1.01); }
@@ -161,11 +185,7 @@
         
         .theme-btn { background: transparent; border: 1px solid var(--border); color: var(--text-main); padding: 5px 12px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; font-weight: 500; }
 
-        #origPreviewBox { text-align: center; margin-top: 15px; display: none; background: var(--input-bg); padding: 5px; border-radius: 6px; border: 1px solid var(--border); position: relative; }
-        #origPreviewBox img { max-height: 200px; max-width: 100%; object-fit: contain; cursor: crosshair; }
-        #eyedropperHint { position: absolute; bottom: 5px; right: 5px; background: rgba(0,0,0,0.6); color: white; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; pointer-events: none; }
-
-        #previewContainer { background: var(--preview-bg); padding: 20px; border-radius: 12px; min-height: 500px; display: grid; gap: 15px; align-content: start; border: 1px solid var(--border); }
+        #previewContainer { background: var(--preview-bg); padding: 20px; border-radius: 12px; min-height: 400px; display: grid; gap: 15px; align-content: start; border: 1px solid var(--border); }
         .sticker-card { display: flex; flex-direction: column; gap: 8px; }
         .sticker-img-box {
             position: relative; width: 100%; aspect-ratio: 1; border: 1px solid #444; border-radius: 10px;
@@ -225,7 +245,7 @@
 <body class="">
 
 <div class="header">
-    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-4 分步嚮導版</span></h1>
+    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-5 對照預覽版</span></h1>
     <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️ 切換明亮</button>
 </div>
 
@@ -244,13 +264,13 @@
                 <div class="section-box">
                     <div class="section-title">📷 上傳圖片</div>
                     <div class="upload-box" id="dropZone" onclick="document.getElementById('imgInput').click()">
+                        <div style="font-size:2rem; margin-bottom:10px;">📤</div>
                         <span id="fileName">點擊選取或拖放圖片</span>
                         <input type="file" id="imgInput" accept="image/*" style="display:none">
                     </div>
-                    <div id="origPreviewBox">
-                        <img id="origPreviewImg" src="" alt="原圖">
-                        <div id="eyedropperHint">💡 點擊圖片可吸取顏色</div>
-                    </div>
+                </div>
+                <div style="color:var(--text-sub); font-size:0.9rem; padding:10px; line-height:1.5;">
+                    💡 提示：上傳後，原始圖片會顯示在<span style="color:var(--primary); font-weight:bold;">右側欄位</span>，方便您隨時對照與吸取顏色。
                 </div>
             </div>
 
@@ -293,6 +313,10 @@
                         <button class="btn btn-secondary" style="flex:1; padding:2px; font-size:0.8rem;" onclick="setColor('#FFFFFF')">白</button>
                         <button class="btn btn-secondary" style="flex:1; padding:2px; font-size:0.8rem;" onclick="setColor('#00FF00')">綠</button>
                     </div>
+                    <div style="font-size:0.75rem; color:var(--text-sub); margin-bottom:10px; text-align:right;">
+                        (請點擊右側原始圖吸取顏色)
+                    </div>
+
                     <div class="row">
                         <div class="label-group">
                             <span class="label-text">寬容度</span>
@@ -384,6 +408,18 @@
     </div>
 
     <div class="card">
+        
+        <div class="orig-ref-container" id="refContainer">
+            <div class="orig-header">
+                <div class="orig-label">📌 原始圖參考 (點擊圖片吸色)</div>
+                <button class="btn btn-secondary" style="width:auto; padding:2px 8px; font-size:0.8rem;" onclick="toggleOrigSize()">縮放</button>
+            </div>
+            <div id="origPreviewBox">
+                <img id="origPreviewImg" src="" alt="請上傳圖片">
+                <div id="eyedropperHint">💡 點擊圖片可吸取顏色</div>
+            </div>
+        </div>
+
         <div style="display:flex; justify-content:space-between; align-items:center;">
             <h2>🖼️ 匯出與預覽</h2>
             <div class="bg-toggles">
@@ -442,11 +478,13 @@
     let selectedMainIdx = -1, selectedTabIdx = -1;
     let previewBgClass = 'bg-dark';
     let currentStep = 1;
+    let isRefExpanded = false;
 
     const els = {
         imgIn: document.getElementById('imgInput'),
         origPrev: document.getElementById('origPreviewImg'),
         origBox: document.getElementById('origPreviewBox'),
+        refContainer: document.getElementById('refContainer'),
         dropZone: document.getElementById('dropZone'),
         runBtn: document.getElementById('runBtn'),
         prevBtn: document.getElementById('prevBtn'),
@@ -493,18 +531,16 @@
         'autoCenter': '【開啟】自動偵測內容並置中放大。\n【關閉】保留原始裁切位置。'
     };
 
-    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-4 | ${new Date().toISOString().slice(0, 10)}`;
+    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-5 | ${new Date().toISOString().slice(0, 10)}`;
 
     // --- 嚮導邏輯 (Wizard Logic) ---
     window.changeStep = (delta) => {
         const newStep = currentStep + delta;
         if(newStep < 1 || newStep > 3) return;
         
-        // 切換頁面顯示
         document.querySelectorAll('.step-pane').forEach(el => el.classList.remove('active'));
         document.getElementById(`step-pane-${newStep}`).classList.add('active');
 
-        // 更新圓點狀態
         for(let i=1; i<=3; i++) {
             const dot = document.getElementById(`dot-${i}`);
             dot.classList.remove('active', 'completed');
@@ -513,10 +549,7 @@
         }
 
         currentStep = newStep;
-
-        // 按鈕狀態控制
         els.prevBtn.disabled = (currentStep === 1);
-        
         if(currentStep === 3) {
             els.nextBtn.style.display = 'none';
             els.runBtn.style.display = 'block';
@@ -546,6 +579,12 @@
         hint.textContent = `已吸取顏色: ${hex}`;
         setTimeout(() => hint.textContent = "💡 點擊圖片可吸取顏色", 2000);
     });
+
+    // 縮放原始圖
+    window.toggleOrigSize = () => {
+        isRefExpanded = !isRefExpanded;
+        els.origPrev.style.maxHeight = isRefExpanded ? 'none' : '200px';
+    };
 
     // --- 核心功能 ---
 
@@ -583,7 +622,8 @@
         if(file) {
             document.getElementById('fileName').textContent = file.name;
             els.origPrev.src = URL.createObjectURL(file);
-            els.origBox.style.display = 'block';
+            // 顯示右側原始圖區塊
+            els.refContainer.style.display = 'block';
             els.preview.innerHTML = "<div style='grid-column:1/-1;text-align:center;color:#666;padding:50px;'>請點擊第3步的「開始製作」</div>";
             rawStickers = [];
             els.runBtn.disabled = false;

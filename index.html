@@ -743,26 +743,26 @@
 
     els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-19 (AI Edition) | ${new Date().toISOString().slice(0, 10)}`;
 
-// --- AI 去背功能核心 (GitHub Pages 點擊即載版) ---
+// --- AI 去背功能核心 (UMD 全域變數版 - 最穩定) ---
     async function runAIBackgroundRemoval() {
         if (!currentRawImg) return alert('請先上傳圖片');
 
-        // 1. 顯示警告與確認
-        const confirmMsg = "🤖 AI 去背需要下載模型 (約 80MB)，首次執行視網路速度約需 10~60 秒。\n\n建議：\n1. 請確保目前預覽框中的圖片是你想要去背的範圍。\n2. 去背後原始背景將被透明化，你可以繼續進行切割。";
+        // 1. 檢查核心是否已由 <script> 標籤載入
+        if (typeof imglyBackgroundRemoval === 'undefined') {
+            alert("❌ AI 核心程式無法載入！\n\n可能原因：\n1. 您的網路阻擋了 CDN 連線 (cdn.jsdelivr.net)。\n2. 請嘗試重新整理網頁。\n3. 請檢查是否有安裝擋廣告外掛阻擋了 Script 執行。");
+            return;
+        }
+
+        const confirmMsg = "🤖 AI 去背需要下載模型 (約 80MB)。\n\n建議：\n1. 請確保目前預覽框中的圖片是你想要去背的範圍。\n2. 去背後原始背景將被透明化，你可以繼續進行切割。";
         if (!confirm(confirmMsg)) return;
 
         els.aiBtn.disabled = true;
-        els.aiStatus.textContent = "⏳ 正在連線至 AI 伺服器...";
+        els.aiStatus.textContent = "⏳ 初始化 AI 引擎...";
 
         try {
-            // 2. 動態下載 AI 核心 (使用 ESM 模組，專為 GitHub Pages 優化)
-            // 這種寫法保證只有在點擊時才下載，避開初始化錯誤
-            els.aiStatus.textContent = "📥 正在下載 AI 核心程式 (JS)...";
-            const { removeBackground } = await import("https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.3.0/+esm");
-
-            els.aiStatus.textContent = "🧠 核心載入成功！正在分析影像...";
+            els.aiStatus.textContent = "🧠 正在準備圖片...";
             
-            // 3. 準備圖片
+            // 2. 準備圖片 Blob
             const sourceImg = await getSourceImage(); 
             const blob = await new Promise(resolve => {
                 const c = document.createElement('canvas');
@@ -772,32 +772,29 @@
                 c.toBlob(resolve, 'image/png');
             });
 
-            // 4. 設定配置 (指向 CDN，避免找不到模型)
+            // 3. 設定 CDN 路徑 (讓它知道去哪裡抓模型檔)
             const config = {
                 publicPath: 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.3.0/dist/',
                 progress: (key, current, total) => {
-                   // 顯示下載進度
                    const pct = total ? Math.round((current/total)*100) : 0;
                    if (key.includes('model')) {
-                       els.aiStatus.textContent = `📉 下載 AI 模型中: ${pct}% (請稍候)`;
-                   } else if (key.includes('wasm')) {
-                       els.aiStatus.textContent = `⚙️ 載入運算引擎: ${pct}%`;
+                       els.aiStatus.textContent = `📉 下載模型中: ${pct}% (首次執行需稍候)`;
                    } else {
-                       els.aiStatus.textContent = `🚀 處理中: ${key} (${pct}%)`;
+                       els.aiStatus.textContent = `🚀 處理中: ${key}`;
                    }
                 }
             };
 
-            // 5. 開始去背
-            const resultBlob = await removeBackground(blob, config);
+            // 4. 執行去背 (直接呼叫全域物件)
+            els.aiStatus.textContent = "🧠 AI 運算中 (請稍候)...";
+            const resultBlob = await imglyBackgroundRemoval.removeBackground(blob, config);
 
             els.aiStatus.textContent = "✅ 去背完成！正在更新預覽...";
             
-            // 6. 更新結果
+            // 5. 更新結果
             const url = URL.createObjectURL(resultBlob);
             currentRawImg = await loadImage(url);
             
-            // 重置與設定
             imgTrans = { x: 0, y: 0, scale: 1.0 };
             aiProcessed = true;
             els.tolerance.value = 0;
@@ -809,7 +806,7 @@
         } catch (error) {
             console.error(error);
             els.aiStatus.textContent = "❌ 失敗：" + error.message;
-            alert("AI 執行發生錯誤：\n" + error.message + "\n\n請檢查您的網路連線是否正常。");
+            alert("AI 執行錯誤：\n" + error.message + "\n\n請按 F12 開啟 Console 查看詳細錯誤。");
         } finally {
             els.aiBtn.disabled = false;
         }
@@ -1666,6 +1663,10 @@
     loadSettings();
     updateLabels();
 </script>
+<script src="https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.3.0/dist/imgly-background-removal.min.js"></script>
 
+<script>
+    let rawStickers = [];
+    // ...
 </body>
 </html>

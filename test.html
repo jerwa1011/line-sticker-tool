@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LINE 貼圖製作大師 (V25-15: 欄位修正版)</title>
+    <title>LINE 貼圖製作大師 (V25-16: 緊湊欄位版)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -194,14 +194,12 @@
         .row { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; } 
         .col { flex: 1; display: flex; align-items: center; gap: 6px; }
         
-        /* 標籤對齊樣式 (靠左) */
         .label-group { 
             display: flex; align-items: center; width: 85px; flex-shrink: 0; 
         }
         .label-text { 
             font-weight: 600; font-size: 0.9rem; color: var(--text-main); 
-            white-space: nowrap; 
-            margin-right: 4px;
+            white-space: nowrap; margin-right: 4px;
         }
         
         .info-btn {
@@ -299,7 +297,7 @@
 <body class="">
 
 <div class="header">
-    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-15 欄位修正版</span></h1>
+    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-16 緊湊欄位版</span></h1>
     <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️ 切換明亮</button>
 </div>
 
@@ -332,13 +330,13 @@
             <div id="step-pane-2" class="step-pane">
                 <div class="section-box">
                     <div class="section-title">✂️ 裁切分割</div>
-                    <div class="row">
-                        <div class="col">
-                            <div class="label-group"><span class="label-text">垂直(列)</span></div>
+                    <div class="row" style="justify-content: flex-start; gap: 20px;">
+                        <div style="display:flex; align-items:center;">
+                            <span class="label-text" style="width:auto; margin-right:5px;">垂直(列)</span>
                             <input type="number" id="rows" value="4" min="1" class="input-mini">
                         </div>
-                        <div class="col">
-                            <div class="label-group"><span class="label-text">水平(行)</span></div>
+                        <div style="display:flex; align-items:center;">
+                            <span class="label-text" style="width:auto; margin-right:5px;">水平(行)</span>
                             <input type="number" id="cols" value="5" min="1" class="input-mini">
                         </div>
                     </div>
@@ -627,7 +625,7 @@
         'autoCenter': '【開啟】自動偵測內容並置中放大。\n【關閉】保留原始裁切位置。'
     };
 
-    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-15 | ${new Date().toISOString().slice(0, 10)}`;
+    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-16 | ${new Date().toISOString().slice(0, 10)}`;
 
     window.changeStep = (delta) => {
         const newStep = currentStep + delta;
@@ -1229,14 +1227,28 @@
     window.closeModal = () => { document.getElementById('imageModal').style.display = "none"; };
     document.addEventListener('keydown', (e) => { if (e.key === "Escape") closeModal(); });
 
-    function dataURLtoBlob(u) { var arr=u.split(','),m=arr[0].match(/:(.*?);/)[1],b=atob(arr[1]),n=b.length,a=new Uint8Array(n); while(n--)a[n]=b.charCodeAt(n);return new Blob([a],{type:m}); }
-    function loadImage(s){return new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.src=s;});}
+    function dataURLtoBlob(u) {
+        var arr=u.split(','),m=arr[0].match(/:(.*?);/)[1],b=atob(arr[1]),n=b.length,a=new Uint8Array(n);
+        while(n--)a[n]=b.charCodeAt(n);
+        return new Blob([a],{type:m});
+    }
+    function loadImage(s){
+        return new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.src=s;});
+    }
     
-    window.showHelp = (key) => { els.helpText.innerText = HELP_TEXTS[key]; els.helpModal.style.display = "block"; };
+    window.showHelp = (key) => {
+        els.helpText.innerText = HELP_TEXTS[key];
+        els.helpModal.style.display = "block";
+    };
     window.closeHelp = () => { els.helpModal.style.display = "none"; };
     window.setColor = (hex) => els.targetColor.value = hex;
-    window.toggleTheme = () => { isDark = !isDark; document.body.classList.toggle('light-mode', !isDark); document.getElementById('themeBtn').textContent = isDark ? '☀️ 切換明亮' : '🌙 切換暗黑'; };
+    window.toggleTheme = () => {
+        isDark = !isDark;
+        document.body.classList.toggle('light-mode', !isDark);
+        document.getElementById('themeBtn').textContent = isDark ? '☀️ 切換明亮' : '🌙 切換暗黑';
+    };
     
+    // 初始化呼叫一次以確保尺寸正確
     if (els.sizePreset.value === 'sticker') { els.outW.value = 370; els.outH.value = 320; }
     else if (els.sizePreset.value === 'emoji') { els.outW.value = 270; els.outH.value = 270; }
 

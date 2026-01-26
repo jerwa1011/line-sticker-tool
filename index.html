@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LINE 貼圖製作大師 (V25-19: AI 智能升級版)</title>
+    <title>LINE 貼圖製作大師 (V25-20: AI 靈敏度控制版)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -124,13 +124,13 @@
             margin-bottom: 15px; display: flex; align-items: center; gap: 8px;
         }
 
-        /* AI 按鈕特效 */
+        /* AI 按鈕與區塊特效 */
         .btn-ai {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white; border: none; width: 100%; padding: 12px;
             border-radius: 8px; font-weight: bold; cursor: pointer;
             box-shadow: 0 4px 15px rgba(118, 75, 162, 0.4);
-            transition: 0.3s; margin-bottom: 15px;
+            transition: 0.3s; margin-bottom: 10px;
             display: flex; align-items: center; justify-content: center; gap: 8px;
         }
         .btn-ai:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(118, 75, 162, 0.6); }
@@ -344,7 +344,7 @@
 <body class="">
 
 <div class="header">
-    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-19 AI 智能升級版</span></h1>
+    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-20 AI 靈敏度控制版</span></h1>
     <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️ 切換明亮</button>
 </div>
 
@@ -410,10 +410,24 @@
                 <div class="section-box">
                     <div class="section-title">✨ AI 去背與後製</div>
                     
-                    <button class="btn-ai" id="aiBtn" onclick="runAIBackgroundRemoval()">
-                        <span>🤖 AI 智能全圖去背</span>
-                    </button>
-                    <div id="aiStatus" class="ai-status"></div>
+                    <div style="background:var(--group-bg); padding:10px; border-radius:8px; margin-bottom:15px; border:1px solid var(--border);">
+                        <button class="btn-ai" id="aiBtn" onclick="runAIBackgroundRemoval()">
+                            <span>🤖 執行 AI 智能去背</span>
+                        </button>
+                        <div id="aiStatus" class="ai-status"></div>
+                        
+                        <div class="row" style="margin-bottom:0;">
+                            <div class="label-group" style="width:auto;">
+                                <span class="label-text">保留強度</span>
+                            </div>
+                            <input type="range" id="aiThreshold" min="10" max="90" value="30" style="flex:1; margin:0 10px;">
+                            <span class="input-mini" id="val-aiThreshold">30%</span>
+                        </div>
+                        <div style="font-size:0.75rem; color:var(--text-sub); margin-top:5px; text-align:center;">
+                            💡 覺得切過頭？請將滑桿<b>往左調</b> (數值變小)<br>
+                            💡 背景沒切乾淨？請將滑桿<b>往右調</b> (數值變大)
+                        </div>
+                    </div>
 
                     <div class="row">
                         <div class="label-group">
@@ -742,119 +756,114 @@
         'autoCenter': '【開啟】自動偵測內容並置中放大。\n【關閉】保留原始裁切位置。'
     };
 
-    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-19 (AI Edition) | ${new Date().toISOString().slice(0, 10)}`;
+    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-20 (AI Edition) | ${new Date().toISOString().slice(0, 10)}`;
 
-// --- AI 去背功能核心 (Google MediaPipe 版 - 穩定極速) ---
+    // --- AI 去背功能核心 (可控靈敏度版) ---
     async function runAIBackgroundRemoval() {
         if (!currentRawImg) return alert('請先上傳圖片');
 
-        // 1. 檢查 Google MediaPipe 是否載入
         if (typeof SelfieSegmentation === 'undefined') {
             alert("❌ Google AI 核心尚未載入，請檢查網路連線。");
             return;
         }
 
-        const confirmMsg = "🤖 Google AI 去背 (極速版)\n\n此模式使用 Google MediaPipe 技術，能快速識別主體並移除背景。\n\n是否開始？";
-        if (!confirm(confirmMsg)) return;
-
         els.aiBtn.disabled = true;
-        els.aiStatus.textContent = "⏳ 正在啟動 Google AI 引擎...";
+        els.aiStatus.textContent = "⏳ AI 運算中...";
 
         try {
-            // 2. 初始化 Google SelfieSegmentation
             const selfieSegmentation = new SelfieSegmentation({
-                locateFile: (file) => {
-                    return `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`;
-                }
+                locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`
             });
 
             selfieSegmentation.setOptions({
-                modelSelection: 1, // 1 = 高精度模式 (Landscape), 0 = 快速模式
+                modelSelection: 1, // 1 = 高精度模式
             });
 
-            // 3. 定義處理結果的回呼函式
             const promise = new Promise((resolve) => {
-                selfieSegmentation.onResults((results) => {
-                    resolve(results);
-                });
+                selfieSegmentation.onResults(resolve);
             });
 
-            els.aiStatus.textContent = "🧠 AI 正在分析影像...";
-
-            // 4. 準備圖片並發送給 AI
-            // MediaPipe 需要 HTMLImageElement 或 Canvas
-            const sourceImg = await getSourceImage(); // 這是 Image 物件
-            
-            // 由於 MediaPipe 是非同步的，我們發送後等待 onResults
+            const sourceImg = await getSourceImage();
             await selfieSegmentation.send({image: sourceImg});
-            
-            // 等待結果
             const results = await promise;
 
-            els.aiStatus.textContent = "✅ 去背完成！正在合成...";
-
-            // 5. 根據遮罩 (Segmentation Mask) 製作透明圖
+            // --- 核心修改：像素級閾值控制 ---
             const w = sourceImg.width;
             const h = sourceImg.height;
 
-            // 建立暫存 Canvas 繪製遮罩
+            // 1. 取得 AI 產生的原始遮罩
             const maskCanvas = document.createElement('canvas');
             maskCanvas.width = w;
             maskCanvas.height = h;
             const maskCtx = maskCanvas.getContext('2d');
-            
-            // 繪製 AI 產生的遮罩 (人像部分為白，背景為黑)
             maskCtx.drawImage(results.segmentationMask, 0, 0, w, h);
+            
+            // 2. 取得遮罩的像素資料
+            const maskData = maskCtx.getImageData(0, 0, w, h);
+            const pixels = maskData.data;
 
-            // 建立最終 Canvas
+            // 3. 讀取使用者的靈敏度設定 (10% ~ 90%)
+            const userThreshold = parseInt(document.getElementById('aiThreshold').value);
+            const thresholdByte = (userThreshold / 100) * 255; 
+
+            // 4. 建立最終的 Alpha 通道
+            for (let i = 0; i < pixels.length; i += 4) {
+                const confidence = pixels[i]; // 遮罩的亮度 (R通道) 代表信心度
+                
+                if (confidence > thresholdByte) {
+                    // 信心度夠高 -> 保留 (設為全白，不透明)
+                    pixels[i] = 255;     // R
+                    pixels[i+1] = 255;   // G
+                    pixels[i+2] = 255;   // B
+                    pixels[i+3] = 255;   // Alpha (完全不透明)
+                } else {
+                    // 信心度不夠 -> 刪除 (設為全透明)
+                    pixels[i+3] = 0; 
+                }
+            }
+            // 把處理好的像素放回遮罩 Canvas
+            maskCtx.putImageData(maskData, 0, 0);
+
+            // 5. 合成最終圖片
             const finalCanvas = document.createElement('canvas');
             finalCanvas.width = w;
             finalCanvas.height = h;
             const finalCtx = finalCanvas.getContext('2d');
 
-            // 步驟 A: 畫上原始圖片
+            // 先畫原圖
             finalCtx.drawImage(sourceImg, 0, 0);
-
-            // 步驟 B: 使用 'destination-in' 混合模式
-            // 這會保留 "遮罩有顏色的地方"，移除 "遮罩透明/黑色" 的地方
-            // 但 MediaPipe 的遮罩是黑白的，我們需要先處理一下遮罩讓背景變透明嗎？
-            // 其實 MediaPipe 輸出的是 ImageBitmap，我們可以直接用 globalCompositeOperation
             
-            // 修正：MediaPipe mask 黑色是背景，白色是人。
-            // 我們需要保留白色區域。
-            
-            // 使用 source-in 模式：只保留與新繪製內容重疊的原始內容
-            // 先把 mask 畫上去當作裁切版
+            // 再用 'destination-in' 模式套用我們剛處理好的硬邊遮罩
             finalCtx.globalCompositeOperation = 'destination-in';
-            finalCtx.drawImage(results.segmentationMask, 0, 0, w, h);
-            
-            // 恢復混合模式
+            finalCtx.drawImage(maskCanvas, 0, 0);
             finalCtx.globalCompositeOperation = 'source-over';
 
-            // 6. 更新結果回主程式
+            // 更新結果
             const url = finalCanvas.toDataURL();
             currentRawImg = await loadImage(url);
             
-            // 重置位移與參數
             imgTrans = { x: 0, y: 0, scale: 1.0 };
             aiProcessed = true;
-            els.tolerance.value = 0; // 自動將容許度設為 0
+            els.tolerance.value = 0;
             updateLabels();
 
             drawRefAndGrid();
-            els.aiStatus.textContent = "✨ Google AI 處理完畢！";
+            els.aiStatus.textContent = `✅ 完成！強度: ${userThreshold}%`;
             
-            // 關閉實例釋放記憶體
             await selfieSegmentation.close();
 
         } catch (error) {
             console.error(error);
-            els.aiStatus.textContent = "❌ 失敗：" + error.message;
             alert("AI 執行錯誤：\n" + error.message);
         } finally {
             els.aiBtn.disabled = false;
         }
     }
+
+    // 監聽滑桿數值變化顯示
+    document.getElementById('aiThreshold').addEventListener('input', function(e) {
+        document.getElementById('val-aiThreshold').textContent = e.target.value + '%';
+    });
 
     // --- PNG 壓縮核心 (UPNG.js) ---
     async function compressImage(canvas, quality = 256) {

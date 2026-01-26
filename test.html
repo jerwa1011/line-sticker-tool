@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LINE 貼圖製作大師 (V25-6: 裁切線預覽版)</title>
+    <title>LINE 貼圖製作大師 (V25-7: 完美修復版)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -132,7 +132,6 @@
             padding: 5px; border-radius: 6px; border: 1px solid var(--border); 
             position: relative; overflow: hidden;
         }
-        /* 為了讓 Canvas 完美覆蓋，增加一個 inline-block 的 wrapper */
         #origWrapper {
             position: relative; display: inline-block; max-width: 100%;
         }
@@ -252,7 +251,7 @@
 <body class="">
 
 <div class="header">
-    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-6 裁切線預覽版</span></h1>
+    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-7 完美修復版</span></h1>
     <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️ 切換明亮</button>
 </div>
 
@@ -550,7 +549,7 @@
         'autoCenter': '【開啟】自動偵測內容並置中放大。\n【關閉】保留原始裁切位置。'
     };
 
-    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-6 | ${new Date().toISOString().slice(0, 10)}`;
+    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-7 | ${new Date().toISOString().slice(0, 10)}`;
 
     // --- 嚮導邏輯 ---
     window.changeStep = (delta) => {
@@ -605,14 +604,13 @@
         setTimeout(drawGrid, 100); // 縮放後重畫格線
     };
 
-    // --- 格線繪製 (Grid System) ---
+    // --- 格線繪製 ---
     function drawGrid() {
         if (!els.imgIn.files[0]) return;
         const cvs = els.gridCanvas;
         const ctx = cvs.getContext('2d');
         const img = els.origPrev;
         
-        // 同步 Canvas 大小到實際顯示的圖片大小
         cvs.width = img.clientWidth;
         cvs.height = img.clientHeight;
         
@@ -625,27 +623,22 @@
         const cellW = cvs.width / c;
         const cellH = cvs.height / r;
 
-        ctx.strokeStyle = "rgba(255, 0, 0, 0.7)"; // 紅色線條
+        ctx.strokeStyle = "rgba(255, 0, 0, 0.7)"; 
         ctx.lineWidth = 2;
-        ctx.setLineDash([5, 3]); // 虛線
+        ctx.setLineDash([5, 3]);
 
         ctx.beginPath();
-        // 垂直線
         for (let i = 1; i < c; i++) {
             let x = Math.floor(i * cellW);
-            ctx.moveTo(x, 0);
-            ctx.lineTo(x, cvs.height);
+            ctx.moveTo(x, 0); ctx.lineTo(x, cvs.height);
         }
-        // 水平線
         for (let i = 1; i < r; i++) {
             let y = Math.floor(i * cellH);
-            ctx.moveTo(0, y);
-            ctx.lineTo(cvs.width, y);
+            ctx.moveTo(0, y); ctx.lineTo(cvs.width, y);
         }
         ctx.stroke();
     }
 
-    // 當 Grid 設定改變時重畫
     els.rows.addEventListener('input', drawGrid);
     els.cols.addEventListener('input', drawGrid);
     els.showGrid.addEventListener('change', drawGrid);
@@ -674,6 +667,40 @@
         localStorage.setItem('stickerToolSettings', JSON.stringify(s));
     }
 
+    // --- 新增：更新 Tag 樣式函式 ---
+    function updateTagClasses() {
+        document.querySelectorAll('.tag-btn').forEach(btn => {
+            btn.classList.remove('active-main');
+            btn.classList.remove('active-tab');
+        });
+
+        if (selectedMainIdx !== -1) {
+            const btn = document.getElementById(`btn-main-${selectedMainIdx}`);
+            if (btn) btn.classList.add('active-main');
+        }
+
+        if (selectedTabIdx !== -1) {
+            const btn = document.getElementById(`btn-tab-${selectedTabIdx}`);
+            if (btn) btn.classList.add('active-tab');
+        }
+    }
+
+    // --- 更新：setTag 與 resetSelections ---
+    window.setTag = (type, index) => {
+        if (type === 'main') {
+            selectedMainIdx = (selectedMainIdx === index) ? -1 : index;
+        } else {
+            selectedTabIdx = (selectedTabIdx === index) ? -1 : index;
+        }
+        updateTagClasses(); // 呼叫更新函式
+    };
+
+    window.resetSelections = () => {
+        selectedMainIdx = -1; 
+        selectedTabIdx = -1; 
+        updateTagClasses(); // 呼叫更新函式
+    };
+
     ['tolerance', 'smoothness', 'shrink', 'defringe', 'contour', 'shadowBlur', 'shadowDist', 'shadowOpacity', 'padding'].forEach(id => {
         document.getElementById(id).addEventListener('input', () => { updateLabels(); saveSettings(); });
     });
@@ -685,7 +712,7 @@
             document.getElementById('fileName').textContent = file.name;
             const url = URL.createObjectURL(file);
             els.origPrev.src = url;
-            els.origPrev.onload = () => drawGrid(); // 圖片載入後畫格線
+            els.origPrev.onload = () => drawGrid();
             els.refContainer.style.display = 'block';
             els.preview.innerHTML = "<div style='grid-column:1/-1;text-align:center;color:#666;padding:50px;'>請點擊第3步的「開始製作」</div>";
             rawStickers = [];
@@ -933,6 +960,7 @@
             div.innerHTML = `<div class="sticker-img-box ${previewBgClass}" onclick="viewImage('${url}')"><img src="${url}"><div class="dl-icon-btn" onclick="downloadSingle(${i}, event)">⬇</div></div><div class="sticker-name" id="name-${i}">${getFilename(i)}</div><div class="tags-row"><span class="tag-btn" id="btn-main-${i}" onclick="setTag('main', ${i})">main</span><span class="tag-btn" id="btn-tab-${i}" onclick="setTag('tab', ${i})">tab</span></div>`;
             els.preview.appendChild(div);
         });
+        updateTagClasses(); // 確保重新渲染後，選取狀態依然存在
     }
 
     window.setPreviewBg = (btn, mode) => { 
@@ -987,8 +1015,6 @@
     window.closeHelp = () => { els.helpModal.style.display = "none"; };
     window.setColor = (hex) => els.targetColor.value = hex;
     window.toggleTheme = () => { isDark = !isDark; document.body.classList.toggle('light-mode', !isDark); document.getElementById('themeBtn').textContent = isDark ? '☀️ 切換明亮' : '🌙 切換暗黑'; };
-    window.resetSelections = () => { selectedMainIdx = -1; selectedTabIdx = -1; document.querySelectorAll('.tag-btn').forEach(btn => { btn.classList.remove('active-main'); btn.classList.remove('active-tab'); }); };
-    window.setTag = (type, index) => { if (type === 'main') selectedMainIdx = (selectedMainIdx === index) ? -1 : index; else selectedTabIdx = (selectedTabIdx === index) ? -1 : index; updateTagClasses(); };
     
     els.sizePreset.addEventListener('change', () => { 
         if (els.sizePreset.value === 'sticker') { els.outW.value = 370; els.outH.value = 320; }

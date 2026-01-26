@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LINE 貼圖製作大師 (V25-23: 終極修圖版)</title>
+    <title>LINE 貼圖製作大師 (V25-24: 介面修復版)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -127,7 +127,10 @@
         /* 右側原始圖預覽區 */
         .orig-ref-container {
             border: 1px solid var(--border); border-radius: 8px; background: var(--panel-bg);
-            margin-bottom: 15px; display: none; /* 初始隱藏 */
+            margin-bottom: 15px; 
+            /* 修正：取消 display: none，改為 min-height 佔位 */
+            min-height: 100px;
+            display: flex; flex-direction: column;
             overflow: hidden; transition: all 0.3s ease;
             outline: none;
         }
@@ -177,6 +180,7 @@
             text-align: center; background: var(--input-bg); 
             padding: 5px; border-radius: 6px; border: 1px solid var(--border); 
             position: relative; overflow: hidden;
+            min-height: 150px; display: flex; align-items: center; justify-content: center; flex-direction: column;
         }
         #origWrapper { position: relative; display: inline-block; max-width: 100%; }
         #refCanvas { max-height: 200px; max-width: 100%; object-fit: contain; cursor: crosshair; display: block; }
@@ -186,6 +190,7 @@
             background: rgba(0,0,0,0.6); color: white; 
             font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; pointer-events: none; 
         }
+        .placeholder-text { color: var(--text-sub); font-size: 0.9rem; pointer-events: none; }
 
         /* 一般元件 */
         h1 { margin: 0; font-size: 1.4rem; color: var(--text-main); font-weight: 800; letter-spacing: -0.5px; }
@@ -353,7 +358,7 @@
 <body class="">
 
 <div class="header">
-    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-23 終極修圖版</span></h1>
+    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-24 介面修復版</span></h1>
     <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️ 切換明亮</button>
 </div>
 
@@ -561,6 +566,7 @@
                         <canvas id="gridCanvas"></canvas>
                     </div>
                     <div id="eyedropperHint">💡 點擊圖片可吸取顏色</div>
+                    <div id="placeholderText" class="placeholder-text">請先在左側上傳圖片...</div>
                 </div>
             </div>
         </div>
@@ -754,6 +760,7 @@
         microMode: document.getElementById('microMode'),
         editModal: document.getElementById('editModal'),
         editCanvas: document.getElementById('editCanvas'),
+        placeholderText: document.getElementById('placeholderText'),
         
         // Tools
         eraserBtn: document.getElementById('eraserBtn'),
@@ -782,7 +789,7 @@
         'autoCenter': '【開啟】自動偵測內容並置中放大。\n【關閉】保留原始裁切位置。'
     };
 
-    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-23 (Ultimate Edit) | ${new Date().toISOString().slice(0, 10)}`;
+    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-24 (Fixed Layout) | ${new Date().toISOString().slice(0, 10)}`;
 
     // --- PNG 壓縮核心 (UPNG.js) ---
     async function compressImage(canvas, quality = 256) {
@@ -1033,12 +1040,16 @@
             document.getElementById('fileName').textContent = file.name;
             currentRawImg = await loadImage(URL.createObjectURL(file));
             resetMove(); 
-            els.refContainer.style.display = 'block';
+            // els.refContainer.style.display = 'block'; // 已改為 CSS 控制
             els.refContainer.classList.remove('collapsed');
+            els.placeholderText.style.display = 'none'; // 隱藏佔位文字
             els.preview.innerHTML = "<div style='grid-column:1/-1;text-align:center;color:#666;padding:50px;'>請點擊第3步的「開始製作」</div>";
             rawStickers = [];
             stickerOverrides = {};
             els.runBtn.disabled = false;
+            
+            // 自動跳轉到 Step 2
+            window.changeStep(1); 
         }
     });
 
@@ -1099,7 +1110,7 @@
         const cvs = document.createElement('canvas'); cvs.width = tileW; cvs.height = tileH;
         const ctx = cvs.getContext('2d');
         ctx.drawImage(sourceImg, c*tileW, r*tileH, tileW, tileH, 0, 0, tileW, tileH);
-        const tileOriginalImg = await loadImage(cvs.toDataURL()); // 保留原始圖塊
+        const tileOriginalImg = await loadImage(cvs.toDataURL()); 
         
         let mask = generateColorMask(tileOriginalImg, settings.targetColor, settings.tolerance);
         if (settings.shrink > 0) mask = applyShrink(mask, settings.shrink);
@@ -1120,18 +1131,14 @@
         // 3. 還原筆刷 (顯示原始圖塊內容)
         if (settings.restoreData) {
             const restoreImg = await loadImage(settings.restoreData);
-            // 創建一個只包含還原區域的原始圖層
             const restoreLayer = document.createElement('canvas');
             restoreLayer.width = tileW; restoreLayer.height = tileH;
             const rCtx = restoreLayer.getContext('2d');
             
-            // 先畫遮罩 (還原筆刷畫過的地方)
             rCtx.drawImage(restoreImg, 0, 0, tileW, tileH);
-            // 使用 source-in 疊加原始圖片 => 只保留還原筆刷位置的原始像素
             rCtx.globalCompositeOperation = 'source-in';
             rCtx.drawImage(tileOriginalImg, 0, 0, tileW, tileH);
             
-            // 將還原層蓋回 processedImg 上
             const pCtx = processedImg.getContext('2d');
             pCtx.drawImage(restoreLayer, 0, 0);
         }
@@ -1256,15 +1263,12 @@
             }
         }
 
-        // 初始化歷史記錄
         editHistory = [];
         historyStep = -1;
-        saveHistory(); // 儲存初始狀態
+        saveHistory();
 
         updateLabels();
         els.editModal.style.display = 'block';
-        
-        // 預設工具：橡皮擦
         setTool('eraser');
         updateEditPreview();
     };
@@ -1277,7 +1281,6 @@
         document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
         document.getElementById(tool + 'Btn').classList.add('active');
         
-        // UI 顯示控制
         els.brushSize.style.display = (tool === 'text') ? 'none' : 'inline-block';
         els.brushColor.style.display = (tool === 'brush') ? 'inline-block' : 'none';
         els.textControls.classList.toggle('show', tool === 'text');
@@ -1287,7 +1290,6 @@
 
     // --- Undo / Redo ---
     function saveHistory() {
-        // 移除目前步驟之後的記錄 (如果是 Undo 後再畫)
         if (historyStep < editHistory.length - 1) {
             editHistory = editHistory.slice(0, historyStep + 1);
         }
@@ -1298,7 +1300,6 @@
             overlay: tempOverlayCanvas.toDataURL()
         });
         
-        // 限制歷史長度 (例如 20 步)
         if (editHistory.length > 20) editHistory.shift();
         else historyStep++;
         
@@ -1365,14 +1366,8 @@
     });
 
     function startDraw(e) {
-        if (currentTool === 'text') return; // 文字模式不繪圖
+        if (currentTool === 'text') return; 
         isDrawing = true;
-        saveHistory(); // 開始畫之前存歷史 (這裡存的是"畫之前"的狀態，實際應存"畫之後"比較順，或用 mousedown 存當前) 
-        // 修正：應該在 mouseup 時存? 不，為了 undo，要存之前的狀態。
-        // 但如果在這裡存，會把初始狀態存兩次。
-        // 策略：mousedown 時不做事，mouseup 時存 "新狀態" 到 stack。
-        // 所以 undo 會回到上一狀態。初始 load modal 時已經存了 step 0。
-        // 當我畫一筆，mouseup -> saveHistory -> step 1. undo -> step 0. 正確。
         draw(e);
     }
 
@@ -1383,7 +1378,6 @@
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
         
-        // 映射座標
         const scaleX = tempMaskCanvas.width / rect.width;
         const scaleY = tempMaskCanvas.height / rect.height;
         const cx = x * scaleX;
@@ -1403,8 +1397,6 @@
             ctx.strokeStyle = els.brushColor.value;
             ctx.fillStyle = els.brushColor.value;
         } else {
-            // Mask 和 Restore 只要畫上去就好，顏色不重要(我們會用它來做遮罩)
-            // 但為了確保完全覆蓋，用白色
             ctx.strokeStyle = '#FFFFFF';
             ctx.fillStyle = '#FFFFFF';
         }
@@ -1414,16 +1406,13 @@
         ctx.fill();
         ctx.closePath();
         
-        // 連續繪製 (簡單點法，若快速移動會有斷點，優化可用 lineTo)
-        // 這裡為了簡單使用圓點連續繪製
-        
         updateEditPreview();
     }
 
     function stopDraw() {
         if (isDrawing) {
             isDrawing = false;
-            saveHistory(); // 畫完一筆，儲存新狀態
+            saveHistory(); 
         }
     }
 
@@ -1437,16 +1426,14 @@
         const h = tempOverlayCanvas.height;
         
         ctx.save();
-        ctx.font = `bold ${Math.floor(w/5)}px sans-serif`; // 預設大小
+        ctx.font = `bold ${Math.floor(w/5)}px sans-serif`; 
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         
-        // 描邊
         ctx.strokeStyle = document.getElementById('textStroke').value;
         ctx.lineWidth = w/40;
         ctx.strokeText(text, w/2, h/2);
         
-        // 填色
         ctx.fillStyle = document.getElementById('textColor').value;
         ctx.fillText(text, w/2, h/2);
         
@@ -1490,7 +1477,7 @@
         const resultCvs = await processStickerTile(sourceImg, r, c, tileW, tileH, tempSettings);
         
         const editCvs = els.editCanvas;
-        editCvs.width = 300; editCvs.height = 300; // 固定預覽大小
+        editCvs.width = 300; editCvs.height = 300; 
         const ctx = editCvs.getContext('2d');
         const scale = Math.min(300/resultCvs.width, 300/resultCvs.height);
         const w = resultCvs.width * scale;
@@ -1502,18 +1489,15 @@
     window.saveEdit = async () => {
         if (!stickerOverrides[currentEditIdx]) stickerOverrides[currentEditIdx] = {};
         
-        // 儲存參數
         stickerOverrides[currentEditIdx].tolerance = parseInt(document.getElementById('e_tolerance').value);
         stickerOverrides[currentEditIdx].smoothness = parseFloat(document.getElementById('e_smoothness').value);
         stickerOverrides[currentEditIdx].shrink = parseFloat(document.getElementById('e_shrink').value);
         stickerOverrides[currentEditIdx].defringe = parseFloat(document.getElementById('e_defringe').value);
         
-        // 儲存圖層資料 (轉為 Base64 字串儲存)
         stickerOverrides[currentEditIdx].maskData = tempMaskCanvas.toDataURL();
         stickerOverrides[currentEditIdx].restoreData = tempRestoreCanvas.toDataURL();
         stickerOverrides[currentEditIdx].overlayData = tempOverlayCanvas.toDataURL();
         
-        // 更新當前圖片
         const sourceImg = await getSourceImage();
         const rows = parseInt(els.rows.value);
         const cols = parseInt(els.cols.value);
@@ -1559,7 +1543,6 @@
             stickerOverrides[i].smoothness = newSettings.smoothness;
             stickerOverrides[i].shrink = newSettings.shrink;
             stickerOverrides[i].defringe = newSettings.defringe;
-            // 刻意不複製 maskData, restoreData, overlayData
         }
 
         els.runBtn.disabled = true; els.runBtn.textContent = "🔄 批次處理中...";

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LINE 貼圖製作大師 (V25-10: 精準微調版)</title>
+    <title>LINE 貼圖製作大師 (V25-11: 邏輯修正版)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -124,7 +124,6 @@
             border: 1px solid var(--border); border-radius: 8px; background: var(--panel-bg);
             margin-bottom: 15px; display: none; /* 初始隱藏 */
             overflow: hidden; transition: all 0.3s ease;
-            /* 讓它可以被 focus 以接收鍵盤事件 */
             outline: none;
         }
         .orig-ref-container:focus-within { border-color: var(--primary); }
@@ -161,7 +160,6 @@
         .move-group { display: flex; gap: 2px; align-items: center; }
         .move-divider { width: 1px; height: 20px; background: var(--border); margin: 0 5px; }
         
-        /* 微調開關樣式 */
         .micro-switch {
             display: flex; align-items: center; font-size: 0.85rem; color: var(--text-main);
             background: rgba(6, 199, 85, 0.1); padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(6, 199, 85, 0.3);
@@ -258,6 +256,11 @@
         .tag-btn:hover { border-color: var(--text-main); color: var(--text-main); }
         .tag-btn.active-main { background: var(--main-color); border-color: var(--main-color); color: white; }
         .tag-btn.active-tab { background: #3498db; border-color: #3498db; color: white; }
+        
+        /* 禁用狀態樣式 */
+        .tag-btn.disabled {
+            opacity: 0.3; pointer-events: none; background: #333; border-color: #444; color: #555;
+        }
 
         .export-bar { background: var(--panel-bg); border: 1px solid var(--border); padding: 12px; border-radius: 12px; margin-bottom: 20px; display: flex; gap: 12px; flex-wrap: wrap; }
         .export-group-box { background: var(--group-bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; display: flex; flex-direction: column; justify-content: center; }
@@ -288,7 +291,7 @@
 <body class="">
 
 <div class="header">
-    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-10 精準微調版</span></h1>
+    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-11 邏輯修正版</span></h1>
     <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️ 切換明亮</button>
 </div>
 
@@ -597,7 +600,7 @@
         helpText: document.getElementById('helpText'),
         autoCenter: document.getElementById('autoCenter'),
         showGrid: document.getElementById('showGrid'),
-        microMode: document.getElementById('microMode') // 新增微調開關
+        microMode: document.getElementById('microMode')
     };
 
     const HELP_TEXTS = {
@@ -614,7 +617,7 @@
         'autoCenter': '【開啟】自動偵測內容並置中放大。\n【關閉】保留原始裁切位置。'
     };
 
-    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-10 | ${new Date().toISOString().slice(0, 10)}`;
+    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-11 | ${new Date().toISOString().slice(0, 10)}`;
 
     // --- 嚮導邏輯 ---
     window.changeStep = (delta) => {
@@ -650,31 +653,21 @@
         }
     };
 
-    // --- 圖片移動/縮放邏輯 (V25-10 Revised) ---
-    // axis: 0(scale), 'x', 'y'
-    // dir: 1 (positive/increase), -1 (negative/decrease)
+    // --- 圖片移動/縮放邏輯 ---
     window.moveImg = (axis, dir) => {
         if(!currentRawImg) return;
         
         const isMicro = els.microMode.checked;
         
         if(axis === 0) {
-            // 縮放: 預設 2% (0.02), 微調 0.1% (0.001)
             const step = isMicro ? 0.001 : 0.02; 
             imgTrans.scale += (step * dir);
             if(imgTrans.scale < 0.1) imgTrans.scale = 0.1;
-            
         } else if (axis === 'x') {
-            // 移動: 預設 10px, 微調 1px
             const step = isMicro ? 1 : 10;
-            // 按左鍵(dir=1) -> 圖片往左 (x減)
-            // 按右鍵(dir=-1) -> 圖片往右 (x加)
             imgTrans.x -= (step * dir);
-            
         } else if (axis === 'y') {
             const step = isMicro ? 1 : 10;
-            // 按上鍵(dir=1) -> 圖片往上 (y減)
-            // 按下鍵(dir=-1) -> 圖片往下 (y加)
             imgTrans.y -= (step * dir);
         }
         drawRefAndGrid();
@@ -687,32 +680,15 @@
 
     // --- 鍵盤監聽 ---
     document.addEventListener('keydown', (e) => {
-        // 只有當參考圖容器顯示且沒有摺疊時才觸發，或者使用者明確 focus 在該區域
-        // 簡單起見，如果圖片已上傳且按下方向鍵，則觸發
         if (!currentRawImg || els.refContainer.classList.contains('collapsed')) return;
-
-        // 避免在輸入框打字時觸發
         if (e.target.tagName === 'INPUT') return;
 
         let axis = null;
         let dir = 0;
         
-        // 暫時將 microMode 與 Shift 鍵連動 (按住 Shift 加速 = 反向微調? 不，按住 Shift 強制大步)
-        // 邏輯：
-        // 1. 沒按 Shift, 沒勾 Micro => 普通 (10px)
-        // 2. 勾 Micro => 微調 (1px)
-        // 3. 按 Shift => 強制加速 (20px)
-        
-        // 為了簡單，我們直接修改 checkbox 狀態來影響 moveImg，或者傳入 override
-        // 這裡簡單實作：按鍵直接呼叫 moveImg，它會讀取 checkbox。
-        // 但我們希望 Shift 能加速。
-        
         const isShift = e.shiftKey;
         const isCtrl = e.ctrlKey || e.metaKey;
-
-        // 如果按住 Shift，我們暫時取消勾選 microMode (模擬加速)，執行完再恢復？
-        // 或者直接在這裡處理邏輯。
-        // 為了代碼一致性，我們透過切換 checkbox 狀態來達成效果 (視覺上也會變，很直觀)
+        
         const originalMicro = els.microMode.checked;
         if (isShift) els.microMode.checked = false; // Shift 強制大步
 
@@ -725,7 +701,6 @@
             moveImg(axis, dir);
         }
 
-        // 恢復
         if (isShift) els.microMode.checked = originalMicro;
     });
 
@@ -741,8 +716,6 @@
         
         ctx.clearRect(0, 0, cvs.width, cvs.height);
         
-        // 繪製變形後的圖
-        // 確保影像品質
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
 
@@ -845,6 +818,7 @@
         localStorage.setItem('stickerToolSettings', JSON.stringify(s));
     }
 
+    // --- FIX: 更新 Tag 樣式函式 (增加禁用判斷) ---
     function updateTagClasses() {
         document.querySelectorAll('.tag-btn').forEach(btn => {
             btn.classList.remove('active-main');
@@ -861,6 +835,9 @@
     }
 
     window.setTag = (type, index) => {
+        // FIX 2: 如果是表情貼模式，禁止選取 main
+        if (type === 'main' && els.sizePreset.value === 'emoji') return;
+
         if (type === 'main') selectedMainIdx = (selectedMainIdx === index) ? -1 : index;
         else selectedTabIdx = (selectedTabIdx === index) ? -1 : index;
         updateTagClasses();
@@ -875,6 +852,28 @@
         document.getElementById(id).addEventListener('input', () => { updateLabels(); saveSettings(); });
     });
     ['rows', 'cols', 'autoCenter'].forEach(id => document.getElementById(id).addEventListener('change', saveSettings));
+
+    // --- FIX 1: 起始檔名輸入監聽 (即時更新) ---
+    els.startNum.addEventListener('input', () => {
+        rawStickers.forEach((_, i) => {
+            const nameEl = document.getElementById(`name-${i}`);
+            if(nameEl) nameEl.textContent = getFilename(i);
+        });
+    });
+
+    // --- FIX 2: 尺寸模式切換監聽 (切換 Main 按鈕狀態) ---
+    els.sizePreset.addEventListener('change', () => { 
+        if (els.sizePreset.value === 'sticker') { 
+            els.outW.value = 370; els.outH.value = 320; 
+        } else if (els.sizePreset.value === 'emoji') { 
+            els.outW.value = 270; els.outH.value = 270; 
+            // 切換到表情貼，強制取消 Main 選取
+            selectedMainIdx = -1;
+            updateTagClasses();
+        }
+        // 重新渲染預覽以更新按鈕禁用狀態
+        renderPreview(parseInt(els.rows.value), parseInt(els.cols.value));
+    });
 
     els.imgIn.addEventListener('change', async (e) => {
         const file = e.target.files[0];
@@ -901,13 +900,11 @@
         
         setTimeout(async () => {
             try {
-                // 創建虛擬畫布來獲取變形後的影像
                 const virtualCvs = document.createElement('canvas');
                 virtualCvs.width = currentRawImg.width;
                 virtualCvs.height = currentRawImg.height;
                 const vCtx = virtualCvs.getContext('2d');
                 
-                // 必須與預覽時完全一致的參數
                 vCtx.drawImage(
                     currentRawImg, 
                     imgTrans.x, 
@@ -917,7 +914,6 @@
                 );
                 
                 const sourceImg = await loadImage(virtualCvs.toDataURL());
-                
                 let mask = generateColorMask(sourceImg);
                 
                 const shrinkVal = parseFloat(els.shrink.value);
@@ -1140,10 +1136,16 @@
 
     function renderPreview(rows, cols) {
         els.preview.style.gridTemplateColumns = `repeat(${cols}, 1fr)`; els.preview.innerHTML = '';
+        const isEmojiMode = els.sizePreset.value === 'emoji'; // FIX 2
+
         rawStickers.forEach((cvs, i) => {
             const url = resizeToOutput(cvs, 150, 150);
             const div = document.createElement('div'); div.className = 'sticker-card';
-            div.innerHTML = `<div class="sticker-img-box ${previewBgClass}" onclick="viewImage('${url}')"><img src="${url}"><div class="dl-icon-btn" onclick="downloadSingle(${i}, event)">⬇</div></div><div class="sticker-name" id="name-${i}">${getFilename(i)}</div><div class="tags-row"><span class="tag-btn" id="btn-main-${i}" onclick="setTag('main', ${i})">main</span><span class="tag-btn" id="btn-tab-${i}" onclick="setTag('tab', ${i})">tab</span></div>`;
+            
+            // FIX 2: 如果是表情貼模式，main 按鈕加上 disabled class
+            const mainClass = isEmojiMode ? 'tag-btn disabled' : 'tag-btn';
+            
+            div.innerHTML = `<div class="sticker-img-box ${previewBgClass}" onclick="viewImage('${url}')"><img src="${url}"><div class="dl-icon-btn" onclick="downloadSingle(${i}, event)">⬇</div></div><div class="sticker-name" id="name-${i}">${getFilename(i)}</div><div class="tags-row"><span class="${mainClass}" id="btn-main-${i}" onclick="setTag('main', ${i})">main</span><span class="tag-btn" id="btn-tab-${i}" onclick="setTag('tab', ${i})">tab</span></div>`;
             els.preview.appendChild(div);
         });
         updateTagClasses();
@@ -1202,10 +1204,9 @@
     window.setColor = (hex) => els.targetColor.value = hex;
     window.toggleTheme = () => { isDark = !isDark; document.body.classList.toggle('light-mode', !isDark); document.getElementById('themeBtn').textContent = isDark ? '☀️ 切換明亮' : '🌙 切換暗黑'; };
     
-    els.sizePreset.addEventListener('change', () => { 
-        if (els.sizePreset.value === 'sticker') { els.outW.value = 370; els.outH.value = 320; }
-        else if (els.sizePreset.value === 'emoji') { els.outW.value = 270; els.outH.value = 270; }
-    });
+    // 初始化呼叫一次以確保尺寸正確
+    if (els.sizePreset.value === 'sticker') { els.outW.value = 370; els.outH.value = 320; }
+    else if (els.sizePreset.value === 'emoji') { els.outW.value = 270; els.outH.value = 270; }
 
     loadSettings();
     updateLabels();

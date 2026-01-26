@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LINE 貼圖製作大師 (V25-13: 完整排版版)</title>
+    <title>LINE 貼圖製作大師 (V25-14: 標籤靠左版)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -194,15 +194,13 @@
         .row { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; } 
         .col { flex: 1; display: flex; align-items: center; gap: 6px; }
         
-        /* 標籤對齊樣式優化 */
+        /* 標籤對齊樣式 (回復為靠左) */
         .label-group { 
-            display: flex; align-items: center; width: 95px; flex-shrink: 0; 
+            display: flex; align-items: center; width: 85px; flex-shrink: 0; 
         }
         .label-text { 
-            width: 65px; /* 固定寬度以進行分散對齊 */
             font-weight: 600; font-size: 0.9rem; color: var(--text-main); 
-            text-align: justify; text-align-last: justify; /* 核心：分散對齊 */
-            display: inline-block;
+            white-space: nowrap; 
             margin-right: 4px;
         }
         
@@ -301,7 +299,7 @@
 <body class="">
 
 <div class="header">
-    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-13 完整排版版</span></h1>
+    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-14 標籤靠左版</span></h1>
     <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️ 切換明亮</button>
 </div>
 
@@ -625,7 +623,7 @@
         'autoCenter': '【開啟】自動偵測內容並置中放大。\n【關閉】保留原始裁切位置。'
     };
 
-    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-13 | ${new Date().toISOString().slice(0, 10)}`;
+    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-14 | ${new Date().toISOString().slice(0, 10)}`;
 
     window.changeStep = (delta) => {
         const newStep = currentStep + delta;
@@ -863,7 +861,6 @@
         if(!currentRawImg) { alert("請先在第一步上傳圖片！"); window.changeStep(1-currentStep); return; }
         els.runBtn.disabled = true; els.runBtn.textContent = "🚀 處理中...";
         els.preview.innerHTML = "<div style='grid-column:1/-1;text-align:center;color:#ccc;'>製作中...</div>";
-        
         setTimeout(async () => {
             try {
                 const virtualCvs = document.createElement('canvas');
@@ -1258,4 +1255,3 @@
 </script>
 </body>
 </html>
-

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LINE 貼圖製作大師 (V25-30: 文字自由編輯版)</title>
+    <title>LINE 貼圖製作大師 (V25-30: 完整修復版)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -359,7 +359,7 @@
 <body class="">
 
 <div class="header">
-    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-30 文字自由編輯版</span></h1>
+    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-30 完整修復版</span></h1>
     <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️ 切換明亮</button>
 </div>
 
@@ -1333,21 +1333,6 @@
         return sCvs;
     }
 
-    async function cutAndContour(img, rows, cols, globalSettings) {
-        const w = img.width; const h = img.height;
-        const tileW = Math.floor(w/cols); const tileH = Math.floor(h/rows);
-        const res = [];
-        for(let r=0; r<rows; r++) {
-            for(let c=0; c<cols; c++) {
-                const idx = r * cols + c;
-                const localSettings = stickerOverrides[idx] ? { ...globalSettings, ...stickerOverrides[idx] } : globalSettings;
-                const sCvs = await processStickerTile(img, r, c, tileW, tileH, localSettings);
-                res.push(sCvs);
-            }
-        }
-        return res;
-    }
-
     window.openEditModal = async (idx) => {
         currentEditIdx = idx;
         const globalSettings = {
@@ -1399,7 +1384,6 @@
 
     window.closeEditModal = () => { 
         els.editModal.style.display = 'none'; 
-        // 關閉時清空 pending text
         cancelText();
     };
 
@@ -1409,7 +1393,6 @@
         document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
         document.getElementById(tool + 'Btn').classList.add('active');
         
-        // UI 顯示控制
         const isText = (tool === 'text');
         els.textControls.classList.toggle('show', isText);
         els.brushSize.style.display = isText ? 'none' : 'inline-block';
@@ -1418,7 +1401,6 @@
         els.textRotate.style.display = 'none';
         els.textSize.style.display = 'none';
         
-        // 如果有正在編輯的文字，且切換工具，視同放棄編輯
         if(pendingText && !isText) {
             cancelText();
         }
@@ -1458,13 +1440,11 @@
 
     function startDraw(e) {
         if (currentTool === 'text') {
-            // 文字模式下的拖曳
             if (pendingText) {
-                isDrawing = true; // 借用 isDrawing 當作 isDragging
+                isDrawing = true; 
                 const rect = els.editCanvas.getBoundingClientRect();
                 const scaleX = tempOverlayCanvas.width / rect.width;
                 const scaleY = tempOverlayCanvas.height / rect.height;
-                // 紀錄偏移量
                 pendingText.offsetX = (e.clientX - rect.left) * scaleX - pendingText.x;
                 pendingText.offsetY = (e.clientY - rect.top) * scaleY - pendingText.y;
             }
@@ -1484,11 +1464,10 @@
         const cy = (e.clientY - rect.top) * scaleY;
 
         if (currentTool === 'text') {
-            // 拖曳文字
             if (pendingText) {
                 pendingText.x = cx - pendingText.offsetX;
                 pendingText.y = cy - pendingText.offsetY;
-                updateEditPreview(); // 重繪
+                updateEditPreview(); 
             }
             return;
         }
@@ -1522,7 +1501,6 @@
     function stopDraw() {
         if (isDrawing) {
             isDrawing = false;
-            // 如果不是文字模式，才存歷史記錄
             if (currentTool !== 'text') {
                 saveHistory(); 
             }
@@ -1537,12 +1515,11 @@
         const w = tempOverlayCanvas.width;
         const h = tempOverlayCanvas.height;
         
-        // 建立浮動文字物件
         pendingText = {
             text: text,
             x: w / 2,
             y: h / 2,
-            size: 30, // 初始大小 (對應 Slider 30)
+            size: 30, 
             rotation: 0,
             color: document.getElementById('textColor').value,
             stroke: document.getElementById('textStroke').value,
@@ -1550,25 +1527,21 @@
             offsetY: 0
         };
         
-        // 顯示確認UI
         els.textControls.style.display = 'none';
         els.textConfirmControls.style.display = 'flex';
         
-        // 切換上方工具列顯示文字專用 Slider
         els.brushSize.style.display = 'none';
         els.toolLabel.innerText = '旋轉/大小:';
         els.toolLabel.style.display = 'inline-block';
         els.textRotate.style.display = 'inline-block';
         els.textSize.style.display = 'inline-block';
         
-        // 重設 Slider 值
         els.textSize.value = 30;
         els.textRotate.value = 0;
         
         updateEditPreview();
     };
     
-    // 監聽文字參數變化
     els.textRotate.addEventListener('input', (e) => {
         if(pendingText) { pendingText.rotation = parseInt(e.target.value); updateEditPreview(); }
     });
@@ -1579,15 +1552,13 @@
     window.confirmText = () => {
         if (!pendingText) return;
         
-        // 將文字燒錄到 Canvas
         const ctx = tempOverlayCanvas.getContext('2d');
-        const w = tempOverlayCanvas.width; // 參考畫布寬度比例
+        const w = tempOverlayCanvas.width; 
         
         ctx.save();
         ctx.translate(pendingText.x, pendingText.y);
         ctx.rotate(pendingText.rotation * Math.PI / 180);
         
-        // 根據畫布寬度計算實際字體大小 (讓Slider 10-100 有意義)
         const realFontSize = (pendingText.size / 100) * (w * 0.5); 
         ctx.font = `bold ${realFontSize}px sans-serif`;
         ctx.textAlign = 'center';
@@ -1603,9 +1574,8 @@
         
         ctx.restore();
         
-        // 完成
         saveHistory();
-        cancelText(); // 清除浮動狀態回到輸入模式
+        cancelText(); 
         updateEditPreview();
     };
 
@@ -1614,16 +1584,14 @@
         els.textConfirmControls.style.display = 'none';
         els.textControls.style.display = 'flex';
         
-        // 還原 Slider 顯示
         els.textRotate.style.display = 'none';
         els.textSize.style.display = 'none';
-        els.brushSize.style.display = 'none'; // 因為還是在 Text tool，所以不顯示筆刷大小
+        els.brushSize.style.display = 'none'; 
         els.toolLabel.style.display = 'none';
         
         updateEditPreview();
     };
 
-    // 修改 updateEditPreview 以支援繪製浮動文字
     async function updateEditPreview() {
         if(currentEditIdx === -1 || !currentRawImg) return;
         
@@ -1651,21 +1619,12 @@
             defringe: parseFloat(document.getElementById('e_defringe').value),
             maskData: tempMaskCanvas.toDataURL(),
             restoreData: tempRestoreCanvas.toDataURL(),
-            // 注意：這裡不傳入 overlayData，因為我們要在下面手動疊加 pendingText
-            // 但如果沒有 pendingText，我們要顯示已燒錄的 overlay
         };
-        
-        // 先產生底圖 (含已燒錄的塗鴉/文字)
-        // 為了顯示浮動文字，我們需要先把 tempOverlayCanvas 畫上去，再畫 pendingText
-        // 但 processStickerTile 內部邏輯是最後才畫 overlay。
-        // 解決方案：我們傳入目前的 tempOverlayCanvas 作為基底，
-        // 然後在回傳的 resultCvs 上再畫一次 pendingText (如果是預覽模式)
         
         tempSettings.overlayData = tempOverlayCanvas.toDataURL();
 
         const resultCvs = await processStickerTile(sourceImg, r, c, tileW, tileH, tempSettings);
         
-        // 如果有浮動文字，畫在 resultCvs 最上層
         if (pendingText) {
             const ctx = resultCvs.getContext('2d');
             const w = resultCvs.width;
@@ -1687,13 +1646,12 @@
             ctx.fillStyle = pendingText.color;
             ctx.fillText(pendingText.text, 0, 0);
             
-            // 繪製選取框 (虛線)
             ctx.strokeStyle = '#00FFFF';
             ctx.lineWidth = 1;
             ctx.setLineDash([5, 3]);
             const metrics = ctx.measureText(pendingText.text);
             const textW = metrics.width;
-            const textH = realFontSize; // 粗略估計
+            const textH = realFontSize; 
             ctx.strokeRect(-textW/2 - 5, -textH/2 - 5, textW + 10, textH + 10);
             
             ctx.restore();
@@ -1759,6 +1717,228 @@
         els.redoBtn.style.opacity = historyStep < editHistory.length - 1 ? 1 : 0.3;
     }
 
+    function reorderStickers(fromIndex, toIndex) {
+        let combined = rawStickers.map((img, i) => ({
+            img: img,
+            settings: stickerOverrides[i] || null,
+            isMain: selectedMainIdx === i,
+            isTab: selectedTabIdx === i
+        }));
+
+        const [movedItem] = combined.splice(fromIndex, 1);
+        combined.splice(toIndex, 0, movedItem);
+
+        rawStickers = combined.map(x => x.img);
+        stickerOverrides = {};
+        selectedMainIdx = -1;
+        selectedTabIdx = -1;
+
+        combined.forEach((item, index) => {
+            if (item.settings) stickerOverrides[index] = item.settings;
+            if (item.isMain) selectedMainIdx = index;
+            if (item.isTab) selectedTabIdx = index;
+        });
+
+        renderPreview(parseInt(els.rows.value), parseInt(els.cols.value));
+    }
+
+    function renderPreview(rows, cols) {
+        els.preview.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+        els.preview.innerHTML = '';
+        const isEmojiMode = els.sizePreset.value === 'emoji';
+
+        rawStickers.forEach((cvs, i) => {
+            const url = resizeToOutput(cvs, 150, 150).toDataURL();
+            const div = document.createElement('div');
+            div.className = 'sticker-card';
+            div.draggable = true;
+            div.dataset.index = i;
+            div.ondragstart = handleDragStart;
+            div.ondragover = handleDragOver;
+            div.ondragenter = handleDragEnter;
+            div.ondragleave = handleDragLeave;
+            div.ondrop = handleDrop;
+            div.ondragend = handleDragEnd;
+
+            const mainClass = isEmojiMode ? 'tag-btn disabled' : 'tag-btn';
+            const isEdited = stickerOverrides[i] !== undefined;
+            const nameSuffix = isEdited ? ' *' : '';
+            const nameColor = isEdited ? 'color: var(--primary); font-weight:bold;' : '';
+
+            div.innerHTML = `
+                <div class="sticker-img-box ${previewBgClass}" onclick="viewImage('${url}')">
+                    <img src="${url}">
+                    <div class="edit-icon-btn" title="編輯此張貼圖" onclick="openEditModal(${i}); event.stopPropagation();">✏️</div>
+                    <div class="dl-icon-btn" onclick="downloadSingle(${i}, event)">⬇</div>
+                </div>
+                <div class="sticker-name" id="name-${i}" style="${nameColor}">${getFilename(i)}${nameSuffix}</div>
+                <div class="tags-row">
+                    <span class="${mainClass}" id="btn-main-${i}" onclick="setTag('main', ${i})">main</span>
+                    <span class="tag-btn" id="btn-tab-${i}" onclick="setTag('tab', ${i})">tab</span>
+                </div>
+            `;
+            els.preview.appendChild(div);
+        });
+        updateTagClasses();
+    }
+
+    // --- Drag & Drop ---
+    window.handleDragStart = (e) => {
+        dragSrcIndex = +e.target.dataset.index;
+        e.target.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+    };
+
+    window.handleDragOver = (e) => {
+        if (e.preventDefault) e.preventDefault(); 
+        e.dataTransfer.dropEffect = 'move';
+        return false;
+    };
+
+    window.handleDragEnter = (e) => {
+        const target = e.target.closest('.sticker-card');
+        if (target && +target.dataset.index !== dragSrcIndex) {
+            target.classList.add('drag-over');
+        }
+    };
+
+    window.handleDragLeave = (e) => {
+        const target = e.target.closest('.sticker-card');
+        if (target) {
+            target.classList.remove('drag-over');
+        }
+    };
+
+    window.handleDrop = (e) => {
+        if (e.stopPropagation) e.stopPropagation();
+        
+        const target = e.target.closest('.sticker-card');
+        if (dragSrcIndex !== null && target) {
+            const targetIndex = +target.dataset.index;
+            if (dragSrcIndex !== targetIndex) {
+                reorderStickers(dragSrcIndex, targetIndex);
+            }
+        }
+        return false;
+    };
+
+    window.handleDragEnd = (e) => {
+        const cards = document.querySelectorAll('.sticker-card');
+        cards.forEach(card => {
+            card.classList.remove('dragging');
+            card.classList.remove('drag-over');
+        });
+        dragSrcIndex = null;
+    };
+
+    // --- Others ---
+    window.setPreviewBg = (btn, mode) => { 
+        document.querySelectorAll('.bg-toggle-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active'); 
+        const map = { 'light': 'bg-light', 'line': 'bg-line', 'pink': 'bg-pink', 'yellow': 'bg-yellow', 'dark': '' };
+        previewBgClass = map[mode] || '';
+        renderPreview(parseInt(els.rows.value), parseInt(els.cols.value)); 
+    };
+
+    function getFilename(idx) {
+        const str = els.startNum.value.trim();
+        return String((parseInt(str)||1) + idx).padStart(str.length, '0') + '.png';
+    }
+    
+    function resizeToOutput(canvas, w, h) {
+        const c = document.createElement('canvas');
+        c.width = w;
+        c.height = h;
+        const ctx = c.getContext('2d');
+        const scale = Math.min(w/canvas.width, h/canvas.height);
+        const dw = canvas.width*scale;
+        const dh = canvas.height*scale;
+        ctx.drawImage(canvas, (w-dw)/2, (h-dh)/2, dw, dh);
+        return c; 
+    }
+
+    els.dlBtn.onclick = async () => {
+        const zip = new JSZip();
+        const w = parseInt(els.outW.value) || 370;
+        const h = parseInt(els.outH.value) || 320;
+        const dateStr = new Date().toISOString().slice(0,10).replace(/-/g,'');
+        const isCompress = els.compressPNG.checked;
+        
+        els.dlBtn.textContent = "📦 打包中...";
+        els.dlBtn.disabled = true;
+
+        for (let i = 0; i < rawStickers.length; i++) {
+            const cvs = rawStickers[i];
+            const outCvs = resizeToOutput(cvs, w, h);
+            
+            if (isCompress) {
+                const pngBuffer = await compressImage(outCvs, 256);
+                zip.file(getFilename(i), pngBuffer);
+            } else {
+                const url = outCvs.toDataURL();
+                zip.file(getFilename(i), url.split(',')[1], {base64:true});
+            }
+        }
+        
+        if (selectedMainIdx !== -1 && rawStickers[selectedMainIdx]) {
+            const mainCvs = resizeToOutput(rawStickers[selectedMainIdx], 240, 240);
+            if(isCompress) zip.file("main.png", await compressImage(mainCvs, 256));
+            else zip.file("main.png", mainCvs.toDataURL().split(',')[1], {base64:true});
+        }
+        if (selectedTabIdx !== -1 && rawStickers[selectedTabIdx]) {
+            const tabCvs = resizeToOutput(rawStickers[selectedTabIdx], 96, 74);
+            if(isCompress) zip.file("tab.png", await compressImage(tabCvs, 256));
+            else zip.file("tab.png", tabCvs.toDataURL().split(',')[1], {base64:true});
+        }
+        
+        zip.generateAsync({type:"blob"}).then(b => {
+            saveAs(b, `LineStickers_${dateStr}.zip`);
+            els.dlBtn.textContent = "下載全部 ZIP";
+            els.dlBtn.disabled = false;
+        });
+    };
+
+    window.downloadSingle = async (i, event) => {
+        if(event) event.stopPropagation();
+        const w = parseInt(els.outW.value) || 370;
+        const h = parseInt(els.outH.value) || 320;
+        const outCvs = resizeToOutput(rawStickers[i], w, h);
+        const isCompress = els.compressPNG.checked;
+
+        if (isCompress) {
+            const pngBuffer = await compressImage(outCvs, 256);
+            saveAs(new Blob([pngBuffer], {type: "image/png"}), getFilename(i));
+        } else {
+            const url = outCvs.toDataURL();
+            saveAs(dataURLtoBlob(url), getFilename(i));
+        }
+    };
+    
+    window.viewImage = (url) => {
+        els.modalImg.src = url;
+        els.modalImg.classList.remove('zoomed');
+        document.getElementById('imageModal').style.display = "block";
+    };
+    els.modalImg.onclick = (e) => { e.stopPropagation(); els.modalImg.classList.toggle('zoomed'); };
+    window.closeModal = () => { document.getElementById('imageModal').style.display = "none"; };
+    
+    window.showHelp = (key) => {
+        els.helpText.innerText = HELP_TEXTS[key];
+        els.helpModal.style.display = "block";
+    };
+    window.closeHelp = () => { els.helpModal.style.display = "none"; };
+    window.setColor = (hex) => els.targetColor.value = hex;
+    window.toggleTheme = () => {
+        isDark = !isDark;
+        document.body.classList.toggle('light-mode', !isDark);
+        document.getElementById('themeBtn').textContent = isDark ? '☀️ 切換明亮' : '🌙 切換暗黑';
+    };
+    
+    if (els.sizePreset.value === 'sticker') { els.outW.value = 370; els.outH.value = 320; }
+    else if (els.sizePreset.value === 'emoji') { els.outW.value = 270; els.outH.value = 270; }
+
+    loadSettings();
+    updateLabels();
 </script>
 </body>
 </html>

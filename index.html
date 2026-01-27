@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LINE 貼圖製作大師 (V25-30: 完整修復版)</title>
+    <title>LINE 貼圖製作大師 (V25-31: 全功能修復版)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -359,7 +359,7 @@
 <body class="">
 
 <div class="header">
-    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-30 完整修復版</span></h1>
+    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-31 全功能修復版</span></h1>
     <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️ 切換明亮</button>
 </div>
 
@@ -735,27 +735,35 @@
 
     function applyShrink(mask, amount) {
         if (amount <= 0) return mask;
-        const cvs = document.createElement('canvas'); cvs.width = mask.width; cvs.height = mask.height;
-        const ctx = cvs.getContext('2d'); ctx.drawImage(mask, 0, 0);
+        const cvs = document.createElement('canvas'); 
+        cvs.width = mask.width; 
+        cvs.height = mask.height;
+        const ctx = cvs.getContext('2d'); 
+        ctx.drawImage(mask, 0, 0);
         const srcData = ctx.getImageData(0, 0, cvs.width, cvs.height);
         const destData = ctx.createImageData(cvs.width, cvs.height);
-        const w = cvs.width; const h = cvs.height; const radius = Math.ceil(amount);
+        const w = cvs.width; 
+        const h = cvs.height; 
+        const radius = Math.ceil(amount);
         for (let y = 0; y < h; y++) {
             for (let x = 0; x < w; x++) {
                 let minAlpha = 255;
                 for (let ky = -radius; ky <= radius; ky++) {
                     for (let kx = -radius; kx <= radius; kx++) {
-                        const nx = x + kx; const ny = y + ky;
+                        const nx = x + kx; 
+                        const ny = y + ky;
                         if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
                             const alpha = srcData.data[(ny * w + nx) * 4 + 3];
                             if (alpha < minAlpha) minAlpha = alpha;
                         }
                     }
                 }
-                const idx = (y * w + x) * 4; destData.data[idx+3] = minAlpha; 
+                const idx = (y * w + x) * 4; 
+                destData.data[idx+3] = minAlpha; 
             }
         }
-        ctx.putImageData(destData, 0, 0); return cvs;
+        ctx.putImageData(destData, 0, 0); 
+        return cvs;
     }
 
     function applySmooth(mask, smooth) {
@@ -920,7 +928,22 @@
         toolLabel: document.getElementById('toolLabel')
     };
 
-    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-30 (Free Text Edit) | ${new Date().toISOString().slice(0, 10)}`;
+    const HELP_TEXTS = {
+        'crop': '設定要將大圖切割成幾列幾行。',
+        'color': '設定要去除的背景顏色。\n通常選擇圖片的底色（如白色或綠色），程式會自動將該顏色變為透明。',
+        'tolerance': '決定顏色去背的強度。\n數值越高：去除越多相近色。\n數值越小：只去除完全一樣的顏色。',
+        'smoothness': '消除邊緣鋸齒，讓線條更圓潤。',
+        'shrink': '【物理內縮】直接將邊緣往內削減，適合去除粗糙黑邊或不乾淨的輪廓。',
+        'defringe': '【色彩淨化】不改變形狀，只針對邊緣殘留的背景色 (如綠光) 進行淡化或去色。',
+        'contour': '在圖案周圍加上邊框。點擊旁邊的顏色框可改成「黑色」或其他顏色。',
+        'shadow': '【陰影模糊】決定陰影的柔和程度。\n【陰影距離】決定陰影與圖案的遠近，產生浮空感。\n【陰影濃度】決定陰影的深淺。',
+        'padding': '內縮圖案，防止被邊緣切到。',
+        'startNum': '設定檔名編號 (如 001.png)。',
+        'sizeMode': '設定匯出解析度。貼圖建議 370x320。',
+        'autoCenter': '【開啟】自動偵測內容並置中放大。\n【關閉】保留原始裁切位置。'
+    };
+
+    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-31 (Fully Restored) | ${new Date().toISOString().slice(0, 10)}`;
 
     window.changeStep = (delta) => {
         const newStep = currentStep + delta;
@@ -968,7 +991,7 @@
 
     window.resetMove = () => {
         if(!currentRawImg) return;
-        imgTrans = { x: 0, y: 0, scale: 1.0 };
+        imgTrans = { x: 0, y: 0, scale: 1.0 }; // 這裡已經修正為 1.0
         drawRefAndGrid();
     };
 
@@ -1331,6 +1354,21 @@
             sCtx.drawImage(finalImg, fx, fy, fw, fh);
         }
         return sCvs;
+    }
+
+    async function cutAndContour(img, rows, cols, globalSettings) {
+        const w = img.width; const h = img.height;
+        const tileW = Math.floor(w/cols); const tileH = Math.floor(h/rows);
+        const res = [];
+        for(let r=0; r<rows; r++) {
+            for(let c=0; c<cols; c++) {
+                const idx = r * cols + c;
+                const localSettings = stickerOverrides[idx] ? { ...globalSettings, ...stickerOverrides[idx] } : globalSettings;
+                const sCvs = await processStickerTile(img, r, c, tileW, tileH, localSettings);
+                res.push(sCvs);
+            }
+        }
+        return res;
     }
 
     window.openEditModal = async (idx) => {

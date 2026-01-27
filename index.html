@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LINE 貼圖製作大師 (V25-31: 全功能修復版)</title>
+    <title>LINE 貼圖製作大師 (V25-32: 穩定修復版)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -359,7 +359,7 @@
 <body class="">
 
 <div class="header">
-    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-31 全功能修復版</span></h1>
+    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-32 穩定修復版</span></h1>
     <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️ 切換明亮</button>
 </div>
 
@@ -706,7 +706,7 @@
         <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:20px;">
             <button class="btn btn-secondary" style="flex:1;" onclick="closeEditModal()">取消</button>
             <button class="btn btn-secondary" style="flex:1; background:#5e60ce; color:white; border-color:#5e60ce;" onclick="applyToAll()">⚡ 參數套用全部</button>
-            <button class="btn btn-green" style="flex:1;" onclick="saveEdit()">✅ 保存修改</button>
+            <button class="btn btn-green" style="flex:1;" onclick="saveEdit()" id="saveEditBtn">✅ 保存修改</button>
         </div>
     </div>
 </div>
@@ -805,20 +805,39 @@
         return `rgba(${r},${g},${b},${alpha})`;
     }
 
+    // 優化的 Auto-Center 邏輯 (過濾雜訊)
     function getContentBox(img) {
-        const cvs = document.createElement('canvas'); cvs.width = img.width; cvs.height = img.height;
-        const ctx = cvs.getContext('2d'); ctx.drawImage(img, 0, 0);
+        const cvs = document.createElement('canvas'); 
+        cvs.width = img.width; 
+        cvs.height = img.height;
+        const ctx = cvs.getContext('2d'); 
+        ctx.drawImage(img, 0, 0);
         const data = ctx.getImageData(0, 0, cvs.width, cvs.height).data;
         let minX = cvs.width, minY = cvs.height, maxX = 0, maxY = 0, found = false;
+        
+        // 增加 alpha 閾值 (30) 以忽略微弱雜訊
+        const alphaThreshold = 30;
+        
         for (let y = 0; y < cvs.height; y++) {
             for (let x = 0; x < cvs.width; x++) {
-                if (data[(y * cvs.width + x) * 4 + 3] > 10) { 
-                    if (x < minX) minX = x; if (x > maxX) maxX = x;
-                    if (y < minY) minY = y; if (y > maxY) maxY = y; found = true;
+                if (data[(y * cvs.width + x) * 4 + 3] > alphaThreshold) { 
+                    if (x < minX) minX = x; 
+                    if (x > maxX) maxX = x;
+                    if (y < minY) minY = y; 
+                    if (y > maxY) maxY = y; 
+                    found = true;
                 }
             }
         }
-        return found ? { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 } : null;
+        
+        if (!found) return null;
+        
+        // 進一步過濾：如果裁切範圍極小 (小於 5x5)，視為雜訊
+        const w = maxX - minX + 1;
+        const h = maxY - minY + 1;
+        if (w < 5 || h < 5) return null;
+
+        return { x: minX, y: minY, w: w, h: h };
     }
 
     function dataURLtoBlob(u) {
@@ -928,22 +947,7 @@
         toolLabel: document.getElementById('toolLabel')
     };
 
-    const HELP_TEXTS = {
-        'crop': '設定要將大圖切割成幾列幾行。',
-        'color': '設定要去除的背景顏色。\n通常選擇圖片的底色（如白色或綠色），程式會自動將該顏色變為透明。',
-        'tolerance': '決定顏色去背的強度。\n數值越高：去除越多相近色。\n數值越小：只去除完全一樣的顏色。',
-        'smoothness': '消除邊緣鋸齒，讓線條更圓潤。',
-        'shrink': '【物理內縮】直接將邊緣往內削減，適合去除粗糙黑邊或不乾淨的輪廓。',
-        'defringe': '【色彩淨化】不改變形狀，只針對邊緣殘留的背景色 (如綠光) 進行淡化或去色。',
-        'contour': '在圖案周圍加上邊框。點擊旁邊的顏色框可改成「黑色」或其他顏色。',
-        'shadow': '【陰影模糊】決定陰影的柔和程度。\n【陰影距離】決定陰影與圖案的遠近，產生浮空感。\n【陰影濃度】決定陰影的深淺。',
-        'padding': '內縮圖案，防止被邊緣切到。',
-        'startNum': '設定檔名編號 (如 001.png)。',
-        'sizeMode': '設定匯出解析度。貼圖建議 370x320。',
-        'autoCenter': '【開啟】自動偵測內容並置中放大。\n【關閉】保留原始裁切位置。'
-    };
-
-    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-31 (Fully Restored) | ${new Date().toISOString().slice(0, 10)}`;
+    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-32 (Stable Release) | ${new Date().toISOString().slice(0, 10)}`;
 
     window.changeStep = (delta) => {
         const newStep = currentStep + delta;
@@ -991,7 +995,7 @@
 
     window.resetMove = () => {
         if(!currentRawImg) return;
-        imgTrans = { x: 0, y: 0, scale: 1.0 }; // 這裡已經修正為 1.0
+        imgTrans = { x: 0, y: 0, scale: 1.0 };
         drawRefAndGrid();
     };
 
@@ -1705,6 +1709,125 @@
         ctx.drawImage(resultCvs, (300-w)/2, (300-h)/2, w, h);
     }
 
+    // --- Save Edit (Fixed Logic) ---
+    window.saveEdit = async () => {
+        // 如果有未確認的文字，強制確認
+        if (pendingText) {
+            confirmText();
+        }
+
+        // 顯示載入中狀態
+        const saveBtn = document.getElementById('saveEditBtn');
+        const originalText = saveBtn.textContent;
+        saveBtn.textContent = "⏳ 處理中...";
+        saveBtn.disabled = true;
+
+        try {
+            if (!stickerOverrides[currentEditIdx]) stickerOverrides[currentEditIdx] = {};
+            
+            // 1. 儲存 UI 上的參數
+            stickerOverrides[currentEditIdx].tolerance = parseInt(document.getElementById('e_tolerance').value);
+            stickerOverrides[currentEditIdx].smoothness = parseFloat(document.getElementById('e_smoothness').value);
+            stickerOverrides[currentEditIdx].shrink = parseFloat(document.getElementById('e_shrink').value);
+            stickerOverrides[currentEditIdx].defringe = parseFloat(document.getElementById('e_defringe').value);
+            
+            // 2. 儲存圖層資料 (Canvas -> DataURL)
+            stickerOverrides[currentEditIdx].maskData = tempMaskCanvas.toDataURL();
+            stickerOverrides[currentEditIdx].restoreData = tempRestoreCanvas.toDataURL();
+            stickerOverrides[currentEditIdx].overlayData = tempOverlayCanvas.toDataURL();
+            
+            // 3. 準備重新生成圖片
+            const sourceImg = await getSourceImage();
+            const rows = parseInt(els.rows.value);
+            const cols = parseInt(els.cols.value);
+            const tileW = Math.floor(sourceImg.width / cols);
+            const tileH = Math.floor(sourceImg.height / rows);
+            const r = Math.floor(currentEditIdx / cols);
+            const c = currentEditIdx % cols;
+            
+            // 4. 合併全域設定與單張設定
+            const globalSettings = {
+                contour: parseInt(els.contour.value),
+                contourColor: els.contourColor.value,
+                padding: parseInt(els.padding.value),
+                shadowBlur: parseInt(els.shadowBlur.value),
+                shadowDist: parseInt(els.shadowDist.value),
+                shadowOpacity: parseInt(els.shadowOpacity.value) / 100,
+                shadowColor: els.shadowColor.value,
+                autoCenter: els.autoCenter.checked,
+                targetColor: els.targetColor.value
+            };
+            const settings = { ...globalSettings, ...stickerOverrides[currentEditIdx] };
+            
+            // 5. 生成最終貼圖並存回陣列
+            rawStickers[currentEditIdx] = await processStickerTile(sourceImg, r, c, tileW, tileH, settings);
+            
+            // 6. 更新 UI
+            closeEditModal();
+            renderPreview(rows, cols); // 確保預覽區更新
+            
+        } catch (error) {
+            console.error("Save failed:", error);
+            alert("儲存失敗，請重試");
+        } finally {
+            saveBtn.textContent = originalText;
+            saveBtn.disabled = false;
+        }
+    };
+
+    window.applyToAll = async () => {
+        if (currentEditIdx === -1) return;
+        const confirmMsg = "確定要將目前的「去背參數」套用到所有圖片嗎？\n(注意：橡皮擦、還原筆刷與文字塗鴉內容【不會】被複製)";
+        if (!confirm(confirmMsg)) return;
+        
+        const newSettings = {
+            tolerance: parseInt(document.getElementById('e_tolerance').value),
+            smoothness: parseFloat(document.getElementById('e_smoothness').value),
+            shrink: parseFloat(document.getElementById('e_shrink').value),
+            defringe: parseFloat(document.getElementById('e_defringe').value),
+        };
+
+        for(let i=0; i<rawStickers.length; i++) {
+            if (!stickerOverrides[i]) stickerOverrides[i] = {};
+            stickerOverrides[i].tolerance = newSettings.tolerance;
+            stickerOverrides[i].smoothness = newSettings.smoothness;
+            stickerOverrides[i].shrink = newSettings.shrink;
+            stickerOverrides[i].defringe = newSettings.defringe;
+        }
+
+        els.runBtn.disabled = true; els.runBtn.textContent = "🔄 批次處理中...";
+        const sourceImg = await getSourceImage();
+        const rows = parseInt(els.rows.value);
+        const cols = parseInt(els.cols.value);
+        const tileW = Math.floor(sourceImg.width / cols);
+        const tileH = Math.floor(sourceImg.height / rows);
+        
+        const globalSettings = {
+            contour: parseInt(els.contour.value),
+            contourColor: els.contourColor.value,
+            padding: parseInt(els.padding.value),
+            shadowBlur: parseInt(els.shadowBlur.value),
+            shadowDist: parseInt(els.shadowDist.value),
+            shadowOpacity: parseInt(els.shadowOpacity.value) / 100,
+            shadowColor: els.shadowColor.value,
+            autoCenter: els.autoCenter.checked,
+            targetColor: els.targetColor.value
+        };
+
+        for(let r=0; r<rows; r++) {
+            for(let c=0; c<cols; c++) {
+                const idx = r * cols + c;
+                if(idx >= rawStickers.length) continue;
+                const settings = { ...globalSettings, ...stickerOverrides[idx] };
+                rawStickers[idx] = await processStickerTile(sourceImg, r, c, tileW, tileH, settings);
+            }
+        }
+        
+        els.runBtn.disabled = false; els.runBtn.textContent = "🚀 開始製作";
+        renderPreview(rows, cols);
+        alert("✅ 參數已套用！");
+    };
+
     // --- Undo / Redo ---
     function saveHistory() {
         if (historyStep < editHistory.length - 1) {
@@ -1786,6 +1909,7 @@
         const isEmojiMode = els.sizePreset.value === 'emoji';
 
         rawStickers.forEach((cvs, i) => {
+            // Force URL update to avoid caching
             const url = resizeToOutput(cvs, 150, 150).toDataURL();
             const div = document.createElement('div');
             div.className = 'sticker-card';

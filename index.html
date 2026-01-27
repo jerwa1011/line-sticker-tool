@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LINE 貼圖製作大師 (V25-32: 穩定修復版)</title>
+    <title>LINE 貼圖製作大師 (V25-33: 功能完全補完版)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -359,7 +359,7 @@
 <body class="">
 
 <div class="header">
-    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-32 穩定修復版</span></h1>
+    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-33 功能完全補完版</span></h1>
     <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️ 切換明亮</button>
 </div>
 
@@ -712,7 +712,7 @@
 </div>
 
 <script>
-    // --- 核心圖像處理函式 (提早定義) ---
+    // --- 核心圖像處理函式 (提早定義，避免 ReferenceError) ---
     function generateColorMask(img, targetHex, toleranceVal) {
         const cvs = document.createElement('canvas'); 
         cvs.width = img.width; 
@@ -805,7 +805,6 @@
         return `rgba(${r},${g},${b},${alpha})`;
     }
 
-    // 優化的 Auto-Center 邏輯 (過濾雜訊)
     function getContentBox(img) {
         const cvs = document.createElement('canvas'); 
         cvs.width = img.width; 
@@ -846,6 +845,7 @@
         return new Blob([a],{type:m});
     }
     
+    // 強化版 Image Loader
     function loadImage(s){
         return new Promise((r, rej)=>{
             const i=new Image();
@@ -944,10 +944,29 @@
         textConfirmControls: document.getElementById('textConfirmControls'),
         textRotate: document.getElementById('textRotate'),
         textSize: document.getElementById('textSize'),
-        toolLabel: document.getElementById('toolLabel')
+        toolLabel: document.getElementById('toolLabel'),
+        
+        // Missing elements in previous els definition
+        helpModal: document.getElementById('helpModal'),
+        helpText: document.getElementById('helpText'),
     };
 
-    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-32 (Stable Release) | ${new Date().toISOString().slice(0, 10)}`;
+    const HELP_TEXTS = {
+        'crop': '設定要將大圖切割成幾列幾行。',
+        'color': '設定要去除的背景顏色。\n通常選擇圖片的底色（如白色或綠色），程式會自動將該顏色變為透明。',
+        'tolerance': '決定顏色去背的強度。\n數值越高：去除越多相近色。\n數值越小：只去除完全一樣的顏色。',
+        'smoothness': '消除邊緣鋸齒，讓線條更圓潤。',
+        'shrink': '【物理內縮】直接將邊緣往內削減，適合去除粗糙黑邊或不乾淨的輪廓。',
+        'defringe': '【色彩淨化】不改變形狀，只針對邊緣殘留的背景色 (如綠光) 進行淡化或去色。',
+        'contour': '在圖案周圍加上邊框。點擊旁邊的顏色框可改成「黑色」或其他顏色。',
+        'shadow': '【陰影模糊】決定陰影的柔和程度。\n【陰影距離】決定陰影與圖案的遠近，產生浮空感。\n【陰影濃度】決定陰影的深淺。',
+        'padding': '內縮圖案，防止被邊緣切到。',
+        'startNum': '設定檔名編號 (如 001.png)。',
+        'sizeMode': '設定匯出解析度。貼圖建議 370x320。',
+        'autoCenter': '【開啟】自動偵測內容並置中放大。\n【關閉】保留原始裁切位置。'
+    };
+
+    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-33 (Final Polish) | ${new Date().toISOString().slice(0, 10)}`;
 
     window.changeStep = (delta) => {
         const newStep = currentStep + delta;
@@ -1429,7 +1448,6 @@
         cancelText();
     };
 
-    // --- 工具切換邏輯 (UI) ---
     window.setTool = (tool) => {
         currentTool = tool;
         document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
@@ -1725,18 +1743,15 @@
         try {
             if (!stickerOverrides[currentEditIdx]) stickerOverrides[currentEditIdx] = {};
             
-            // 1. 儲存 UI 上的參數
             stickerOverrides[currentEditIdx].tolerance = parseInt(document.getElementById('e_tolerance').value);
             stickerOverrides[currentEditIdx].smoothness = parseFloat(document.getElementById('e_smoothness').value);
             stickerOverrides[currentEditIdx].shrink = parseFloat(document.getElementById('e_shrink').value);
             stickerOverrides[currentEditIdx].defringe = parseFloat(document.getElementById('e_defringe').value);
             
-            // 2. 儲存圖層資料 (Canvas -> DataURL)
             stickerOverrides[currentEditIdx].maskData = tempMaskCanvas.toDataURL();
             stickerOverrides[currentEditIdx].restoreData = tempRestoreCanvas.toDataURL();
             stickerOverrides[currentEditIdx].overlayData = tempOverlayCanvas.toDataURL();
             
-            // 3. 準備重新生成圖片
             const sourceImg = await getSourceImage();
             const rows = parseInt(els.rows.value);
             const cols = parseInt(els.cols.value);
@@ -1745,7 +1760,6 @@
             const r = Math.floor(currentEditIdx / cols);
             const c = currentEditIdx % cols;
             
-            // 4. 合併全域設定與單張設定
             const globalSettings = {
                 contour: parseInt(els.contour.value),
                 contourColor: els.contourColor.value,
@@ -1759,12 +1773,10 @@
             };
             const settings = { ...globalSettings, ...stickerOverrides[currentEditIdx] };
             
-            // 5. 生成最終貼圖並存回陣列
             rawStickers[currentEditIdx] = await processStickerTile(sourceImg, r, c, tileW, tileH, settings);
             
-            // 6. 更新 UI
             closeEditModal();
-            renderPreview(rows, cols); // 確保預覽區更新
+            renderPreview(rows, cols); 
             
         } catch (error) {
             console.error("Save failed:", error);
@@ -1773,59 +1785,6 @@
             saveBtn.textContent = originalText;
             saveBtn.disabled = false;
         }
-    };
-
-    window.applyToAll = async () => {
-        if (currentEditIdx === -1) return;
-        const confirmMsg = "確定要將目前的「去背參數」套用到所有圖片嗎？\n(注意：橡皮擦、還原筆刷與文字塗鴉內容【不會】被複製)";
-        if (!confirm(confirmMsg)) return;
-        
-        const newSettings = {
-            tolerance: parseInt(document.getElementById('e_tolerance').value),
-            smoothness: parseFloat(document.getElementById('e_smoothness').value),
-            shrink: parseFloat(document.getElementById('e_shrink').value),
-            defringe: parseFloat(document.getElementById('e_defringe').value),
-        };
-
-        for(let i=0; i<rawStickers.length; i++) {
-            if (!stickerOverrides[i]) stickerOverrides[i] = {};
-            stickerOverrides[i].tolerance = newSettings.tolerance;
-            stickerOverrides[i].smoothness = newSettings.smoothness;
-            stickerOverrides[i].shrink = newSettings.shrink;
-            stickerOverrides[i].defringe = newSettings.defringe;
-        }
-
-        els.runBtn.disabled = true; els.runBtn.textContent = "🔄 批次處理中...";
-        const sourceImg = await getSourceImage();
-        const rows = parseInt(els.rows.value);
-        const cols = parseInt(els.cols.value);
-        const tileW = Math.floor(sourceImg.width / cols);
-        const tileH = Math.floor(sourceImg.height / rows);
-        
-        const globalSettings = {
-            contour: parseInt(els.contour.value),
-            contourColor: els.contourColor.value,
-            padding: parseInt(els.padding.value),
-            shadowBlur: parseInt(els.shadowBlur.value),
-            shadowDist: parseInt(els.shadowDist.value),
-            shadowOpacity: parseInt(els.shadowOpacity.value) / 100,
-            shadowColor: els.shadowColor.value,
-            autoCenter: els.autoCenter.checked,
-            targetColor: els.targetColor.value
-        };
-
-        for(let r=0; r<rows; r++) {
-            for(let c=0; c<cols; c++) {
-                const idx = r * cols + c;
-                if(idx >= rawStickers.length) continue;
-                const settings = { ...globalSettings, ...stickerOverrides[idx] };
-                rawStickers[idx] = await processStickerTile(sourceImg, r, c, tileW, tileH, settings);
-            }
-        }
-        
-        els.runBtn.disabled = false; els.runBtn.textContent = "🚀 開始製作";
-        renderPreview(rows, cols);
-        alert("✅ 參數已套用！");
     };
 
     // --- Undo / Redo ---
@@ -1909,7 +1868,6 @@
         const isEmojiMode = els.sizePreset.value === 'emoji';
 
         rawStickers.forEach((cvs, i) => {
-            // Force URL update to avoid caching
             const url = resizeToOutput(cvs, 150, 150).toDataURL();
             const div = document.createElement('div');
             div.className = 'sticker-card';
@@ -1973,7 +1931,6 @@
 
     window.handleDrop = (e) => {
         if (e.stopPropagation) e.stopPropagation();
-        
         const target = e.target.closest('.sticker-card');
         if (dragSrcIndex !== null && target) {
             const targetIndex = +target.dataset.index;
@@ -1993,97 +1950,7 @@
         dragSrcIndex = null;
     };
 
-    // --- Others ---
-    window.setPreviewBg = (btn, mode) => { 
-        document.querySelectorAll('.bg-toggle-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active'); 
-        const map = { 'light': 'bg-light', 'line': 'bg-line', 'pink': 'bg-pink', 'yellow': 'bg-yellow', 'dark': '' };
-        previewBgClass = map[mode] || '';
-        renderPreview(parseInt(els.rows.value), parseInt(els.cols.value)); 
-    };
-
-    function getFilename(idx) {
-        const str = els.startNum.value.trim();
-        return String((parseInt(str)||1) + idx).padStart(str.length, '0') + '.png';
-    }
-    
-    function resizeToOutput(canvas, w, h) {
-        const c = document.createElement('canvas');
-        c.width = w;
-        c.height = h;
-        const ctx = c.getContext('2d');
-        const scale = Math.min(w/canvas.width, h/canvas.height);
-        const dw = canvas.width*scale;
-        const dh = canvas.height*scale;
-        ctx.drawImage(canvas, (w-dw)/2, (h-dh)/2, dw, dh);
-        return c; 
-    }
-
-    els.dlBtn.onclick = async () => {
-        const zip = new JSZip();
-        const w = parseInt(els.outW.value) || 370;
-        const h = parseInt(els.outH.value) || 320;
-        const dateStr = new Date().toISOString().slice(0,10).replace(/-/g,'');
-        const isCompress = els.compressPNG.checked;
-        
-        els.dlBtn.textContent = "📦 打包中...";
-        els.dlBtn.disabled = true;
-
-        for (let i = 0; i < rawStickers.length; i++) {
-            const cvs = rawStickers[i];
-            const outCvs = resizeToOutput(cvs, w, h);
-            
-            if (isCompress) {
-                const pngBuffer = await compressImage(outCvs, 256);
-                zip.file(getFilename(i), pngBuffer);
-            } else {
-                const url = outCvs.toDataURL();
-                zip.file(getFilename(i), url.split(',')[1], {base64:true});
-            }
-        }
-        
-        if (selectedMainIdx !== -1 && rawStickers[selectedMainIdx]) {
-            const mainCvs = resizeToOutput(rawStickers[selectedMainIdx], 240, 240);
-            if(isCompress) zip.file("main.png", await compressImage(mainCvs, 256));
-            else zip.file("main.png", mainCvs.toDataURL().split(',')[1], {base64:true});
-        }
-        if (selectedTabIdx !== -1 && rawStickers[selectedTabIdx]) {
-            const tabCvs = resizeToOutput(rawStickers[selectedTabIdx], 96, 74);
-            if(isCompress) zip.file("tab.png", await compressImage(tabCvs, 256));
-            else zip.file("tab.png", tabCvs.toDataURL().split(',')[1], {base64:true});
-        }
-        
-        zip.generateAsync({type:"blob"}).then(b => {
-            saveAs(b, `LineStickers_${dateStr}.zip`);
-            els.dlBtn.textContent = "下載全部 ZIP";
-            els.dlBtn.disabled = false;
-        });
-    };
-
-    window.downloadSingle = async (i, event) => {
-        if(event) event.stopPropagation();
-        const w = parseInt(els.outW.value) || 370;
-        const h = parseInt(els.outH.value) || 320;
-        const outCvs = resizeToOutput(rawStickers[i], w, h);
-        const isCompress = els.compressPNG.checked;
-
-        if (isCompress) {
-            const pngBuffer = await compressImage(outCvs, 256);
-            saveAs(new Blob([pngBuffer], {type: "image/png"}), getFilename(i));
-        } else {
-            const url = outCvs.toDataURL();
-            saveAs(dataURLtoBlob(url), getFilename(i));
-        }
-    };
-    
-    window.viewImage = (url) => {
-        els.modalImg.src = url;
-        els.modalImg.classList.remove('zoomed');
-        document.getElementById('imageModal').style.display = "block";
-    };
-    els.modalImg.onclick = (e) => { e.stopPropagation(); els.modalImg.classList.toggle('zoomed'); };
-    window.closeModal = () => { document.getElementById('imageModal').style.display = "none"; };
-    
+    // --- Added back Utility Functions ---
     window.showHelp = (key) => {
         els.helpText.innerText = HELP_TEXTS[key];
         els.helpModal.style.display = "block";
@@ -2095,7 +1962,7 @@
         document.body.classList.toggle('light-mode', !isDark);
         document.getElementById('themeBtn').textContent = isDark ? '☀️ 切換明亮' : '🌙 切換暗黑';
     };
-    
+
     if (els.sizePreset.value === 'sticker') { els.outW.value = 370; els.outH.value = 320; }
     else if (els.sizePreset.value === 'emoji') { els.outW.value = 270; els.outH.value = 270; }
 

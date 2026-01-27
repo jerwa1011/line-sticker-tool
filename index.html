@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LINE 貼圖製作大師 (V25-26: 完美修復版)</title>
+    <title>LINE 貼圖製作大師 (V25-27: 顯示問題終極修正)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -182,7 +182,8 @@
             min-height: 150px; display: flex; align-items: center; justify-content: center; flex-direction: column;
         }
         #origWrapper { position: relative; display: inline-block; max-width: 100%; }
-        #refCanvas { max-height: 250px; max-width: 100%; object-fit: contain; cursor: crosshair; display: block; }
+        /* 確保 Canvas 縮放適當 */
+        #refCanvas { max-height: 300px; max-width: 100%; object-fit: contain; cursor: crosshair; display: block; margin: 0 auto; }
         #gridCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
         #eyedropperHint { 
             position: absolute; bottom: 5px; right: 5px; 
@@ -358,7 +359,7 @@
 <body class="">
 
 <div class="header">
-    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-26 完美修復版</span></h1>
+    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-27 顯示問題終極修正</span></h1>
     <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️ 切換明亮</button>
 </div>
 
@@ -793,7 +794,7 @@
         'autoCenter': '【開啟】自動偵測內容並置中放大。\n【關閉】保留原始裁切位置。'
     };
 
-    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-26 (Perfect Fix) | ${new Date().toISOString().slice(0, 10)}`;
+    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-27 (Fixed Display) | ${new Date().toISOString().slice(0, 10)}`;
 
     // --- PNG 壓縮核心 (UPNG.js) ---
     async function compressImage(canvas, quality = 256) {

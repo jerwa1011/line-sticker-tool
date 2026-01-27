@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LINE 貼圖製作大師 (V25-25: 顯示修復版)</title>
+    <title>LINE 貼圖製作大師 (V25-26: 完美修復版)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -124,7 +124,7 @@
             margin-bottom: 15px; display: flex; align-items: center; gap: 8px;
         }
 
-        /* 右側原始圖預覽區 - 強制顯示 */
+        /* 右側原始圖預覽區 */
         .orig-ref-container {
             border: 1px solid var(--border); border-radius: 8px; background: var(--panel-bg);
             margin-bottom: 15px; 
@@ -182,14 +182,14 @@
             min-height: 150px; display: flex; align-items: center; justify-content: center; flex-direction: column;
         }
         #origWrapper { position: relative; display: inline-block; max-width: 100%; }
-        #refCanvas { max-height: 200px; max-width: 100%; object-fit: contain; cursor: crosshair; display: block; }
+        #refCanvas { max-height: 250px; max-width: 100%; object-fit: contain; cursor: crosshair; display: block; }
         #gridCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
         #eyedropperHint { 
             position: absolute; bottom: 5px; right: 5px; 
             background: rgba(0,0,0,0.6); color: white; 
             font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; pointer-events: none; 
         }
-        .placeholder-text { color: var(--text-sub); font-size: 0.9rem; pointer-events: none; }
+        .placeholder-text { color: var(--text-sub); font-size: 0.9rem; pointer-events: none; margin-top: 10px; }
 
         /* 一般元件 */
         h1 { margin: 0; font-size: 1.4rem; color: var(--text-main); font-weight: 800; letter-spacing: -0.5px; }
@@ -199,6 +199,7 @@
             cursor: pointer; background: var(--input-bg); transition: 0.3s;
         }
         .upload-box:hover { border-color: var(--primary); background: rgba(6, 199, 85, 0.08); transform: scale(1.01); }
+        .upload-box.drag-over { border-color: var(--primary); background: rgba(6, 199, 85, 0.2); transform: scale(1.02); }
         
         .row { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; } 
         .col { flex: 1; display: flex; align-items: center; gap: 6px; }
@@ -357,7 +358,7 @@
 <body class="">
 
 <div class="header">
-    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-25 顯示修復版</span></h1>
+    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-26 完美修復版</span></h1>
     <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️ 切換明亮</button>
 </div>
 
@@ -375,10 +376,14 @@
             <div id="step-pane-1" class="step-pane active">
                 <div class="section-box">
                     <div class="section-title">📷 上傳圖片</div>
-                    <div class="upload-box" id="dropZone" onclick="document.getElementById('imgInput').click()">
+                    <div class="upload-box" id="dropZone" 
+                         onclick="document.getElementById('imgInput').click()" 
+                         ondragover="event.preventDefault(); this.classList.add('drag-over');"
+                         ondragleave="this.classList.remove('drag-over');"
+                         ondrop="handleFileDrop(event)">
                         <div style="font-size:2rem; margin-bottom:10px;">📤</div>
                         <span id="fileName">點擊選取或拖放圖片</span>
-                        <input type="file" id="imgInput" accept="image/*" style="display:none">
+                        <input type="file" id="imgInput" accept="image/*" style="display:none" onchange="handleFileSelect(event)">
                     </div>
                 </div>
                 <div style="color:var(--text-sub); font-size:0.9rem; padding:10px; line-height:1.5;">
@@ -788,7 +793,7 @@
         'autoCenter': '【開啟】自動偵測內容並置中放大。\n【關閉】保留原始裁切位置。'
     };
 
-    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-25 (Fixed Layout & Safety) | ${new Date().toISOString().slice(0, 10)}`;
+    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-26 (Perfect Fix) | ${new Date().toISOString().slice(0, 10)}`;
 
     // --- PNG 壓縮核心 (UPNG.js) ---
     async function compressImage(canvas, quality = 256) {
@@ -846,14 +851,8 @@
 
     window.resetMove = () => {
         if(!currentRawImg) return;
-        // 自動縮放邏輯：讓圖片高度適應預覽視窗 (約200px)
-        // 這樣上傳大圖時就不會只看到左上角
-        const targetH = 200;
-        const scale = targetH / currentRawImg.height;
-        // 如果圖片比視窗小，就用 1.0，否則縮小
-        const newScale = Math.min(1.0, scale);
-        
-        imgTrans = { x: 0, y: 0, scale: newScale };
+        // 修正：預設為 1.0 (原圖比例)，讓 CSS 控制顯示大小，避免圖片變太小
+        imgTrans = { x: 0, y: 0, scale: 1.0 };
         drawRefAndGrid();
     };
 
@@ -928,6 +927,40 @@
             }
             gCtx.stroke();
         }
+    }
+
+    // 統一處理圖片載入邏輯
+    window.handleFileSelect = async (e) => {
+        const file = e.target.files[0];
+        if (file) await loadAndShowImage(file);
+    };
+
+    window.handleFileDrop = async (e) => {
+        e.preventDefault();
+        els.dropZone.classList.remove('drag-over');
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+            await loadAndShowImage(e.dataTransfer.files[0]);
+        }
+    };
+
+    async function loadAndShowImage(file) {
+        if (!file.type.startsWith('image/')) return alert('請上傳圖片檔案');
+        
+        document.getElementById('fileName').textContent = file.name;
+        currentRawImg = await loadImage(URL.createObjectURL(file));
+        
+        // 介面重置
+        if(els.refContainer) els.refContainer.classList.remove('collapsed');
+        if(els.placeholderText) els.placeholderText.style.display = 'none';
+        
+        resetMove();
+        
+        els.preview.innerHTML = "<div style='grid-column:1/-1;text-align:center;color:#666;padding:50px;'>請點擊第3步的「開始製作」</div>";
+        rawStickers = [];
+        stickerOverrides = {};
+        els.runBtn.disabled = false;
+        
+        window.changeStep(1); // 自動跳到下一步
     }
 
     els.gridCanvas.style.pointerEvents = "auto"; 
@@ -1039,32 +1072,6 @@
             selectedMainIdx = -1; updateTagClasses();
         }
         renderPreview(parseInt(els.rows.value), parseInt(els.cols.value));
-    });
-
-    els.imgIn.addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        if(file) {
-            document.getElementById('fileName').textContent = file.name;
-            currentRawImg = await loadImage(URL.createObjectURL(file));
-            
-            // 強制顯示右側欄位 (以防 CSS 隱藏)
-            if(els.refContainer) els.refContainer.style.display = 'flex';
-            if(els.refContainer) els.refContainer.classList.remove('collapsed');
-            
-            // 安全地隱藏佔位文字
-            if(els.placeholderText) els.placeholderText.style.display = 'none'; 
-            
-            // 重置並自動縮放
-            resetMove(); 
-            
-            els.preview.innerHTML = "<div style='grid-column:1/-1;text-align:center;color:#666;padding:50px;'>請點擊第3步的「開始製作」</div>";
-            rawStickers = [];
-            stickerOverrides = {};
-            els.runBtn.disabled = false;
-            
-            // 自動跳轉到 Step 2
-            window.changeStep(1); 
-        }
     });
 
     async function getSourceImage() {

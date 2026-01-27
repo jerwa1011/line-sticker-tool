@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LINE 貼圖製作大師 (V25-18: 拖曳排序版)</title>
+    <title>LINE 貼圖製作大師 (V25-18: 拖曳完美修正版)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -342,7 +342,7 @@
 <body class="">
 
 <div class="header">
-    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-18 拖曳排序版</span></h1>
+    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-18 拖曳完美修正版</span></h1>
     <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️ 切換明亮</button>
 </div>
 
@@ -654,6 +654,7 @@
 
 <script>
     let rawStickers = [];
+    let stickerSourceIndices = []; // [修正] 用來追蹤每個格子對應的原始圖索引
     let stickerOverrides = {}; // 儲存單張設定
     let isDark = true;
     let selectedMainIdx = -1, selectedTabIdx = -1;
@@ -993,6 +994,10 @@
         els.preview.innerHTML = "<div style='grid-column:1/-1;text-align:center;color:#ccc;'>製作中...</div>";
         stickerOverrides = {};
         
+        // [修正] 初始化索引對照表
+        const total = parseInt(els.rows.value) * parseInt(els.cols.value);
+        stickerSourceIndices = Array.from({length: total}, (_, k) => k);
+
         setTimeout(async () => {
             try {
                 const sourceImg = await getSourceImage();
@@ -1229,8 +1234,11 @@
         const cols = parseInt(els.cols.value);
         const tileW = Math.floor(sourceImg.width / cols);
         const tileH = Math.floor(sourceImg.height / rows);
-        const r = Math.floor(currentEditIdx / cols);
-        const c = currentEditIdx % cols;
+        
+        // [修正] 透過查表取得「真正的原始圖位置」
+        const realSourceIdx = stickerSourceIndices[currentEditIdx];
+        const r = Math.floor(realSourceIdx / cols);
+        const c = realSourceIdx % cols;
 
         // 初始化遮罩 (如果大小不對)
         if(tempMaskCanvas.width !== tileW || tempMaskCanvas.height !== tileH) {
@@ -1287,8 +1295,11 @@
         const cols = parseInt(els.cols.value);
         const tileW = Math.floor(sourceImg.width / cols);
         const tileH = Math.floor(sourceImg.height / rows);
-        const r = Math.floor(currentEditIdx / cols);
-        const c = currentEditIdx % cols;
+        
+        // [修正] 透過查表取得「真正的原始圖位置」
+        const realSourceIdx = stickerSourceIndices[currentEditIdx];
+        const r = Math.floor(realSourceIdx / cols);
+        const c = realSourceIdx % cols;
         
         const globalSettings = {
             contour: parseInt(els.contour.value),
@@ -1505,6 +1516,11 @@
         const tempOverride = stickerOverrides[fromIdx];
         stickerOverrides[fromIdx] = stickerOverrides[toIdx];
         stickerOverrides[toIdx] = tempOverride;
+
+        // [修正] 交換 原始圖索引 (Source Indices)
+        const tempSourceIdx = stickerSourceIndices[fromIdx];
+        stickerSourceIndices[fromIdx] = stickerSourceIndices[toIdx];
+        stickerSourceIndices[toIdx] = tempSourceIdx;
 
         // 清理 undefined 的 override key
         if(stickerOverrides[fromIdx] === undefined) delete stickerOverrides[fromIdx];

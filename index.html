@@ -3,25 +3,162 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LINE 貼圖製作大師 (V25-Final: 模組化重構版)</title>
+    <title>LINE 貼圖製作大師 (V25-35: 最終整合版)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/upng-js/2.1.0/UPNG.min.js"></script>
+        
+    <style>
+        /* --- CSS 樣式 --- */
+        :root { --primary: #06C755; --primary-hover: #05a546; --main-color: #ff5252; --bg: #181818; --card-bg: #252525; --panel-bg: #2f2f2f; --text-main: #e0e0e0; --text-sub: #aaaaaa; --border: #444444; --input-bg: #333333; --preview-bg: #1a1a1a; --shadow: rgba(0,0,0,0.3); --group-bg: rgba(255,255,255,0.05); --header-hover: #3a3a3a; }
+        body.light-mode { --bg: #f8f6f2; --card-bg: #ffffff; --panel-bg: #f4f4f4; --text-main: #333333; --text-sub: #666666; --border: #e0e0e0; --input-bg: #ffffff; --preview-bg: #eeeeee; --shadow: rgba(0,0,0,0.05); --group-bg: #f9f9f9; --header-hover: #eaeaea; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", sans-serif; background: var(--bg); padding: 15px; color: var(--text-main); transition: background 0.3s, color 0.3s; padding-bottom: 60px; }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; max-width: 1300px; margin: 0 auto 10px auto; }
+        .container { max-width: 1300px; margin: 0 auto; display: grid; grid-template-columns: 360px 1fr; gap: 20px; align-items: start; }
+        @media (max-width: 950px) { .container { grid-template-columns: 1fr; } }
+        
+        .card { background: var(--card-bg); padding: 15px; border-radius: 12px; box-shadow: 0 4px 20px var(--shadow); display: flex; flex-direction: column; gap: 10px; position: relative; }
+        .sticky-sidebar { position: sticky; top: 10px; height: calc(100vh - 40px); display: flex; flex-direction: column; }
+        
+        .stepper { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 0 10px; position: relative; }
+        .stepper::before { content: ''; position: absolute; top: 50%; left: 10px; right: 10px; height: 2px; background: var(--border); z-index: 0; transform: translateY(-50%); }
+        .step-dot { width: 30px; height: 30px; border-radius: 50%; background: var(--panel-bg); border: 2px solid var(--border); color: var(--text-sub); display: flex; justify-content: center; align-items: center; font-weight: bold; z-index: 1; position: relative; transition: 0.3s; }
+        .step-dot.active { background: var(--primary); border-color: var(--primary); color: white; transform: scale(1.1); }
+        .step-dot.completed { background: var(--primary); border-color: var(--primary); color: white; }
+        
+        .step-content { flex: 1; overflow-y: auto; overflow-x: hidden; padding-right: 5px; margin-bottom: 10px; scrollbar-width: thin; }
+        .step-content::-webkit-scrollbar { width: 6px; }
+        .step-content::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); border-radius: 3px; }
+        .step-content::-webkit-scrollbar-thumb { background: var(--text-sub); border-radius: 3px; }
+        .step-pane { display: none; animation: fadeIn 0.3s; }
+        .step-pane.active { display: block; }
+        
+        .nav-buttons { display: flex; gap: 10px; margin-top: auto; padding-top: 10px; border-top: 1px solid var(--border); }
+        .section-box { border: 1px solid var(--border); border-radius: 8px; background: var(--panel-bg); margin-bottom: 15px; padding: 15px; }
+        .section-title { font-size: 1.1rem; font-weight: 700; color: var(--text-main); margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
+        
+        .orig-ref-container { border: 1px solid var(--border); border-radius: 8px; background: var(--panel-bg); margin-bottom: 15px; min-height: 100px; display: flex; flex-direction: column; overflow: hidden; transition: all 0.3s ease; outline: none; }
+        .orig-ref-container:focus-within { border-color: var(--primary); }
+        .orig-header { display: flex; justify-content: space-between; align-items: center; padding: 10px; cursor: pointer; user-select: none; background: rgba(0,0,0,0.1); border-bottom: 1px solid transparent; transition: background 0.2s; }
+        .orig-header:hover { background: var(--header-hover); }
+        .orig-label { font-size: 0.95rem; font-weight: bold; color: var(--text-main); display: flex; align-items: center; gap: 8px; }
+        .orig-toggle-icon { font-size: 0.8rem; color: var(--text-sub); transition: transform 0.3s; }
+        .orig-ref-container.collapsed .orig-body { display: none; }
+        .orig-ref-container.collapsed .orig-toggle-icon { transform: rotate(-90deg); }
+        .orig-ref-container:not(.collapsed) .orig-header { border-bottom: 1px solid var(--border); }
+        .orig-controls-top { display: flex; align-items: center; gap: 10px; }
+        .orig-body { padding: 10px; animation: slideDown 0.3s ease-out; }
+        
+        .move-toolbar { display: flex; gap: 5px; justify-content: center; margin-bottom: 10px; flex-wrap: wrap; align-items: center; background: var(--card-bg); padding: 5px; border-radius: 6px; border: 1px solid var(--border); }
+        .move-btn { background: var(--input-bg); border: 1px solid var(--border); color: var(--text-main); width: 32px; height: 32px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; transition: 0.2s; }
+        .move-btn:hover { background: var(--header-hover); border-color: var(--text-sub); }
+        .move-btn:active { background: var(--primary); color: white; border-color: var(--primary); }
+        .move-group { display: flex; gap: 2px; align-items: center; }
+        .move-divider { width: 1px; height: 20px; background: var(--border); margin: 0 5px; }
+        
+        .micro-switch { display: flex; align-items: center; font-size: 0.85rem; color: var(--text-main); background: rgba(6, 199, 85, 0.1); padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(6, 199, 85, 0.3); margin-right: 5px; cursor: pointer; }
+        .micro-switch input { margin-right: 5px; width: 14px; height: 14px; }
+        
+        #origPreviewBox { text-align: center; background: var(--input-bg); padding: 5px; border-radius: 6px; border: 1px solid var(--border); position: relative; overflow: hidden; min-height: 150px; display: flex; align-items: center; justify-content: center; flex-direction: column; }
+        #origWrapper { position: relative; display: inline-block; max-width: 100%; }
+        #refCanvas { max-height: 300px; max-width: 100%; object-fit: contain; cursor: crosshair; display: block; margin: 0 auto; }
+        #gridCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        #eyedropperHint { position: absolute; bottom: 5px; right: 5px; background: rgba(0,0,0,0.6); color: white; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; pointer-events: none; }
+        .placeholder-text { color: var(--text-sub); font-size: 0.9rem; pointer-events: none; margin-top: 10px; }
+        
+        h1 { margin: 0; font-size: 1.4rem; color: var(--text-main); font-weight: 800; letter-spacing: -0.5px; }
+        .upload-box { border: 2px dashed var(--border); border-radius: 8px; padding: 40px 15px; text-align: center; cursor: pointer; background: var(--input-bg); transition: 0.3s; }
+        .upload-box:hover { border-color: var(--primary); background: rgba(6, 199, 85, 0.08); transform: scale(1.01); }
+        .upload-box.drag-over { border-color: var(--primary); background: rgba(6, 199, 85, 0.2); transform: scale(1.02); }
+        .row { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; } 
+        .col { flex: 1; display: flex; align-items: center; gap: 6px; }
+        .label-group { display: flex; align-items: center; width: 85px; flex-shrink: 0; }
+        .label-text { font-weight: 600; font-size: 0.9rem; color: var(--text-main); white-space: nowrap; margin-right: 4px; }
+        .info-btn { display: inline-flex; justify-content: center; align-items: center; width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--text-sub); color: var(--text-sub); font-size: 10px; font-weight: bold; cursor: pointer; }
+        input[type="number"], input[type="text"], select { padding: 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.9rem; background: var(--input-bg); color: var(--text-main); }
+        input:focus, select:focus { outline: none; border-color: var(--primary); }
+        .input-mini { width: 50px !important; text-align: center; font-size: 0.85rem; }
+        .input-short { width: 70px !important; text-align: center; }
+        input[type="range"] { width: 100%; accent-color: var(--primary); height: 16px; cursor: pointer; }
+        input[type="color"] { width: 100%; height: 32px; border: none; cursor: pointer; padding: 0; border-radius: 4px; }
+        input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer; }
+        
+        .btn { width: 100%; padding: 10px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.95rem; transition: 0.2s; }
+        .btn-green { background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 10px rgba(6,199,85,0.2); }
+        .btn-green:hover { background: var(--primary-hover); transform: translateY(-1px); }
+        .btn-green:disabled { background: #555; color: #888; cursor: not-allowed; transform: none; box-shadow: none; }
+        .btn-secondary { background: var(--input-bg); border: 1px solid var(--border); color: var(--text-main); }
+        .btn-secondary:hover:not(:disabled) { background: var(--header-hover); border-color: var(--text-sub); }
+        .btn-secondary:disabled { opacity: 0.5; cursor: default; }
+        .theme-btn { background: transparent; border: 1px solid var(--border); color: var(--text-main); padding: 5px 12px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; font-weight: 500; }
 
-    <link rel="stylesheet" href="style.css">
+        #previewContainer { background: var(--preview-bg); padding: 20px; border-radius: 12px; min-height: 400px; display: grid; gap: 15px; align-content: start; border: 1px solid var(--border); }
+        .sticker-card { display: flex; flex-direction: column; gap: 8px; position: relative; cursor: grab; transition: transform 0.2s, opacity 0.2s; }
+        .sticker-card:active { cursor: grabbing; }
+        .sticker-card.dragging { opacity: 0.4; transform: scale(0.95); border: 2px dashed var(--primary); border-radius: 10px; }
+        .sticker-card.drag-over { border: 2px solid var(--primary); transform: scale(1.05); box-shadow: 0 0 15px rgba(6, 199, 85, 0.3); border-radius: 10px; }
+        .sticker-img-box { position: relative; width: 100%; aspect-ratio: 1; border: 1px solid #444; border-radius: 10px; display: flex; align-items: center; justify-content: center; overflow: hidden; background-image: linear-gradient(45deg, #333 25%, transparent 25%), linear-gradient(-45deg, #333 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #333 75%), linear-gradient(-45deg, transparent 75%, #333 75%); background-size: 20px 20px; background-color: #222; cursor: zoom-in; transition: 0.2s; }
+        .sticker-img-box.bg-light { background: #ffffff; background-image: none; border-color: #ddd; }
+        .sticker-img-box.bg-line { background: #849ebf; background-image: none; border-color: #6a8caf; }
+        .sticker-img-box.bg-pink { background: #ffe6f2; background-image: none; border-color: #ffccdd; }
+        .sticker-img-box.bg-yellow { background: #fffde7; background-image: none; border-color: #fff9c4; }
+        .sticker-img-box:hover { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary); }
+        .sticker-img-box img { max-width: 100%; max-height: 100%; object-fit: contain; pointer-events: none; }
+        
+        .dl-icon-btn { position: absolute; bottom: 8px; right: 8px; width: 28px; height: 28px; background: var(--primary); color: white; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 1rem; cursor: pointer; box-shadow: 0 3px 8px rgba(0,0,0,0.4); z-index: 10; }
+        .edit-icon-btn { position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; background: #444; color: white; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 0.9rem; cursor: pointer; box-shadow: 0 3px 8px rgba(0,0,0,0.4); z-index: 10; border: 1px solid #666; }
+        .edit-icon-btn:hover { background: var(--header-hover); }
+        .sticker-name { text-align: center; color: var(--text-sub); font-size: 0.8rem; font-family: monospace; }
+        .tags-row { display: flex; justify-content: center; gap: 6px; }
+        .tag-btn { border: 1px solid var(--border); background: var(--input-bg); color: var(--text-sub); padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; cursor: pointer; transition: 0.2s; font-weight: bold; }
+        .tag-btn:hover { border-color: var(--text-main); color: var(--text-main); }
+        .tag-btn.active-main { background: var(--main-color); border-color: var(--main-color); color: white; }
+        .tag-btn.active-tab { background: #3498db; border-color: #3498db; color: white; }
+        .tag-btn.disabled { opacity: 0.3; pointer-events: none; background: #333; border-color: #444; color: #555; }
+        .export-bar { background: var(--panel-bg); border: 1px solid var(--border); padding: 12px; border-radius: 12px; margin-bottom: 20px; display: flex; gap: 12px; flex-wrap: wrap; }
+        .export-group-box { background: var(--group-bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; display: flex; flex-direction: column; justify-content: center; }
+        .export-label-text { font-size: 0.8rem; color: var(--primary); font-weight: bold; }
+        .bg-toggles { display: flex; gap: 8px; justify-content: flex-end; margin-bottom: 10px; }
+        .bg-toggle-btn { width: 24px; height: 24px; border-radius: 50%; cursor: pointer; border: 2px solid #555; }
+        .bg-toggle-btn.active { border-color: var(--primary); transform: scale(1.1); box-shadow: 0 0 5px var(--primary); }
+
+        .footer { text-align: center; margin-top: 30px; color: var(--text-sub); font-size: 0.8rem; border-top: 1px solid var(--border); padding-top: 15px; }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.95); animation: fadeIn 0.3s; }
+        .modal-content { margin: auto; display: block; max-width: 90%; max-height: 90vh; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); border-radius: 8px; box-shadow: 0 0 20px rgba(0,0,0,0.5); transition: transform 0.2s ease; cursor: zoom-in; }
+        .modal-content.zoomed { transform: translate(-50%, -50%) scale(2); cursor: zoom-out; }
+        .modal-close { position: absolute; top: 20px; right: 35px; color: #fff; font-size: 40px; font-weight: bold; cursor: pointer; z-index: 1001; }
+        .help-modal-content { background: var(--card-bg); color: var(--text-main); padding: 20px; border-radius: 12px; width: 300px; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); border: 1px solid var(--border); }
+        .help-text { font-size: 0.95rem; line-height: 1.5; color: var(--text-main); white-space: pre-wrap; }
+
+        .edit-modal-content { background: var(--card-bg); width: 550px; max-width: 95%; margin: 30px auto; padding: 20px; border-radius: 12px; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid var(--border); }
+        .edit-preview-box { width: 100%; height: 350px; background-image: linear-gradient(45deg, #333 25%, transparent 25%), linear-gradient(-45deg, #333 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #333 75%), linear-gradient(-45deg, transparent 75%, #333 75%); background-size: 20px 20px; background-color: #222; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
+        .edit-preview-box canvas { max-width: 100%; max-height: 100%; object-fit: contain; }
+        .paint-toolbar { display: flex; gap: 8px; margin-bottom: 10px; background: var(--input-bg); padding: 8px; border-radius: 8px; flex-wrap: wrap; align-items: center; border: 1px solid var(--border); }
+        .tool-btn { background: transparent; border: 1px solid var(--border); color: var(--text-sub); padding: 6px 10px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 5px; font-size: 0.85rem; }
+        .tool-btn:hover { background: var(--header-hover); }
+        .tool-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+        .tool-divider { width: 1px; height: 24px; background: var(--border); margin: 0 5px; }
+        .tool-options { display: flex; gap: 8px; align-items: center; flex: 1; }
+        .size-slider { width: 80px; accent-color: var(--text-main); }
+        .text-input-group { display: none; width: 100%; gap: 5px; margin-top: 5px; background: var(--header-hover); padding: 8px; border-radius: 6px; }
+        .text-input-group.show { display: flex; align-items: center; flex-wrap: wrap; }
+
+        @keyframes fadeIn { from {opacity: 0} to {opacity: 1} }
+        @keyframes slideDown { from {opacity:0; transform: translateY(-5px);} to {opacity:1; transform: translateY(0);} }
+    </style>
 </head>
 <body class="">
 
 <div class="header">
-    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-Final 模組化版</span></h1>
+    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-35 最終整合版</span></h1>
     <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️ 切換明亮</button>
 </div>
 
 <div class="container">
     <div class="card sticky-sidebar">
-        
         <div class="stepper">
             <div class="step-dot active" id="dot-1">1</div>
             <div class="step-dot" id="dot-2">2</div>
@@ -29,7 +166,6 @@
         </div>
 
         <div class="step-content">
-            
             <div id="step-pane-1" class="step-pane active">
                 <div class="section-box">
                     <div class="section-title">📷 上傳圖片</div>
@@ -84,114 +220,74 @@
             <div id="step-pane-3" class="step-pane">
                 <div class="section-box">
                     <div class="section-title">🎨 去背與後製</div>
-
                     <div class="row">
-                        <div class="label-group">
-                            <span class="label-text">手動補強</span>
-                            <span class="info-btn" onclick="showHelp('color')">?</span>
-                        </div>
+                        <div class="label-group"><span class="label-text">手動補強</span><span class="info-btn" onclick="showHelp('color')">?</span></div>
                         <input type="color" id="targetColor" value="#FFFFFF" style="flex:1;">
                         <button class="btn btn-secondary" style="flex:1; padding:2px; font-size:0.8rem;" onclick="setColor('#FFFFFF')">白</button>
                         <button class="btn btn-secondary" style="flex:1; padding:2px; font-size:0.8rem;" onclick="setColor('#00FF00')">綠</button>
                     </div>
-
                     <div class="row">
-                        <div class="label-group">
-                            <span class="label-text">寬容度</span>
-                            <span class="info-btn" onclick="showHelp('tolerance')">?</span>
-                        </div>
+                        <div class="label-group"><span class="label-text">寬容度</span><span class="info-btn" onclick="showHelp('tolerance')">?</span></div>
                         <input type="range" id="tolerance" min="0" max="100" value="40">
                         <span class="input-mini" id="val-tolerance" style="text-align:right;">40%</span>
                     </div>
-
                     <hr style="border:0; border-top:1px dashed var(--border); margin:15px 0;">
-
                     <div class="row">
-                        <div class="label-group">
-                            <span class="label-text">柔化</span>
-                            <span class="info-btn" onclick="showHelp('smoothness')">?</span>
-                        </div>
+                        <div class="label-group"><span class="label-text">柔化</span><span class="info-btn" onclick="showHelp('smoothness')">?</span></div>
                         <input type="range" id="smoothness" min="0" max="10" step="0.5" value="0">
                         <span class="input-mini" id="val-smoothness" style="text-align:right;">0</span>
                     </div>
                     <div class="row">
-                        <div class="label-group">
-                            <span class="label-text">邊緣內縮</span>
-                            <span class="info-btn" onclick="showHelp('shrink')">?</span>
-                        </div>
+                        <div class="label-group"><span class="label-text">邊緣內縮</span><span class="info-btn" onclick="showHelp('shrink')">?</span></div>
                         <input type="range" id="shrink" min="0" max="10" step="0.5" value="0">
                         <span class="input-mini" id="val-shrink" style="text-align:right;">0</span>
                     </div>
                     <div class="row">
-                        <div class="label-group">
-                            <span class="label-text">邊緣淨化</span>
-                            <span class="info-btn" onclick="showHelp('defringe')">?</span>
-                        </div>
+                        <div class="label-group"><span class="label-text">邊緣淨化</span><span class="info-btn" onclick="showHelp('defringe')">?</span></div>
                         <input type="range" id="defringe" min="0" max="20" step="1" value="0">
                         <span class="input-mini" id="val-defringe" style="text-align:right;">0</span>
                     </div>
                     <div class="row">
-                        <div class="label-group">
-                            <span class="label-text">描邊</span>
-                            <span class="info-btn" onclick="showHelp('contour')">?</span>
-                        </div>
+                        <div class="label-group"><span class="label-text">描邊</span><span class="info-btn" onclick="showHelp('contour')">?</span></div>
                         <input type="range" id="contour" min="0" max="20" step="1" value="5">
                         <input type="color" id="contourColor" value="#FFFFFF" style="width:40px; flex:0 0 auto; margin-left:5px;" title="描邊顏色">
                         <span class="input-mini" id="val-contour" style="text-align:right;">5</span>
                     </div>
-
                     <div class="row">
-                        <div class="label-group">
-                            <span class="label-text">陰影模糊</span>
-                            <span class="info-btn" onclick="showHelp('shadow')">?</span>
-                        </div>
+                        <div class="label-group"><span class="label-text">陰影模糊</span><span class="info-btn" onclick="showHelp('shadow')">?</span></div>
                         <input type="range" id="shadowBlur" min="0" max="30" step="1" value="0">
                         <span class="input-mini" id="val-shadowBlur" style="text-align:right;">0</span>
                     </div>
                     <div class="row">
-                        <div class="label-group">
-                            <span class="label-text">陰影距離</span>
-                        </div>
+                        <div class="label-group"><span class="label-text">陰影距離</span></div>
                         <input type="range" id="shadowDist" min="0" max="20" step="1" value="2">
                         <span class="input-mini" id="val-shadowDist" style="text-align:right;">2</span>
                     </div>
                     <div class="row">
-                        <div class="label-group">
-                            <span class="label-text">陰影濃度</span>
-                        </div>
+                        <div class="label-group"><span class="label-text">陰影濃度</span></div>
                         <input type="range" id="shadowOpacity" min="0" max="100" step="5" value="60">
                         <input type="color" id="shadowColor" value="#000000" style="width:40px; flex:0 0 auto; margin-left:5px;" title="陰影顏色">
                         <span class="input-mini" id="val-shadowOpacity" style="text-align:right;">60%</span>
                     </div>
-
                     <div class="row">
-                        <div class="label-group">
-                            <span class="label-text">留白</span>
-                            <span class="info-btn" onclick="showHelp('padding')">?</span>
-                        </div>
+                        <div class="label-group"><span class="label-text">留白</span><span class="info-btn" onclick="showHelp('padding')">?</span></div>
                         <input type="range" id="padding" min="0" max="20" step="1" value="0">
                         <span class="input-mini" id="val-padding" style="text-align:right;">0%</span>
                     </div>
                 </div>
             </div>
-            
         </div>
-
         <div class="nav-buttons">
             <button id="prevBtn" class="btn btn-secondary" onclick="changeStep(-1)" disabled>⬅ 上一步</button>
             <button id="nextBtn" class="btn btn-green" onclick="changeStep(1)">下一步 ➡</button>
             <button id="runBtn" class="btn btn-green" style="display:none;" disabled>🚀 開始製作</button>
         </div>
-
     </div>
 
     <div class="card">
-        
         <div class="orig-ref-container" id="refContainer" tabindex="0">
             <div class="orig-header" onclick="toggleRefAccordion()">
-                <div class="orig-label">
-                    <span class="orig-toggle-icon" id="refIcon">▼</span> 📌 原始圖參考
-                </div>
+                <div class="orig-label"><span class="orig-toggle-icon" id="refIcon">▼</span> 📌 原始圖參考</div>
                 <div class="orig-controls-top" onclick="event.stopPropagation()">
                     <label style="display:flex; align-items:center; font-weight:normal; font-size:0.85rem; cursor:pointer;">
                         <input type="checkbox" id="showGrid" checked style="width:16px; height:16px; margin-right:5px;"> 顯示格線
@@ -199,33 +295,18 @@
                     <button class="btn btn-secondary" style="width:auto; padding:2px 8px; font-size:0.8rem;" onclick="toggleOrigSize()">預覽視窗縮放</button>
                 </div>
             </div>
-            
             <div class="orig-body">
                 <div class="move-toolbar">
-                    <label class="micro-switch" title="勾選後：移動1px / 縮放0.1%">
-                        <input type="checkbox" id="microMode"> 微調模式
-                    </label>
+                    <label class="micro-switch" title="勾選後：移動1px / 縮放0.1%"><input type="checkbox" id="microMode"> 微調模式</label>
                     <div class="move-divider"></div>
-                    <div class="move-group">
-                        <button class="move-btn" onclick="moveImg(0, 1)" title="放大 (Ctrl+↑)">➕</button>
-                        <button class="move-btn" onclick="moveImg(0, -1)" title="縮小 (Ctrl+↓)">➖</button>
-                    </div>
+                    <div class="move-group"><button class="move-btn" onclick="moveImg(0, 1)" title="放大">➕</button><button class="move-btn" onclick="moveImg(0, -1)" title="縮小">➖</button></div>
                     <div class="move-divider"></div>
-                    <div class="move-group">
-                        <button class="move-btn" onclick="moveImg('y', 1)" title="上移 (↑)">⬆️</button>
-                        <button class="move-btn" onclick="moveImg('y', -1)" title="下移 (↓)">⬇️</button>
-                        <button class="move-btn" onclick="moveImg('x', 1)" title="左移 (←)">⬅️</button>
-                        <button class="move-btn" onclick="moveImg('x', -1)" title="右移 (→)">➡️</button>
-                    </div>
+                    <div class="move-group"><button class="move-btn" onclick="moveImg('y', 1)" title="上移">⬆️</button><button class="move-btn" onclick="moveImg('y', -1)" title="下移">⬇️</button><button class="move-btn" onclick="moveImg('x', 1)" title="左移">⬅️</button><button class="move-btn" onclick="moveImg('x', -1)" title="右移">➡️</button></div>
                     <div class="move-divider"></div>
                     <button class="move-btn" style="width:auto; font-size:0.9rem; padding:0 8px;" onclick="resetMove()">重置</button>
                 </div>
-
                 <div id="origPreviewBox">
-                    <div id="origWrapper">
-                        <canvas id="refCanvas"></canvas>
-                        <canvas id="gridCanvas"></canvas>
-                    </div>
+                    <div id="origWrapper"><canvas id="refCanvas"></canvas><canvas id="gridCanvas"></canvas></div>
                     <div id="eyedropperHint">💡 點擊圖片可吸取顏色</div>
                     <div id="placeholderText" class="placeholder-text">請先在左側上傳圖片...</div>
                 </div>
@@ -248,7 +329,6 @@
                 <div class="export-label-row"><span class="export-label-text">起始檔名</span></div>
                 <input type="text" id="startNum" value="001" class="input-short" placeholder="001">
             </div>
-            
             <div class="export-group-box" style="flex:1;">
                 <div class="export-label-row"><span class="export-label-text">尺寸模式</span></div>
                 <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
@@ -262,14 +342,12 @@
                     </div>
                 </div>
             </div>
-            
             <div class="export-group-box" style="flex: 0 0 auto; display: flex; align-items: center;">
                 <label style="font-size: 0.85rem; cursor: pointer; display: flex; align-items: center;">
                     <input type="checkbox" id="compressPNG" checked style="margin-right: 5px;">
                     📉 智能壓縮<br>(防止退件)
                 </label>
             </div>
-
             <div style="display:flex; align-items:center;">
                 <button id="dlBtn" class="btn btn-green" style="height:100%; padding:0 20px;">下載全部 ZIP</button>
             </div>
@@ -311,13 +389,9 @@
             <div class="tool-divider"></div>
             <div class="tool-options" id="toolOptions">
                 <span id="toolLabel" style="font-size:0.8rem;">大小:</span>
-                
                 <input type="range" id="brushSize" min="1" max="50" value="10" class="size-slider">
-                
                 <input type="range" id="textRotate" min="-180" max="180" value="0" class="size-slider" style="display:none;" title="旋轉角度">
-                
                 <input type="range" id="textSize" min="10" max="100" value="30" class="size-slider" style="display:none;" title="文字大小">
-
                 <input type="color" id="brushColor" value="#ff0000" style="width:24px; height:24px; padding:0; border:none; display:none;">
             </div>
         </div>
@@ -334,40 +408,718 @@
             <button class="btn btn-secondary" style="width:auto; padding:5px 10px;" onclick="cancelText()">❌ 取消</button>
         </div>
 
-        <div class="edit-preview-box" id="editPreviewBox">
-            <canvas id="editCanvas"></canvas>
-        </div>
+        <div class="edit-preview-box" id="editPreviewBox"><canvas id="editCanvas"></canvas></div>
         
-        <div class="row">
-            <div class="label-group"><span class="label-text">寬容度</span></div>
-            <input type="range" id="e_tolerance" min="0" max="100">
-            <span class="input-mini" id="v_e_tolerance"></span>
-        </div>
-        <div class="row">
-            <div class="label-group"><span class="label-text">柔化</span></div>
-            <input type="range" id="e_smoothness" min="0" max="10" step="0.5">
-            <span class="input-mini" id="v_e_smoothness"></span>
-        </div>
-        <div class="row">
-            <div class="label-group"><span class="label-text">邊緣內縮</span></div>
-            <input type="range" id="e_shrink" min="0" max="10" step="0.5">
-            <span class="input-mini" id="v_e_shrink"></span>
-        </div>
-        <div class="row">
-            <div class="label-group"><span class="label-text">邊緣淨化</span></div>
-            <input type="range" id="e_defringe" min="0" max="20" step="1">
-            <span class="input-mini" id="v_e_defringe"></span>
-        </div>
+        <div class="row"><div class="label-group"><span class="label-text">寬容度</span></div><input type="range" id="e_tolerance" min="0" max="100"><span class="input-mini" id="v_e_tolerance"></span></div>
+        <div class="row"><div class="label-group"><span class="label-text">柔化</span></div><input type="range" id="e_smoothness" min="0" max="10" step="0.5"><span class="input-mini" id="v_e_smoothness"></span></div>
+        <div class="row"><div class="label-group"><span class="label-text">邊緣內縮</span></div><input type="range" id="e_shrink" min="0" max="10" step="0.5"><span class="input-mini" id="v_e_shrink"></span></div>
+        <div class="row"><div class="label-group"><span class="label-text">邊緣淨化</span></div><input type="range" id="e_defringe" min="0" max="20" step="1"><span class="input-mini" id="v_e_defringe"></span></div>
 
         <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:20px;">
             <button class="btn btn-secondary" style="flex:1;" onclick="closeEditModal()">取消</button>
             <button class="btn btn-secondary" style="flex:1; background:#5e60ce; color:white; border-color:#5e60ce;" onclick="applyToAll()">⚡ 參數套用全部</button>
-            <button class="btn btn-green" style="flex:1;" onclick="saveEdit()">✅ 保存修改</button>
+            <button class="btn btn-green" style="flex:1;" onclick="saveEdit()" id="saveEditBtn">✅ 保存修改</button>
         </div>
     </div>
 </div>
 
-<script src="script.js"></script>
+<script>
+// ============================================
+// 1. GLOBAL VARIABLES & CONSTANTS
+// ============================================
+let rawStickers = [];
+let stickerOverrides = {}; 
+let isDark = true;
+let selectedMainIdx = -1, selectedTabIdx = -1;
+let previewBgClass = 'bg-dark';
+let currentStep = 1;
+let isRefExpanded = false;
+let imgTrans = { x: 0, y: 0, scale: 1.0 };
+let currentRawImg = null; 
+let currentEditIdx = -1;
+let dragSrcIndex = null; 
 
+// Painting & State
+let isDrawing = false;
+let currentTool = null; // 'eraser', 'restore', 'brush', 'text'
+let tempMaskCanvas = null; 
+let tempRestoreCanvas = null; 
+let tempOverlayCanvas = null; 
+let pendingText = null;
+
+// Undo/Redo
+let editHistory = [];
+let historyStep = -1;
+
+const els = {
+    imgIn: document.getElementById('imgInput'),
+    refCanvas: document.getElementById('refCanvas'),
+    gridCanvas: document.getElementById('gridCanvas'),
+    refContainer: document.getElementById('refContainer'),
+    dropZone: document.getElementById('dropZone'),
+    runBtn: document.getElementById('runBtn'),
+    prevBtn: document.getElementById('prevBtn'),
+    nextBtn: document.getElementById('nextBtn'),
+    preview: document.getElementById('previewContainer'),
+    rows: document.getElementById('rows'),
+    cols: document.getElementById('cols'),
+    targetColor: document.getElementById('targetColor'),
+    tolerance: document.getElementById('tolerance'),
+    smoothness: document.getElementById('smoothness'),
+    shrink: document.getElementById('shrink'),
+    defringe: document.getElementById('defringe'),
+    contour: document.getElementById('contour'),
+    contourColor: document.getElementById('contourColor'),
+    shadowBlur: document.getElementById('shadowBlur'),
+    shadowDist: document.getElementById('shadowDist'), 
+    shadowOpacity: document.getElementById('shadowOpacity'), 
+    shadowColor: document.getElementById('shadowColor'), 
+    padding: document.getElementById('padding'),
+    startNum: document.getElementById('startNum'),
+    outW: document.getElementById('outW'),
+    outH: document.getElementById('outH'),
+    sizePreset: document.getElementById('sizePreset'),
+    dlBtn: document.getElementById('dlBtn'),
+    compressPNG: document.getElementById('compressPNG'),
+    footer: document.getElementById('footerText'),
+    modal: document.getElementById('imageModal'),
+    modalImg: document.getElementById('modalImg'),
+    helpModal: document.getElementById('helpModal'),
+    helpText: document.getElementById('helpText'),
+    autoCenter: document.getElementById('autoCenter'),
+    showGrid: document.getElementById('showGrid'),
+    microMode: document.getElementById('microMode'),
+    editModal: document.getElementById('editModal'),
+    editCanvas: document.getElementById('editCanvas'),
+    placeholderText: document.getElementById('placeholderText'),
+    eraserBtn: document.getElementById('eraserBtn'),
+    restoreBtn: document.getElementById('restoreBtn'),
+    brushBtn: document.getElementById('brushBtn'),
+    textBtn: document.getElementById('textBtn'),
+    undoBtn: document.getElementById('undoBtn'),
+    redoBtn: document.getElementById('redoBtn'),
+    brushSize: document.getElementById('brushSize'),
+    brushColor: document.getElementById('brushColor'),
+    textControls: document.getElementById('textControls'),
+    textConfirmControls: document.getElementById('textConfirmControls'),
+    textRotate: document.getElementById('textRotate'),
+    textSize: document.getElementById('textSize'),
+    toolLabel: document.getElementById('toolLabel')
+};
+
+const HELP_TEXTS = {
+    'crop': '設定要將大圖切割成幾列幾行。',
+    'color': '設定要去除的背景顏色。',
+    'tolerance': '數值越高：去除越多相近色。',
+    'smoothness': '消除邊緣鋸齒。',
+    'shrink': '將邊緣往內削減。',
+    'defringe': '色彩淨化，去除邊緣雜色。',
+    'contour': '在圖案周圍加上邊框。',
+    'shadow': '設定陰影參數。',
+    'padding': '內縮圖案。',
+    'startNum': '設定檔名編號。',
+    'sizeMode': '設定匯出解析度。',
+    'autoCenter': '自動偵測內容並置中放大。'
+};
+
+els.footer.innerHTML = `© 2026 RiverART | LINE Sticker Tool V25-35`;
+
+// ============================================
+// 2. UTILITY FUNCTIONS (Defined FIRST)
+// ============================================
+
+function resizeToOutput(canvas, w, h) {
+    const c = document.createElement('canvas');
+    c.width = w;
+    c.height = h;
+    const ctx = c.getContext('2d');
+    const scale = Math.min(w/canvas.width, h/canvas.height);
+    const dw = canvas.width*scale;
+    const dh = canvas.height*scale;
+    ctx.drawImage(canvas, (w-dw)/2, (h-dh)/2, dw, dh);
+    return c; 
+}
+
+function getFilename(idx) {
+    const str = els.startNum.value.trim();
+    const num = (parseInt(str) || 1) + idx;
+    return String(num).padStart(str.length, '0') + '.png';
+}
+
+function dataURLtoBlob(u) {
+    var arr=u.split(','),m=arr[0].match(/:(.*?);/)[1],b=atob(arr[1]),n=b.length,a=new Uint8Array(n);
+    while(n--)a[n]=b.charCodeAt(n);
+    return new Blob([a],{type:m});
+}
+
+function loadImage(s){
+    return new Promise((r, rej)=>{
+        const i=new Image();
+        i.onload=()=>r(i);
+        i.onerror=()=>rej(new Error("圖片載入失敗"));
+        i.src=s;
+    });
+}
+
+function hexToRgba(hex, alpha) {
+    const r = parseInt(hex.slice(1,3), 16); 
+    const g = parseInt(hex.slice(3,5), 16); 
+    const b = parseInt(hex.slice(5,7), 16);
+    return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function getContentBox(img) {
+    const cvs = document.createElement('canvas'); 
+    cvs.width = img.width; cvs.height = img.height;
+    const ctx = cvs.getContext('2d'); ctx.drawImage(img, 0, 0);
+    const data = ctx.getImageData(0, 0, cvs.width, cvs.height).data;
+    let minX = cvs.width, minY = cvs.height, maxX = 0, maxY = 0, found = false;
+    const alphaThreshold = 30; // Noise filter
+    
+    for (let y = 0; y < cvs.height; y++) {
+        for (let x = 0; x < cvs.width; x++) {
+            if (data[(y * cvs.width + x) * 4 + 3] > alphaThreshold) { 
+                if (x < minX) minX = x; 
+                if (x > maxX) maxX = x;
+                if (y < minY) minY = y; 
+                if (y > maxY) maxY = y; 
+                found = true;
+            }
+        }
+    }
+    if (!found) return null;
+    const w = maxX - minX + 1; const h = maxY - minY + 1;
+    if (w < 5 || h < 5) return null;
+    return { x: minX, y: minY, w: w, h: h };
+}
+
+async function compressImage(canvas, quality = 256) {
+    const ctx = canvas.getContext('2d');
+    const d = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const pngBuffer = UPNG.encode([d.data.buffer], canvas.width, canvas.height, quality);
+    return pngBuffer;
+}
+
+// ============================================
+// 3. CORE IMAGE PROCESSING
+// ============================================
+
+function generateColorMask(img, targetHex, toleranceVal) {
+    const cvs = document.createElement('canvas'); cvs.width = img.width; cvs.height = img.height;
+    const ctx = cvs.getContext('2d'); ctx.drawImage(img, 0, 0);
+    const dat = ctx.getImageData(0,0,cvs.width,cvs.height); const d = dat.data;
+    const tr = parseInt(targetHex.slice(1,3), 16); const tg = parseInt(targetHex.slice(3,5), 16); const tb = parseInt(targetHex.slice(5,7), 16);
+    const tol = toleranceVal / 100 * 442;
+    for(let i=0; i<d.length; i+=4) {
+        const dist = Math.sqrt((d[i]-tr)**2 + (d[i+1]-tg)**2 + (d[i+2]-tb)**2);
+        d[i+3] = dist < tol ? 0 : 255; 
+    }
+    ctx.putImageData(dat, 0, 0); return cvs;
+}
+
+function applyShrink(mask, amount) {
+    if (amount <= 0) return mask;
+    const cvs = document.createElement('canvas'); cvs.width = mask.width; cvs.height = mask.height;
+    const ctx = cvs.getContext('2d'); ctx.drawImage(mask, 0, 0);
+    const srcData = ctx.getImageData(0, 0, cvs.width, cvs.height);
+    const destData = ctx.createImageData(cvs.width, cvs.height);
+    const w = cvs.width; const h = cvs.height; const radius = Math.ceil(amount);
+    for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+            let minAlpha = 255;
+            for (let ky = -radius; ky <= radius; ky++) {
+                for (let kx = -radius; kx <= radius; kx++) {
+                    const nx = x + kx; const ny = y + ky;
+                    if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
+                        const alpha = srcData.data[(ny * w + nx) * 4 + 3];
+                        if (alpha < minAlpha) minAlpha = alpha;
+                    }
+                }
+            }
+            const idx = (y * w + x) * 4; destData.data[idx+3] = minAlpha; 
+        }
+    }
+    ctx.putImageData(destData, 0, 0); return cvs;
+}
+
+function applySmooth(mask, smooth) {
+    const cvs = document.createElement('canvas'); cvs.width = mask.width; cvs.height = mask.height;
+    const ctx = cvs.getContext('2d');
+    const temp = document.createElement('canvas'); temp.width = cvs.width; temp.height = cvs.height;
+    const tCtx = temp.getContext('2d'); tCtx.drawImage(mask, 0, 0);
+    ctx.filter = `blur(${smooth}px)`; ctx.drawImage(temp, 0, 0); ctx.filter = 'none';
+    return cvs;
+}
+
+function applyMaskToImage(img, mask) {
+    const cvs = document.createElement('canvas'); cvs.width = img.width; cvs.height = img.height;
+    const ctx = cvs.getContext('2d'); ctx.drawImage(img, 0, 0);
+    ctx.globalCompositeOperation = 'destination-in'; ctx.drawImage(mask, 0, 0); return cvs;
+}
+
+function applyDefringe(imgCvs, targetHex, strength) {
+    if (strength <= 0) return imgCvs;
+    const ctx = imgCvs.getContext('2d'); const w = imgCvs.width; const h = imgCvs.height;
+    const imgData = ctx.getImageData(0, 0, w, h); const d = imgData.data;
+    const tr = parseInt(targetHex.slice(1, 3), 16); const tg = parseInt(targetHex.slice(3, 5), 16); const tb = parseInt(targetHex.slice(5, 7), 16);
+    const power = strength / 5;
+    for (let i = 0; i < d.length; i += 4) {
+        const alpha = d[i + 3];
+        if (alpha > 0) { 
+            const r = d[i], g = d[i + 1], b = d[i + 2];
+            const dist = Math.sqrt((r - tr) ** 2 + (g - tg) ** 2 + (b - tb) ** 2);
+            if (dist < 150) { 
+                const factor = (1 - dist / 150) * power; d[i + 3] = Math.max(0, alpha - (alpha * factor * 2));
+            }
+        }
+    }
+    ctx.putImageData(imgData, 0, 0); return imgCvs;
+}
+
+async function processStickerTile(sourceImg, r, c, tileW, tileH, settings) {
+    const cvs = document.createElement('canvas'); cvs.width = tileW; cvs.height = tileH;
+    const ctx = cvs.getContext('2d');
+    ctx.drawImage(sourceImg, c*tileW, r*tileH, tileW, tileH, 0, 0, tileW, tileH);
+    const tileOriginalImg = await loadImage(cvs.toDataURL()); 
+    
+    let mask = generateColorMask(tileOriginalImg, settings.targetColor, settings.tolerance);
+    if (settings.shrink > 0) mask = applyShrink(mask, settings.shrink);
+    if (settings.smoothness > 0) mask = applySmooth(mask, settings.smoothness);
+    
+    let processedImg = applyMaskToImage(tileOriginalImg, mask);
+    
+    if (settings.maskData) {
+        const eraserImg = await loadImage(settings.maskData);
+        const pCtx = processedImg.getContext('2d');
+        pCtx.globalCompositeOperation = 'destination-out';
+        pCtx.drawImage(eraserImg, 0, 0, tileW, tileH);
+        pCtx.globalCompositeOperation = 'source-over';
+    }
+
+    if (settings.restoreData) {
+        const restoreImg = await loadImage(settings.restoreData);
+        const restoreLayer = document.createElement('canvas');
+        restoreLayer.width = tileW; restoreLayer.height = tileH;
+        const rCtx = restoreLayer.getContext('2d');
+        rCtx.drawImage(restoreImg, 0, 0, tileW, tileH);
+        rCtx.globalCompositeOperation = 'source-in';
+        rCtx.drawImage(tileOriginalImg, 0, 0, tileW, tileH);
+        const pCtx = processedImg.getContext('2d');
+        pCtx.drawImage(restoreLayer, 0, 0);
+    }
+
+    if (settings.defringe > 0) processedImg = applyDefringe(processedImg, settings.targetColor, settings.defringe);
+
+    if (settings.overlayData) {
+        const overlayImg = await loadImage(settings.overlayData);
+        const pCtx = processedImg.getContext('2d');
+        pCtx.drawImage(overlayImg, 0, 0, tileW, tileH);
+    }
+
+    const sCvs = document.createElement('canvas'); sCvs.width = tileW; sCvs.height = tileH; 
+    const sCtx = sCvs.getContext('2d');
+    const pad = (settings.padding / 100) * tileW; 
+    const margin = settings.shadowBlur * 2 + settings.shadowDist * 2; 
+    const drawW = tileW - pad * 2 - settings.contour * 2 - margin;
+    const drawH = tileH - pad * 2 - settings.contour * 2 - margin;
+    const safeW = Math.max(1, drawW); const safeH = Math.max(1, drawH);
+    const safeX = (tileW - safeW) / 2; const safeY = (tileH - safeH) / 2;
+
+    let finalImg = await loadImage(processedImg.toDataURL());
+    let fx = safeX, fy = safeY, fw = safeW, fh = safeH;
+
+    if (settings.autoCenter) {
+        const bbox = getContentBox(finalImg);
+        if (bbox) {
+            const scale = Math.min(safeW / bbox.w, safeH / bbox.h);
+            fw = bbox.w * scale; fh = bbox.h * scale;
+            fx = safeX + (safeW - fw) / 2; fy = safeY + (safeH - fh) / 2;
+            const contentCvs = document.createElement('canvas');
+            contentCvs.width = fw; contentCvs.height = fh;
+            const cCtx = contentCvs.getContext('2d');
+            cCtx.drawImage(finalImg, bbox.x, bbox.y, bbox.w, bbox.h, 0, 0, fw, fh);
+            finalImg = await loadImage(contentCvs.toDataURL());
+        } else { finalImg = null; }
+    } else {
+        const scale = Math.min(safeW / tileW, safeH / tileH);
+        fw = tileW * scale; fh = tileH * scale;
+        fx = safeX + (safeW - fw) / 2; fy = safeY + (safeH - fh) / 2;
+    }
+
+    if (finalImg) {
+        if(settings.shadowBlur > 0 || settings.shadowDist > 0) {
+            sCtx.save(); sCtx.shadowColor = hexToRgba(settings.shadowColor, settings.shadowOpacity);
+            sCtx.shadowBlur = settings.shadowBlur; sCtx.shadowOffsetX = settings.shadowDist; sCtx.shadowOffsetY = settings.shadowDist;
+            sCtx.drawImage(finalImg, fx, fy, fw, fh); sCtx.restore();
+        }
+        if(settings.contour > 0) {
+            const tempCvs = document.createElement('canvas'); tempCvs.width = sCvs.width; tempCvs.height = sCvs.height;
+            const tCtx = tempCvs.getContext('2d'); tCtx.drawImage(finalImg, fx, fy, fw, fh);
+            tCtx.globalCompositeOperation = 'source-in'; tCtx.fillStyle = settings.contourColor; tCtx.fillRect(0,0,tempCvs.width,tempCvs.height);
+            const outlineCvs = document.createElement('canvas'); outlineCvs.width = sCvs.width; outlineCvs.height = sCvs.height;
+            const oCtx = outlineCvs.getContext('2d'); const steps = 12;
+            for(let i=0; i<steps; i++) {
+                const ang = (i/steps)*2*Math.PI; oCtx.drawImage(tempCvs, Math.cos(ang)*settings.contour, Math.sin(ang)*settings.contour);
+            }
+            oCtx.drawImage(tempCvs, 0, 0); sCtx.drawImage(outlineCvs, 0, 0);
+        }
+        sCtx.drawImage(finalImg, fx, fy, fw, fh);
+    }
+    return sCvs;
+}
+
+async function cutAndContour(img, rows, cols, globalSettings) {
+    const w = img.width; const h = img.height;
+    const tileW = Math.floor(w/cols); const tileH = Math.floor(h/rows);
+    const res = [];
+    for(let r=0; r<rows; r++) {
+        for(let c=0; c<cols; c++) {
+            const idx = r * cols + c;
+            const localSettings = stickerOverrides[idx] ? { ...globalSettings, ...stickerOverrides[idx] } : globalSettings;
+            const sCvs = await processStickerTile(img, r, c, tileW, tileH, localSettings);
+            res.push(sCvs);
+        }
+    }
+    return res;
+}
+
+// ============================================
+// 4. MAIN UI LOGIC & EVENTS
+// ============================================
+
+async function loadAndShowImage(file) {
+    if (!file.type.startsWith('image/')) return alert('請上傳圖片檔案');
+    document.getElementById('fileName').textContent = file.name;
+    try {
+        currentRawImg = await loadImage(URL.createObjectURL(file));
+        if(els.refContainer) els.refContainer.classList.remove('collapsed');
+        if(els.placeholderText) els.placeholderText.style.display = 'none';
+        resetMove();
+        els.preview.innerHTML = "<div style='grid-column:1/-1;text-align:center;color:#666;padding:50px;'>請點擊第3步的「開始製作」</div>";
+        rawStickers = [];
+        stickerOverrides = {};
+        els.runBtn.disabled = false;
+        window.changeStep(1); 
+    } catch(err) {
+        alert("圖片載入失敗");
+    }
+}
+
+async function getSourceImage() {
+    const virtualCvs = document.createElement('canvas');
+    virtualCvs.width = currentRawImg.width;
+    virtualCvs.height = currentRawImg.height;
+    const vCtx = virtualCvs.getContext('2d');
+    vCtx.drawImage(currentRawImg, imgTrans.x, imgTrans.y, currentRawImg.width * imgTrans.scale, currentRawImg.height * imgTrans.scale);
+    return await loadImage(virtualCvs.toDataURL());
+}
+
+function renderPreview(rows, cols) {
+    els.preview.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+    els.preview.innerHTML = '';
+    const isEmojiMode = els.sizePreset.value === 'emoji';
+
+    rawStickers.forEach((cvs, i) => {
+        const url = resizeToOutput(cvs, 150, 150).toDataURL();
+        const div = document.createElement('div');
+        div.className = 'sticker-card';
+        div.draggable = true;
+        div.dataset.index = i;
+        div.ondragstart = handleDragStart;
+        div.ondragover = handleDragOver;
+        div.ondragenter = handleDragEnter;
+        div.ondragleave = handleDragLeave;
+        div.ondrop = handleDrop;
+        div.ondragend = handleDragEnd;
+
+        const mainClass = isEmojiMode ? 'tag-btn disabled' : 'tag-btn';
+        const isEdited = stickerOverrides[i] !== undefined;
+        const nameSuffix = isEdited ? ' *' : '';
+        const nameColor = isEdited ? 'color: var(--primary); font-weight:bold;' : '';
+
+        div.innerHTML = `
+            <div class="sticker-img-box ${previewBgClass}" onclick="viewImage('${url}')">
+                <img src="${url}">
+                <div class="edit-icon-btn" title="編輯" onclick="openEditModal(${i}); event.stopPropagation();">✏️</div>
+                <div class="dl-icon-btn" onclick="downloadSingle(${i}, event)">⬇</div>
+            </div>
+            <div class="sticker-name" id="name-${i}" style="${nameColor}">${getFilename(i)}${nameSuffix}</div>
+            <div class="tags-row">
+                <span class="${mainClass}" id="btn-main-${i}" onclick="setTag('main', ${i})">main</span>
+                <span class="tag-btn" id="btn-tab-${i}" onclick="setTag('tab', ${i})">tab</span>
+            </div>
+        `;
+        els.preview.appendChild(div);
+    });
+    updateTagClasses();
+}
+
+// --- Event Listeners ---
+els.imgIn.addEventListener('change', async (e) => { const file = e.target.files[0]; if (file) await loadAndShowImage(file); });
+window.handleFileDrop = async (e) => { e.preventDefault(); els.dropZone.classList.remove('drag-over'); if (e.dataTransfer.files[0]) await loadAndShowImage(e.dataTransfer.files[0]); };
+
+els.runBtn.addEventListener('click', async () => {
+    if(!currentRawImg) { alert("請先在第一步上傳圖片！"); window.changeStep(1-currentStep); return; }
+    els.runBtn.disabled = true; els.runBtn.textContent = "🚀 處理中...";
+    els.preview.innerHTML = "<div style='grid-column:1/-1;text-align:center;color:#ccc;'>製作中...</div>";
+    stickerOverrides = {};
+    setTimeout(async () => {
+        try {
+            const sourceImg = await getSourceImage();
+            const globalSettings = {
+                contour: parseInt(els.contour.value),
+                contourColor: els.contourColor.value,
+                padding: parseInt(els.padding.value),
+                shadowBlur: parseInt(els.shadowBlur.value),
+                shadowDist: parseInt(els.shadowDist.value),
+                shadowOpacity: parseInt(els.shadowOpacity.value) / 100,
+                shadowColor: els.shadowColor.value,
+                autoCenter: els.autoCenter.checked,
+                tolerance: parseInt(els.tolerance.value),
+                shrink: parseFloat(els.shrink.value),
+                smoothness: parseFloat(els.smoothness.value),
+                defringe: parseFloat(els.defringe.value),
+                targetColor: els.targetColor.value
+            };
+            rawStickers = await cutAndContour(sourceImg, parseInt(els.rows.value), parseInt(els.cols.value), globalSettings);
+            renderPreview(parseInt(els.rows.value), parseInt(els.cols.value));
+        } catch(e) { console.error(e); alert("錯誤: " + e.message); }
+        finally { els.runBtn.disabled = false; els.runBtn.textContent = "🚀 開始製作"; }
+    }, 50);
+});
+
+// Window-scope utilities
+window.showHelp = (key) => { els.helpText.innerText = HELP_TEXTS[key]; els.helpModal.style.display = "block"; };
+window.closeHelp = () => { els.helpModal.style.display = "none"; };
+window.setColor = (hex) => els.targetColor.value = hex;
+window.toggleTheme = () => { isDark = !isDark; document.body.classList.toggle('light-mode', !isDark); document.getElementById('themeBtn').textContent = isDark ? '☀️ 切換明亮' : '🌙 切換暗黑'; };
+window.viewImage = (url) => { els.modalImg.src = url; els.modalImg.classList.remove('zoomed'); document.getElementById('imageModal').style.display = "block"; };
+els.modalImg.onclick = (e) => { e.stopPropagation(); els.modalImg.classList.toggle('zoomed'); };
+window.closeModal = () => { document.getElementById('imageModal').style.display = "none"; };
+window.toggleOrigSize = () => { isRefExpanded = !isRefExpanded; els.refCanvas.style.maxHeight = isRefExpanded ? 'none' : '200px'; setTimeout(drawRefAndGrid, 100); };
+window.setPreviewBg = (btn, mode) => { 
+    document.querySelectorAll('.bg-toggle-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); 
+    const map = { 'light': 'bg-light', 'line': 'bg-line', 'pink': 'bg-pink', 'yellow': 'bg-yellow', 'dark': '' };
+    previewBgClass = map[mode] || ''; renderPreview(parseInt(els.rows.value), parseInt(els.cols.value)); 
+};
+
+// --- Edit Modal Functions ---
+window.openEditModal = async (idx) => {
+    currentEditIdx = idx;
+    const globalSettings = {
+        tolerance: parseInt(els.tolerance.value),
+        smoothness: parseFloat(els.smoothness.value),
+        shrink: parseFloat(els.shrink.value),
+        defringe: parseFloat(els.defringe.value)
+    };
+    const settings = stickerOverrides[idx] ? { ...globalSettings, ...stickerOverrides[idx] } : globalSettings;
+    
+    document.getElementById('editIdx').textContent = idx + 1;
+    document.getElementById('e_tolerance').value = settings.tolerance;
+    document.getElementById('e_smoothness').value = settings.smoothness;
+    document.getElementById('e_shrink').value = settings.shrink;
+    document.getElementById('e_defringe').value = settings.defringe;
+    
+    const sourceImg = await getSourceImage();
+    const tileW = Math.floor(sourceImg.width / parseInt(els.cols.value));
+    const tileH = Math.floor(sourceImg.height / parseInt(els.rows.value));
+
+    tempMaskCanvas = document.createElement('canvas'); tempMaskCanvas.width = tileW; tempMaskCanvas.height = tileH;
+    tempRestoreCanvas = document.createElement('canvas'); tempRestoreCanvas.width = tileW; tempRestoreCanvas.height = tileH;
+    tempOverlayCanvas = document.createElement('canvas'); tempOverlayCanvas.width = tileW; tempOverlayCanvas.height = tileH;
+
+    if(stickerOverrides[idx]) {
+        if(stickerOverrides[idx].maskData) { const img = await loadImage(stickerOverrides[idx].maskData); tempMaskCanvas.getContext('2d').drawImage(img, 0, 0, tileW, tileH); }
+        if(stickerOverrides[idx].restoreData) { const img = await loadImage(stickerOverrides[idx].restoreData); tempRestoreCanvas.getContext('2d').drawImage(img, 0, 0, tileW, tileH); }
+        if(stickerOverrides[idx].overlayData) { const img = await loadImage(stickerOverrides[idx].overlayData); tempOverlayCanvas.getContext('2d').drawImage(img, 0, 0, tileW, tileH); }
+    }
+    editHistory = []; historyStep = -1; saveHistory();
+    updateLabels(); els.editModal.style.display = 'block'; setTool('eraser'); updateEditPreview();
+};
+window.closeEditModal = () => { els.editModal.style.display = 'none'; cancelText(); };
+
+window.saveEdit = async () => {
+    if (pendingText) confirmText();
+    if (!stickerOverrides[currentEditIdx]) stickerOverrides[currentEditIdx] = {};
+    stickerOverrides[currentEditIdx].tolerance = parseInt(document.getElementById('e_tolerance').value);
+    stickerOverrides[currentEditIdx].smoothness = parseFloat(document.getElementById('e_smoothness').value);
+    stickerOverrides[currentEditIdx].shrink = parseFloat(document.getElementById('e_shrink').value);
+    stickerOverrides[currentEditIdx].defringe = parseFloat(document.getElementById('e_defringe').value);
+    stickerOverrides[currentEditIdx].maskData = tempMaskCanvas.toDataURL();
+    stickerOverrides[currentEditIdx].restoreData = tempRestoreCanvas.toDataURL();
+    stickerOverrides[currentEditIdx].overlayData = tempOverlayCanvas.toDataURL();
+    
+    const sourceImg = await getSourceImage();
+    const rows = parseInt(els.rows.value); const cols = parseInt(els.cols.value);
+    const tileW = Math.floor(sourceImg.width / cols); const tileH = Math.floor(sourceImg.height / rows);
+    const globalSettings = {
+        contour: parseInt(els.contour.value), contourColor: els.contourColor.value,
+        padding: parseInt(els.padding.value), shadowBlur: parseInt(els.shadowBlur.value),
+        shadowDist: parseInt(els.shadowDist.value), shadowOpacity: parseInt(els.shadowOpacity.value) / 100,
+        shadowColor: els.shadowColor.value, autoCenter: els.autoCenter.checked, targetColor: els.targetColor.value
+    };
+    const settings = { ...globalSettings, ...stickerOverrides[currentEditIdx] };
+    rawStickers[currentEditIdx] = await processStickerTile(sourceImg, Math.floor(currentEditIdx/cols), currentEditIdx%cols, tileW, tileH, settings);
+    closeEditModal(); renderPreview(rows, cols);
+};
+
+window.applyToAll = async () => {
+    if (currentEditIdx === -1) return;
+    if (!confirm("確定套用去背參數到全部？(繪圖內容不複製)")) return;
+    const newSettings = {
+        tolerance: parseInt(document.getElementById('e_tolerance').value),
+        smoothness: parseFloat(document.getElementById('e_smoothness').value),
+        shrink: parseFloat(document.getElementById('e_shrink').value),
+        defringe: parseFloat(document.getElementById('e_defringe').value),
+    };
+    for(let i=0; i<rawStickers.length; i++) {
+        if (!stickerOverrides[i]) stickerOverrides[i] = {};
+        Object.assign(stickerOverrides[i], newSettings);
+    }
+    els.runBtn.click(); // Trigger re-run
+};
+
+// Painting Event Listeners
+els.editCanvas.addEventListener('mousedown', (e) => { if(currentTool !== 'text'){ isDrawing=true; draw(e); } else if(pendingText) { isDrawing=true; const rect = els.editCanvas.getBoundingClientRect(); const sX = tempOverlayCanvas.width/rect.width; const sY = tempOverlayCanvas.height/rect.height; pendingText.offsetX = (e.clientX-rect.left)*sX - pendingText.x; pendingText.offsetY = (e.clientY-rect.top)*sY - pendingText.y; } });
+els.editCanvas.addEventListener('mousemove', draw);
+els.editCanvas.addEventListener('mouseup', () => { if(isDrawing && currentTool !== 'text') saveHistory(); isDrawing=false; });
+els.editCanvas.addEventListener('mouseout', () => { if(isDrawing && currentTool !== 'text') saveHistory(); isDrawing=false; });
+
+// Touch support
+els.editCanvas.addEventListener('touchstart', (e) => { e.preventDefault(); const touch = e.touches[0]; els.editCanvas.dispatchEvent(new MouseEvent("mousedown", { clientX: touch.clientX, clientY: touch.clientY })); });
+els.editCanvas.addEventListener('touchmove', (e) => { e.preventDefault(); const touch = e.touches[0]; els.editCanvas.dispatchEvent(new MouseEvent("mousemove", { clientX: touch.clientX, clientY: touch.clientY })); });
+els.editCanvas.addEventListener('touchend', () => { els.editCanvas.dispatchEvent(new MouseEvent("mouseup", {})); });
+
+function draw(e) {
+    if (!isDrawing) return;
+    const rect = els.editCanvas.getBoundingClientRect();
+    const sX = tempOverlayCanvas.width/rect.width; const sY = tempOverlayCanvas.height/rect.height;
+    const cx = (e.clientX - rect.left) * sX; const cy = (e.clientY - rect.top) * sY;
+
+    if (currentTool === 'text' && pendingText) {
+        pendingText.x = cx - pendingText.offsetX; pendingText.y = cy - pendingText.offsetY;
+        updateEditPreview(); return;
+    }
+
+    const size = parseInt(els.brushSize.value);
+    let ctx;
+    if (currentTool === 'eraser') ctx = tempMaskCanvas.getContext('2d');
+    else if (currentTool === 'restore') ctx = tempRestoreCanvas.getContext('2d');
+    else if (currentTool === 'brush') ctx = tempOverlayCanvas.getContext('2d');
+    
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = size;
+    if (currentTool === 'brush') { ctx.strokeStyle = els.brushColor.value; ctx.fillStyle = els.brushColor.value; }
+    else { ctx.strokeStyle = '#FFFFFF'; ctx.fillStyle = '#FFFFFF'; }
+    
+    ctx.beginPath(); ctx.arc(cx, cy, size/2, 0, Math.PI * 2); ctx.fill(); ctx.closePath();
+    updateEditPreview();
+}
+
+async function updateEditPreview() {
+    if(currentEditIdx === -1 || !currentRawImg) return;
+    const sourceImg = await getSourceImage();
+    const rows = parseInt(els.rows.value); const cols = parseInt(els.cols.value);
+    const tileW = Math.floor(sourceImg.width / cols); const tileH = Math.floor(sourceImg.height / rows);
+    const tempSettings = {
+        contour: parseInt(els.contour.value), contourColor: els.contourColor.value,
+        padding: parseInt(els.padding.value), shadowBlur: parseInt(els.shadowBlur.value),
+        shadowDist: parseInt(els.shadowDist.value), shadowOpacity: parseInt(els.shadowOpacity.value) / 100,
+        shadowColor: els.shadowColor.value, autoCenter: els.autoCenter.checked, targetColor: els.targetColor.value,
+        tolerance: parseInt(document.getElementById('e_tolerance').value),
+        smoothness: parseFloat(document.getElementById('e_smoothness').value),
+        shrink: parseFloat(document.getElementById('e_shrink').value),
+        defringe: parseFloat(document.getElementById('e_defringe').value),
+        maskData: tempMaskCanvas.toDataURL(), restoreData: tempRestoreCanvas.toDataURL(),
+        overlayData: tempOverlayCanvas.toDataURL() 
+    };
+    const resultCvs = await processStickerTile(sourceImg, Math.floor(currentEditIdx/cols), currentEditIdx%cols, tileW, tileH, tempSettings);
+    
+    if (pendingText) {
+        const ctx = resultCvs.getContext('2d'); const w = resultCvs.width;
+        ctx.save(); ctx.translate(pendingText.x, pendingText.y); ctx.rotate(pendingText.rotation * Math.PI / 180);
+        const realFontSize = (pendingText.size / 100) * (w * 0.5);
+        ctx.font = `bold ${realFontSize}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.strokeStyle = pendingText.stroke; ctx.lineWidth = realFontSize / 10; ctx.lineJoin = 'round'; ctx.strokeText(pendingText.text, 0, 0);
+        ctx.fillStyle = pendingText.color; ctx.fillText(pendingText.text, 0, 0);
+        ctx.strokeStyle = '#00FFFF'; ctx.lineWidth = 1; ctx.setLineDash([5, 3]);
+        const metrics = ctx.measureText(pendingText.text);
+        ctx.strokeRect(-metrics.width/2 - 5, -realFontSize/2 - 5, metrics.width + 10, realFontSize + 10);
+        ctx.restore();
+    }
+    const editCvs = els.editCanvas; editCvs.width = 300; editCvs.height = 300; 
+    const ctx = editCvs.getContext('2d'); const scale = Math.min(300/resultCvs.width, 300/resultCvs.height);
+    const w = resultCvs.width * scale; const h = resultCvs.height * scale;
+    ctx.clearRect(0,0,300,300); ctx.drawImage(resultCvs, (300-w)/2, (300-h)/2, w, h);
+}
+
+window.addPendingText = () => {
+    const text = document.getElementById('addTextInput').value; if (!text) return;
+    const w = tempOverlayCanvas.width; const h = tempOverlayCanvas.height;
+    pendingText = { text: text, x: w/2, y: h/2, size: 30, rotation: 0, color: document.getElementById('textColor').value, stroke: document.getElementById('textStroke').value, offsetX:0, offsetY:0 };
+    els.textControls.style.display = 'none'; els.textConfirmControls.style.display = 'flex';
+    els.brushSize.style.display = 'none'; els.textRotate.style.display = 'inline-block'; els.textSize.style.display = 'inline-block';
+    updateEditPreview();
+};
+window.confirmText = () => {
+    if (!pendingText) return;
+    const ctx = tempOverlayCanvas.getContext('2d'); const w = tempOverlayCanvas.width;
+    ctx.save(); ctx.translate(pendingText.x, pendingText.y); ctx.rotate(pendingText.rotation * Math.PI / 180);
+    const realFontSize = (pendingText.size / 100) * (w * 0.5);
+    ctx.font = `bold ${realFontSize}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.strokeStyle = pendingText.stroke; ctx.lineWidth = realFontSize / 10; ctx.lineJoin = 'round'; ctx.strokeText(pendingText.text, 0, 0);
+    ctx.fillStyle = pendingText.color; ctx.fillText(pendingText.text, 0, 0); ctx.restore();
+    saveHistory(); cancelText(); updateEditPreview();
+};
+window.cancelText = () => { pendingText = null; els.textConfirmControls.style.display = 'none'; els.textControls.style.display = 'flex'; els.textRotate.style.display = 'none'; els.textSize.style.display = 'none'; updateEditPreview(); };
+
+els.textRotate.addEventListener('input', (e) => { if(pendingText) { pendingText.rotation = parseInt(e.target.value); updateEditPreview(); }});
+els.textSize.addEventListener('input', (e) => { if(pendingText) { pendingText.size = parseInt(e.target.value); updateEditPreview(); }});
+
+// Undo/Redo logic
+function saveHistory() {
+    if (historyStep < editHistory.length - 1) editHistory = editHistory.slice(0, historyStep + 1);
+    editHistory.push({ mask: tempMaskCanvas.toDataURL(), restore: tempRestoreCanvas.toDataURL(), overlay: tempOverlayCanvas.toDataURL() });
+    if (editHistory.length > 20) editHistory.shift(); else historyStep++;
+    updateUndoRedoUI();
+}
+async function undoAction() { if (historyStep > 0) { historyStep--; await loadHistory(editHistory[historyStep]); updateEditPreview(); updateUndoRedoUI(); } }
+async function redoAction() { if (historyStep < editHistory.length - 1) { historyStep++; await loadHistory(editHistory[historyStep]); updateEditPreview(); updateUndoRedoUI(); } }
+function updateUndoRedoUI() { els.undoBtn.style.opacity = historyStep > 0 ? 1 : 0.3; els.redoBtn.style.opacity = historyStep < editHistory.length - 1 ? 1 : 0.3; }
+
+// Drag Drop Logic
+window.handleDragStart = (e) => { dragSrcIndex = +e.target.dataset.index; e.target.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; };
+window.handleDragOver = (e) => { if(e.preventDefault) e.preventDefault(); e.dataTransfer.dropEffect = 'move'; return false; };
+window.handleDragEnter = (e) => { const t = e.target.closest('.sticker-card'); if(t && +t.dataset.index !== dragSrcIndex) t.classList.add('drag-over'); };
+window.handleDragLeave = (e) => { const t = e.target.closest('.sticker-card'); if(t) t.classList.remove('drag-over'); };
+window.handleDrop = (e) => { if(e.stopPropagation) e.stopPropagation(); const t = e.target.closest('.sticker-card'); if(dragSrcIndex !== null && t) { const ti = +t.dataset.index; if(dragSrcIndex !== ti) reorderStickers(dragSrcIndex, ti); } return false; };
+window.handleDragEnd = () => { document.querySelectorAll('.sticker-card').forEach(c => { c.classList.remove('dragging'); c.classList.remove('drag-over'); }); dragSrcIndex = null; };
+
+// Downloads
+els.dlBtn.onclick = async () => {
+    const zip = new JSZip(); const w = parseInt(els.outW.value) || 370; const h = parseInt(els.outH.value) || 320;
+    const dateStr = new Date().toISOString().slice(0,10).replace(/-/g,''); const isCompress = els.compressPNG.checked;
+    els.dlBtn.textContent = "📦 打包中..."; els.dlBtn.disabled = true;
+    for (let i = 0; i < rawStickers.length; i++) {
+        const cvs = rawStickers[i]; const outCvs = resizeToOutput(cvs, w, h);
+        if (isCompress) { const pngBuffer = await compressImage(outCvs, 256); zip.file(getFilename(i), pngBuffer); }
+        else { const url = outCvs.toDataURL(); zip.file(getFilename(i), url.split(',')[1], {base64:true}); }
+    }
+    if (selectedMainIdx !== -1 && rawStickers[selectedMainIdx]) { const mainCvs = resizeToOutput(rawStickers[selectedMainIdx], 240, 240); if(isCompress) zip.file("main.png", await compressImage(mainCvs, 256)); else zip.file("main.png", mainCvs.toDataURL().split(',')[1], {base64:true}); }
+    if (selectedTabIdx !== -1 && rawStickers[selectedTabIdx]) { const tabCvs = resizeToOutput(rawStickers[selectedTabIdx], 96, 74); if(isCompress) zip.file("tab.png", await compressImage(tabCvs, 256)); else zip.file("tab.png", tabCvs.toDataURL().split(',')[1], {base64:true}); }
+    zip.generateAsync({type:"blob"}).then(b => { saveAs(b, `LineStickers_${dateStr}.zip`); els.dlBtn.textContent = "下載全部 ZIP"; els.dlBtn.disabled = false; });
+};
+window.downloadSingle = async (i, event) => {
+    if(event) event.stopPropagation(); const w = parseInt(els.outW.value) || 370; const h = parseInt(els.outH.value) || 320;
+    const outCvs = resizeToOutput(rawStickers[i], w, h); const isCompress = els.compressPNG.checked;
+    if (isCompress) { const pngBuffer = await compressImage(outCvs, 256); saveAs(new Blob([pngBuffer], {type: "image/png"}), getFilename(i)); }
+    else { const url = outCvs.toDataURL(); saveAs(dataURLtoBlob(url), getFilename(i)); }
+};
+
+// Initialize
+if (els.sizePreset.value === 'sticker') { els.outW.value = 370; els.outH.value = 320; }
+else if (els.sizePreset.value === 'emoji') { els.outW.value = 270; els.outH.value = 270; }
+loadSettings();
+updateLabels();
+</script>
 </body>
 </html>

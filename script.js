@@ -720,4 +720,3 @@ if (els.sizePreset.value === 'sticker') { els.outW.value = 370; els.outH.value =
 else if (els.sizePreset.value === 'emoji') { els.outW.value = 270; els.outH.value = 270; }
 loadSettings();
 updateLabels();
-</script>

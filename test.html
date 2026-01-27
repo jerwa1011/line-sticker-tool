@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LINE 貼圖製作大師 (V25-18: 橡皮擦精修版)</title>
+    <title>LINE 貼圖製作大師 (V25-18: 拖曳排序版)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -228,7 +228,23 @@
         .theme-btn { background: transparent; border: 1px solid var(--border); color: var(--text-main); padding: 5px 12px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; font-weight: 500; }
 
         #previewContainer { background: var(--preview-bg); padding: 20px; border-radius: 12px; min-height: 400px; display: grid; gap: 15px; align-content: start; border: 1px solid var(--border); }
-        .sticker-card { display: flex; flex-direction: column; gap: 8px; position: relative; }
+        
+        /* 貼圖卡片 & 拖曳樣式 */
+        .sticker-card { 
+            display: flex; flex-direction: column; gap: 8px; position: relative; 
+            cursor: grab; /* 增加可拖曳游標 */
+            transition: transform 0.2s, opacity 0.2s;
+        }
+        .sticker-card.dragging {
+            opacity: 0.4;
+            transform: scale(0.95);
+        }
+        .sticker-card.drag-over {
+            border: 2px dashed var(--primary);
+            border-radius: 12px;
+            background: rgba(6, 199, 85, 0.1);
+        }
+        
         .sticker-img-box {
             position: relative; width: 100%; aspect-ratio: 1; border: 1px solid #444; border-radius: 10px;
             display: flex; align-items: center; justify-content: center; overflow: hidden;
@@ -241,7 +257,7 @@
         .sticker-img-box.bg-yellow { background: #fffde7; background-image: none; border-color: #fff9c4; }
 
         .sticker-img-box:hover { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary); }
-        .sticker-img-box img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        .sticker-img-box img { max-width: 100%; max-height: 100%; object-fit: contain; pointer-events: none; /* 防止圖片干擾拖曳 */ }
         
         .dl-icon-btn {
             position: absolute; bottom: 8px; right: 8px; width: 28px; height: 28px;
@@ -258,7 +274,7 @@
         }
         .edit-icon-btn:hover { background: var(--header-hover); }
 
-        .sticker-name { text-align: center; color: var(--text-sub); font-size: 0.8rem; font-family: monospace; }
+        .sticker-name { text-align: center; color: var(--text-sub); font-size: 0.8rem; font-family: monospace; user-select: none; }
         .tags-row { display: flex; justify-content: center; gap: 6px; }
         .tag-btn {
             border: 1px solid var(--border); background: var(--input-bg); color: var(--text-sub);
@@ -326,7 +342,7 @@
 <body class="">
 
 <div class="header">
-    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-18 橡皮擦精修版</span></h1>
+    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-18 拖曳排序版</span></h1>
     <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️ 切換明亮</button>
 </div>
 
@@ -573,7 +589,8 @@
                 <button id="dlBtn" class="btn btn-green" style="height:100%; padding:0 20px;">下載全部 ZIP</button>
             </div>
         </div>
-
+        
+        <div style="font-size:0.8rem; color:var(--text-sub); text-align:center; margin-bottom:5px;">💡 提示：按住卡片可進行「拖曳排序」</div>
         <div id="previewContainer">
             <div style="grid-column:1/-1; text-align:center; color:#666; padding:50px;">請點擊左側「開始製作」</div>
         </div>
@@ -649,6 +666,7 @@
     let isErasing = false;
     let isDrawing = false;
     let tempMaskCanvas = null; // 暫存橡皮擦遮罩
+    let dragSrcIndex = null; // 拖曳來源索引
 
     const els = {
         imgIn: document.getElementById('imgInput'),
@@ -1393,6 +1411,16 @@
             const url = resizeToOutput(cvs, 150, 150);
             const div = document.createElement('div');
             div.className = 'sticker-card';
+            div.draggable = true; // 啟用拖曳
+
+            // 拖曳事件監聽
+            div.addEventListener('dragstart', (e) => handleDragStart(e, i));
+            div.addEventListener('dragover', handleDragOver);
+            div.addEventListener('dragenter', handleDragEnter);
+            div.addEventListener('dragleave', handleDragLeave);
+            div.addEventListener('drop', (e) => handleDrop(e, i));
+            div.addEventListener('dragend', handleDragEnd);
+
             const mainClass = isEmojiMode ? 'tag-btn disabled' : 'tag-btn';
             
             // 是否有修改過
@@ -1408,13 +1436,90 @@
                 </div>
                 <div class="sticker-name" id="name-${i}" style="${nameColor}">${getFilename(i)}${nameSuffix}</div>
                 <div class="tags-row">
-                    <span class="${mainClass}" id="btn-main-${i}" onclick="setTag('main', ${i})">main</span>
-                    <span class="tag-btn" id="btn-tab-${i}" onclick="setTag('tab', ${i})">tab</span>
+                    <span class="${mainClass}" id="btn-main-${i}" onclick="setTag('main', ${i}); event.stopPropagation();">main</span>
+                    <span class="tag-btn" id="btn-tab-${i}" onclick="setTag('tab', ${i}); event.stopPropagation();">tab</span>
                 </div>
             `;
             els.preview.appendChild(div);
         });
         updateTagClasses();
+    }
+
+    // --- 拖曳排序邏輯 (Drag & Drop Functions) ---
+    function handleDragStart(e, index) {
+        dragSrcIndex = index;
+        e.target.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        // 為了讓圖像在拖曳時不包含背景
+        // e.dataTransfer.setDragImage(e.target.querySelector('img'), 20, 20);
+    }
+
+    function handleDragOver(e) {
+        if (e.preventDefault) e.preventDefault(); // 必須呼叫，否則 drop 不會觸發
+        e.dataTransfer.dropEffect = 'move';
+        return false;
+    }
+
+    function handleDragEnter(e) {
+        // 尋找最近的 .sticker-card 父元素
+        const card = e.target.closest('.sticker-card');
+        if (card && !card.classList.contains('dragging')) {
+            card.classList.add('drag-over');
+        }
+    }
+
+    function handleDragLeave(e) {
+        const card = e.target.closest('.sticker-card');
+        if (card) {
+            card.classList.remove('drag-over');
+        }
+    }
+
+    function handleDrop(e, targetIndex) {
+        if (e.stopPropagation) e.stopPropagation();
+        
+        // 移除所有視覺效果
+        document.querySelectorAll('.sticker-card').forEach(col => col.classList.remove('drag-over'));
+        
+        if (dragSrcIndex !== null && dragSrcIndex !== targetIndex) {
+            swapStickers(dragSrcIndex, targetIndex);
+        }
+        return false;
+    }
+
+    function handleDragEnd(e) {
+        document.querySelectorAll('.sticker-card').forEach(col => {
+            col.classList.remove('drag-over');
+            col.classList.remove('dragging');
+        });
+        dragSrcIndex = null;
+    }
+
+    function swapStickers(fromIdx, toIdx) {
+        // 交換 rawStickers
+        const tempSticker = rawStickers[fromIdx];
+        rawStickers[fromIdx] = rawStickers[toIdx];
+        rawStickers[toIdx] = tempSticker;
+
+        // 交換 Overrides (編輯設定)
+        const tempOverride = stickerOverrides[fromIdx];
+        stickerOverrides[fromIdx] = stickerOverrides[toIdx];
+        stickerOverrides[toIdx] = tempOverride;
+
+        // 清理 undefined 的 override key
+        if(stickerOverrides[fromIdx] === undefined) delete stickerOverrides[fromIdx];
+        if(stickerOverrides[toIdx] === undefined) delete stickerOverrides[toIdx];
+
+        // 交換 Main / Tab 選擇
+        // 如果來源是 Main，那 Main 的索引要變為 目標索引
+        if (selectedMainIdx === fromIdx) selectedMainIdx = toIdx;
+        else if (selectedMainIdx === toIdx) selectedMainIdx = fromIdx;
+
+        if (selectedTabIdx === fromIdx) selectedTabIdx = toIdx;
+        else if (selectedTabIdx === toIdx) selectedTabIdx = fromIdx;
+
+        // 重新渲染
+        renderPreview(parseInt(els.rows.value), parseInt(els.cols.value));
     }
 
     window.setPreviewBg = (btn, mode) => { 

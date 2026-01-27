@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LINE 貼圖製作大師 (V25-29: 結構重整穩定版)</title>
+    <title>LINE 貼圖製作大師 (V25-30: 文字自由編輯版)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -182,6 +182,7 @@
             min-height: 150px; display: flex; align-items: center; justify-content: center; flex-direction: column;
         }
         #origWrapper { position: relative; display: inline-block; max-width: 100%; }
+        /* 確保 Canvas 透過 CSS 縮放適當顯示 */
         #refCanvas { max-height: 300px; max-width: 100%; object-fit: contain; cursor: crosshair; display: block; margin: 0 auto; }
         #gridCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
         #eyedropperHint { 
@@ -358,7 +359,7 @@
 <body class="">
 
 <div class="header">
-    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-29 結構重整穩定版</span></h1>
+    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-30 文字自由編輯版</span></h1>
     <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️ 切換明亮</button>
 </div>
 
@@ -653,8 +654,14 @@
             
             <div class="tool-divider"></div>
             <div class="tool-options" id="toolOptions">
-                <span style="font-size:0.8rem;">大小:</span>
+                <span id="toolLabel" style="font-size:0.8rem;">大小:</span>
+                
                 <input type="range" id="brushSize" min="1" max="50" value="10" class="size-slider">
+                
+                <input type="range" id="textRotate" min="-180" max="180" value="0" class="size-slider" style="display:none;" title="旋轉角度">
+                
+                <input type="range" id="textSize" min="10" max="100" value="30" class="size-slider" style="display:none;" title="文字大小">
+
                 <input type="color" id="brushColor" value="#ff0000" style="width:24px; height:24px; padding:0; border:none; display:none;">
             </div>
         </div>
@@ -663,8 +670,12 @@
             <input type="text" id="addTextInput" placeholder="輸入文字..." style="flex:1;">
             <input type="color" id="textColor" value="#000000" title="文字顏色">
             <input type="color" id="textStroke" value="#ffffff" title="描邊顏色 (預設白)">
-            <button class="btn btn-secondary" style="width:auto; padding:5px 10px;" onclick="addTextToCanvas()">加入畫面</button>
-            <div style="font-size:0.75rem; color:#ccc; width:100%;">* 點擊加入後，文字即變為圖像(無法再次編輯文字)</div>
+            <button class="btn btn-secondary" style="width:auto; padding:5px 10px; background:var(--primary); color:white; font-weight:bold;" onclick="addPendingText()">新增文字</button>
+        </div>
+        <div id="textConfirmControls" style="display:none; width:100%; margin-top:5px; background:var(--header-hover); padding:8px; border-radius:6px; justify-content:center; gap:10px;">
+            <span style="font-size:0.9rem; color:var(--text-main);">調整好位置與大小了嗎？</span>
+            <button class="btn btn-green" style="width:auto; padding:5px 15px;" onclick="confirmText()">✅ 確認套用</button>
+            <button class="btn btn-secondary" style="width:auto; padding:5px 10px;" onclick="cancelText()">❌ 取消</button>
         </div>
 
         <div class="edit-preview-box" id="editPreviewBox">
@@ -701,7 +712,7 @@
 </div>
 
 <script>
-    // --- 核心圖像處理函式 (提早定義，避免 ReferenceError) ---
+    // --- 核心圖像處理函式 (提早定義) ---
     function generateColorMask(img, targetHex, toleranceVal) {
         const cvs = document.createElement('canvas'); 
         cvs.width = img.width; 
@@ -724,35 +735,27 @@
 
     function applyShrink(mask, amount) {
         if (amount <= 0) return mask;
-        const cvs = document.createElement('canvas'); 
-        cvs.width = mask.width; 
-        cvs.height = mask.height;
-        const ctx = cvs.getContext('2d'); 
-        ctx.drawImage(mask, 0, 0);
+        const cvs = document.createElement('canvas'); cvs.width = mask.width; cvs.height = mask.height;
+        const ctx = cvs.getContext('2d'); ctx.drawImage(mask, 0, 0);
         const srcData = ctx.getImageData(0, 0, cvs.width, cvs.height);
         const destData = ctx.createImageData(cvs.width, cvs.height);
-        const w = cvs.width; 
-        const h = cvs.height; 
-        const radius = Math.ceil(amount);
+        const w = cvs.width; const h = cvs.height; const radius = Math.ceil(amount);
         for (let y = 0; y < h; y++) {
             for (let x = 0; x < w; x++) {
                 let minAlpha = 255;
                 for (let ky = -radius; ky <= radius; ky++) {
                     for (let kx = -radius; kx <= radius; kx++) {
-                        const nx = x + kx; 
-                        const ny = y + ky;
+                        const nx = x + kx; const ny = y + ky;
                         if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
                             const alpha = srcData.data[(ny * w + nx) * 4 + 3];
                             if (alpha < minAlpha) minAlpha = alpha;
                         }
                     }
                 }
-                const idx = (y * w + x) * 4; 
-                destData.data[idx+3] = minAlpha; 
+                const idx = (y * w + x) * 4; destData.data[idx+3] = minAlpha; 
             }
         }
-        ctx.putImageData(destData, 0, 0); 
-        return cvs;
+        ctx.putImageData(destData, 0, 0); return cvs;
     }
 
     function applySmooth(mask, smooth) {
@@ -852,6 +855,9 @@
     let tempRestoreCanvas = null; 
     let tempOverlayCanvas = null; 
     
+    // 浮動文字物件
+    let pendingText = null;
+    
     // Undo/Redo 歷史堆疊
     let editHistory = [];
     let historyStep = -1;
@@ -907,25 +913,14 @@
         redoBtn: document.getElementById('redoBtn'),
         brushSize: document.getElementById('brushSize'),
         brushColor: document.getElementById('brushColor'),
-        textControls: document.getElementById('textControls')
+        textControls: document.getElementById('textControls'),
+        textConfirmControls: document.getElementById('textConfirmControls'),
+        textRotate: document.getElementById('textRotate'),
+        textSize: document.getElementById('textSize'),
+        toolLabel: document.getElementById('toolLabel')
     };
 
-    const HELP_TEXTS = {
-        'crop': '設定要將大圖切割成幾列幾行。',
-        'color': '設定要去除的背景顏色。\n通常選擇圖片的底色（如白色或綠色），程式會自動將該顏色變為透明。',
-        'tolerance': '決定顏色去背的強度。\n數值越高：去除越多相近色。\n數值越小：只去除完全一樣的顏色。',
-        'smoothness': '消除邊緣鋸齒，讓線條更圓潤。',
-        'shrink': '【物理內縮】直接將邊緣往內削減，適合去除粗糙黑邊或不乾淨的輪廓。',
-        'defringe': '【色彩淨化】不改變形狀，只針對邊緣殘留的背景色 (如綠光) 進行淡化或去色。',
-        'contour': '在圖案周圍加上邊框。點擊旁邊的顏色框可改成「黑色」或其他顏色。',
-        'shadow': '【陰影模糊】決定陰影的柔和程度。\n【陰影距離】決定陰影與圖案的遠近，產生浮空感。\n【陰影濃度】決定陰影的深淺。',
-        'padding': '內縮圖案，防止被邊緣切到。',
-        'startNum': '設定檔名編號 (如 001.png)。',
-        'sizeMode': '設定匯出解析度。貼圖建議 370x320。',
-        'autoCenter': '【開啟】自動偵測內容並置中放大。\n【關閉】保留原始裁切位置。'
-    };
-
-    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-29 (Fixed & Organized) | ${new Date().toISOString().slice(0, 10)}`;
+    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-30 (Free Text Edit) | ${new Date().toISOString().slice(0, 10)}`;
 
     window.changeStep = (delta) => {
         const newStep = currentStep + delta;
@@ -1402,20 +1397,319 @@
         updateEditPreview();
     };
 
-    window.closeEditModal = () => { els.editModal.style.display = 'none'; };
+    window.closeEditModal = () => { 
+        els.editModal.style.display = 'none'; 
+        // 關閉時清空 pending text
+        cancelText();
+    };
 
+    // --- 工具切換邏輯 (UI) ---
     window.setTool = (tool) => {
         currentTool = tool;
         document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
         document.getElementById(tool + 'Btn').classList.add('active');
         
-        els.brushSize.style.display = (tool === 'text') ? 'none' : 'inline-block';
+        // UI 顯示控制
+        const isText = (tool === 'text');
+        els.textControls.classList.toggle('show', isText);
+        els.brushSize.style.display = isText ? 'none' : 'inline-block';
         els.brushColor.style.display = (tool === 'brush') ? 'inline-block' : 'none';
-        els.textControls.classList.toggle('show', tool === 'text');
         
-        els.editCanvas.style.cursor = tool === 'text' ? 'text' : 'crosshair';
+        els.textRotate.style.display = 'none';
+        els.textSize.style.display = 'none';
+        
+        // 如果有正在編輯的文字，且切換工具，視同放棄編輯
+        if(pendingText && !isText) {
+            cancelText();
+        }
+        
+        if (isText) {
+            els.toolLabel.style.display = 'none';
+            els.editCanvas.style.cursor = 'default';
+        } else {
+            els.toolLabel.style.display = 'inline-block';
+            els.toolLabel.innerText = '大小:';
+            els.brushSize.style.display = 'inline-block';
+            els.editCanvas.style.cursor = 'crosshair';
+        }
     };
 
+    // --- 繪圖事件 ---
+    els.editCanvas.addEventListener('mousedown', startDraw);
+    els.editCanvas.addEventListener('mousemove', draw);
+    els.editCanvas.addEventListener('mouseup', stopDraw);
+    els.editCanvas.addEventListener('mouseout', stopDraw);
+    els.editCanvas.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        const touch = e.touches[0];
+        const mouseEvent = new MouseEvent("mousedown", { clientX: touch.clientX, clientY: touch.clientY });
+        els.editCanvas.dispatchEvent(mouseEvent);
+    });
+    els.editCanvas.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        const touch = e.touches[0];
+        const mouseEvent = new MouseEvent("mousemove", { clientX: touch.clientX, clientY: touch.clientY });
+        els.editCanvas.dispatchEvent(mouseEvent);
+    });
+    els.editCanvas.addEventListener('touchend', () => {
+        const mouseEvent = new MouseEvent("mouseup", {});
+        els.editCanvas.dispatchEvent(mouseEvent);
+    });
+
+    function startDraw(e) {
+        if (currentTool === 'text') {
+            // 文字模式下的拖曳
+            if (pendingText) {
+                isDrawing = true; // 借用 isDrawing 當作 isDragging
+                const rect = els.editCanvas.getBoundingClientRect();
+                const scaleX = tempOverlayCanvas.width / rect.width;
+                const scaleY = tempOverlayCanvas.height / rect.height;
+                // 紀錄偏移量
+                pendingText.offsetX = (e.clientX - rect.left) * scaleX - pendingText.x;
+                pendingText.offsetY = (e.clientY - rect.top) * scaleY - pendingText.y;
+            }
+            return;
+        }
+        isDrawing = true;
+        draw(e);
+    }
+
+    function draw(e) {
+        if (!isDrawing) return;
+        
+        const rect = els.editCanvas.getBoundingClientRect();
+        const scaleX = tempOverlayCanvas.width / rect.width;
+        const scaleY = tempOverlayCanvas.height / rect.height;
+        const cx = (e.clientX - rect.left) * scaleX;
+        const cy = (e.clientY - rect.top) * scaleY;
+
+        if (currentTool === 'text') {
+            // 拖曳文字
+            if (pendingText) {
+                pendingText.x = cx - pendingText.offsetX;
+                pendingText.y = cy - pendingText.offsetY;
+                updateEditPreview(); // 重繪
+            }
+            return;
+        }
+
+        const size = parseInt(els.brushSize.value);
+        let ctx;
+        if (currentTool === 'eraser') ctx = tempMaskCanvas.getContext('2d');
+        else if (currentTool === 'restore') ctx = tempRestoreCanvas.getContext('2d');
+        else if (currentTool === 'brush') ctx = tempOverlayCanvas.getContext('2d');
+
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.lineWidth = size;
+        
+        if (currentTool === 'brush') {
+            ctx.strokeStyle = els.brushColor.value;
+            ctx.fillStyle = els.brushColor.value;
+        } else {
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.fillStyle = '#FFFFFF';
+        }
+
+        ctx.beginPath();
+        ctx.arc(cx, cy, size/2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.closePath();
+        
+        updateEditPreview();
+    }
+
+    function stopDraw() {
+        if (isDrawing) {
+            isDrawing = false;
+            // 如果不是文字模式，才存歷史記錄
+            if (currentTool !== 'text') {
+                saveHistory(); 
+            }
+        }
+    }
+
+    // --- 文字功能核心 ---
+    window.addPendingText = () => {
+        const text = document.getElementById('addTextInput').value;
+        if (!text) return;
+        
+        const w = tempOverlayCanvas.width;
+        const h = tempOverlayCanvas.height;
+        
+        // 建立浮動文字物件
+        pendingText = {
+            text: text,
+            x: w / 2,
+            y: h / 2,
+            size: 30, // 初始大小 (對應 Slider 30)
+            rotation: 0,
+            color: document.getElementById('textColor').value,
+            stroke: document.getElementById('textStroke').value,
+            offsetX: 0, 
+            offsetY: 0
+        };
+        
+        // 顯示確認UI
+        els.textControls.style.display = 'none';
+        els.textConfirmControls.style.display = 'flex';
+        
+        // 切換上方工具列顯示文字專用 Slider
+        els.brushSize.style.display = 'none';
+        els.toolLabel.innerText = '旋轉/大小:';
+        els.toolLabel.style.display = 'inline-block';
+        els.textRotate.style.display = 'inline-block';
+        els.textSize.style.display = 'inline-block';
+        
+        // 重設 Slider 值
+        els.textSize.value = 30;
+        els.textRotate.value = 0;
+        
+        updateEditPreview();
+    };
+    
+    // 監聽文字參數變化
+    els.textRotate.addEventListener('input', (e) => {
+        if(pendingText) { pendingText.rotation = parseInt(e.target.value); updateEditPreview(); }
+    });
+    els.textSize.addEventListener('input', (e) => {
+        if(pendingText) { pendingText.size = parseInt(e.target.value); updateEditPreview(); }
+    });
+
+    window.confirmText = () => {
+        if (!pendingText) return;
+        
+        // 將文字燒錄到 Canvas
+        const ctx = tempOverlayCanvas.getContext('2d');
+        const w = tempOverlayCanvas.width; // 參考畫布寬度比例
+        
+        ctx.save();
+        ctx.translate(pendingText.x, pendingText.y);
+        ctx.rotate(pendingText.rotation * Math.PI / 180);
+        
+        // 根據畫布寬度計算實際字體大小 (讓Slider 10-100 有意義)
+        const realFontSize = (pendingText.size / 100) * (w * 0.5); 
+        ctx.font = `bold ${realFontSize}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        ctx.strokeStyle = pendingText.stroke;
+        ctx.lineWidth = realFontSize / 10;
+        ctx.lineJoin = 'round';
+        ctx.strokeText(pendingText.text, 0, 0);
+        
+        ctx.fillStyle = pendingText.color;
+        ctx.fillText(pendingText.text, 0, 0);
+        
+        ctx.restore();
+        
+        // 完成
+        saveHistory();
+        cancelText(); // 清除浮動狀態回到輸入模式
+        updateEditPreview();
+    };
+
+    window.cancelText = () => {
+        pendingText = null;
+        els.textConfirmControls.style.display = 'none';
+        els.textControls.style.display = 'flex';
+        
+        // 還原 Slider 顯示
+        els.textRotate.style.display = 'none';
+        els.textSize.style.display = 'none';
+        els.brushSize.style.display = 'none'; // 因為還是在 Text tool，所以不顯示筆刷大小
+        els.toolLabel.style.display = 'none';
+        
+        updateEditPreview();
+    };
+
+    // 修改 updateEditPreview 以支援繪製浮動文字
+    async function updateEditPreview() {
+        if(currentEditIdx === -1 || !currentRawImg) return;
+        
+        const sourceImg = await getSourceImage();
+        const rows = parseInt(els.rows.value);
+        const cols = parseInt(els.cols.value);
+        const tileW = Math.floor(sourceImg.width / cols);
+        const tileH = Math.floor(sourceImg.height / rows);
+        const r = Math.floor(currentEditIdx / cols);
+        const c = currentEditIdx % cols;
+
+        const tempSettings = {
+            contour: parseInt(els.contour.value),
+            contourColor: els.contourColor.value,
+            padding: parseInt(els.padding.value),
+            shadowBlur: parseInt(els.shadowBlur.value),
+            shadowDist: parseInt(els.shadowDist.value),
+            shadowOpacity: parseInt(els.shadowOpacity.value) / 100,
+            shadowColor: els.shadowColor.value,
+            autoCenter: els.autoCenter.checked,
+            targetColor: els.targetColor.value,
+            tolerance: parseInt(document.getElementById('e_tolerance').value),
+            smoothness: parseFloat(document.getElementById('e_smoothness').value),
+            shrink: parseFloat(document.getElementById('e_shrink').value),
+            defringe: parseFloat(document.getElementById('e_defringe').value),
+            maskData: tempMaskCanvas.toDataURL(),
+            restoreData: tempRestoreCanvas.toDataURL(),
+            // 注意：這裡不傳入 overlayData，因為我們要在下面手動疊加 pendingText
+            // 但如果沒有 pendingText，我們要顯示已燒錄的 overlay
+        };
+        
+        // 先產生底圖 (含已燒錄的塗鴉/文字)
+        // 為了顯示浮動文字，我們需要先把 tempOverlayCanvas 畫上去，再畫 pendingText
+        // 但 processStickerTile 內部邏輯是最後才畫 overlay。
+        // 解決方案：我們傳入目前的 tempOverlayCanvas 作為基底，
+        // 然後在回傳的 resultCvs 上再畫一次 pendingText (如果是預覽模式)
+        
+        tempSettings.overlayData = tempOverlayCanvas.toDataURL();
+
+        const resultCvs = await processStickerTile(sourceImg, r, c, tileW, tileH, tempSettings);
+        
+        // 如果有浮動文字，畫在 resultCvs 最上層
+        if (pendingText) {
+            const ctx = resultCvs.getContext('2d');
+            const w = resultCvs.width;
+            
+            ctx.save();
+            ctx.translate(pendingText.x, pendingText.y);
+            ctx.rotate(pendingText.rotation * Math.PI / 180);
+            
+            const realFontSize = (pendingText.size / 100) * (w * 0.5);
+            ctx.font = `bold ${realFontSize}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            ctx.strokeStyle = pendingText.stroke;
+            ctx.lineWidth = realFontSize / 10;
+            ctx.lineJoin = 'round';
+            ctx.strokeText(pendingText.text, 0, 0);
+            
+            ctx.fillStyle = pendingText.color;
+            ctx.fillText(pendingText.text, 0, 0);
+            
+            // 繪製選取框 (虛線)
+            ctx.strokeStyle = '#00FFFF';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 3]);
+            const metrics = ctx.measureText(pendingText.text);
+            const textW = metrics.width;
+            const textH = realFontSize; // 粗略估計
+            ctx.strokeRect(-textW/2 - 5, -textH/2 - 5, textW + 10, textH + 10);
+            
+            ctx.restore();
+        }
+        
+        const editCvs = els.editCanvas;
+        editCvs.width = 300; editCvs.height = 300; 
+        const ctx = editCvs.getContext('2d');
+        const scale = Math.min(300/resultCvs.width, 300/resultCvs.height);
+        const w = resultCvs.width * scale;
+        const h = resultCvs.height * scale;
+        ctx.clearRect(0,0,300,300);
+        ctx.drawImage(resultCvs, (300-w)/2, (300-h)/2, w, h);
+    }
+
+    // --- Undo / Redo ---
     function saveHistory() {
         if (historyStep < editHistory.length - 1) {
             editHistory = editHistory.slice(0, historyStep + 1);
@@ -1465,458 +1759,6 @@
         els.redoBtn.style.opacity = historyStep < editHistory.length - 1 ? 1 : 0.3;
     }
 
-    els.editCanvas.addEventListener('mousedown', startDraw);
-    els.editCanvas.addEventListener('mousemove', draw);
-    els.editCanvas.addEventListener('mouseup', stopDraw);
-    els.editCanvas.addEventListener('mouseout', stopDraw);
-    els.editCanvas.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        const touch = e.touches[0];
-        const mouseEvent = new MouseEvent("mousedown", { clientX: touch.clientX, clientY: touch.clientY });
-        els.editCanvas.dispatchEvent(mouseEvent);
-    });
-    els.editCanvas.addEventListener('touchmove', (e) => {
-        e.preventDefault();
-        const touch = e.touches[0];
-        const mouseEvent = new MouseEvent("mousemove", { clientX: touch.clientX, clientY: touch.clientY });
-        els.editCanvas.dispatchEvent(mouseEvent);
-    });
-    els.editCanvas.addEventListener('touchend', () => {
-        const mouseEvent = new MouseEvent("mouseup", {});
-        els.editCanvas.dispatchEvent(mouseEvent);
-    });
-
-    function startDraw(e) {
-        if (currentTool === 'text') return; 
-        isDrawing = true;
-        draw(e);
-    }
-
-    function draw(e) {
-        if (!isDrawing) return;
-        const rect = els.editCanvas.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        const scaleX = tempMaskCanvas.width / rect.width;
-        const scaleY = tempMaskCanvas.height / rect.height;
-        const cx = x * scaleX;
-        const cy = y * scaleY;
-        const size = parseInt(els.brushSize.value);
-
-        let ctx;
-        if (currentTool === 'eraser') ctx = tempMaskCanvas.getContext('2d');
-        else if (currentTool === 'restore') ctx = tempRestoreCanvas.getContext('2d');
-        else if (currentTool === 'brush') ctx = tempOverlayCanvas.getContext('2d');
-
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.lineWidth = size;
-        
-        if (currentTool === 'brush') {
-            ctx.strokeStyle = els.brushColor.value;
-            ctx.fillStyle = els.brushColor.value;
-        } else {
-            ctx.strokeStyle = '#FFFFFF';
-            ctx.fillStyle = '#FFFFFF';
-        }
-
-        ctx.beginPath();
-        ctx.arc(cx, cy, size/2, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.closePath();
-        
-        updateEditPreview();
-    }
-
-    function stopDraw() {
-        if (isDrawing) {
-            isDrawing = false;
-            saveHistory(); 
-        }
-    }
-
-    window.addTextToCanvas = () => {
-        const text = document.getElementById('addTextInput').value;
-        if (!text) return;
-        
-        const ctx = tempOverlayCanvas.getContext('2d');
-        const w = tempOverlayCanvas.width;
-        const h = tempOverlayCanvas.height;
-        
-        ctx.save();
-        ctx.font = `bold ${Math.floor(w/5)}px sans-serif`; 
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        
-        ctx.strokeStyle = document.getElementById('textStroke').value;
-        ctx.lineWidth = w/40;
-        ctx.strokeText(text, w/2, h/2);
-        
-        ctx.fillStyle = document.getElementById('textColor').value;
-        ctx.fillText(text, w/2, h/2);
-        
-        ctx.restore();
-        
-        saveHistory();
-        updateEditPreview();
-        document.getElementById('addTextInput').value = '';
-    };
-
-    async function updateEditPreview() {
-        if(currentEditIdx === -1 || !currentRawImg) return;
-        
-        const sourceImg = await getSourceImage();
-        const rows = parseInt(els.rows.value);
-        const cols = parseInt(els.cols.value);
-        const tileW = Math.floor(sourceImg.width / cols);
-        const tileH = Math.floor(sourceImg.height / rows);
-        const r = Math.floor(currentEditIdx / cols);
-        const c = currentEditIdx % cols;
-
-        const tempSettings = {
-            contour: parseInt(els.contour.value),
-            contourColor: els.contourColor.value,
-            padding: parseInt(els.padding.value),
-            shadowBlur: parseInt(els.shadowBlur.value),
-            shadowDist: parseInt(els.shadowDist.value),
-            shadowOpacity: parseInt(els.shadowOpacity.value) / 100,
-            shadowColor: els.shadowColor.value,
-            autoCenter: els.autoCenter.checked,
-            targetColor: els.targetColor.value,
-            tolerance: parseInt(document.getElementById('e_tolerance').value),
-            smoothness: parseFloat(document.getElementById('e_smoothness').value),
-            shrink: parseFloat(document.getElementById('e_shrink').value),
-            defringe: parseFloat(document.getElementById('e_defringe').value),
-            maskData: tempMaskCanvas.toDataURL(),
-            restoreData: tempRestoreCanvas.toDataURL(),
-            overlayData: tempOverlayCanvas.toDataURL()
-        };
-
-        const resultCvs = await processStickerTile(sourceImg, r, c, tileW, tileH, tempSettings);
-        
-        const editCvs = els.editCanvas;
-        editCvs.width = 300; editCvs.height = 300; 
-        const ctx = editCvs.getContext('2d');
-        const scale = Math.min(300/resultCvs.width, 300/resultCvs.height);
-        const w = resultCvs.width * scale;
-        const h = resultCvs.height * scale;
-        ctx.clearRect(0,0,300,300);
-        ctx.drawImage(resultCvs, (300-w)/2, (300-h)/2, w, h);
-    }
-
-    window.saveEdit = async () => {
-        if (!stickerOverrides[currentEditIdx]) stickerOverrides[currentEditIdx] = {};
-        
-        stickerOverrides[currentEditIdx].tolerance = parseInt(document.getElementById('e_tolerance').value);
-        stickerOverrides[currentEditIdx].smoothness = parseFloat(document.getElementById('e_smoothness').value);
-        stickerOverrides[currentEditIdx].shrink = parseFloat(document.getElementById('e_shrink').value);
-        stickerOverrides[currentEditIdx].defringe = parseFloat(document.getElementById('e_defringe').value);
-        
-        stickerOverrides[currentEditIdx].maskData = tempMaskCanvas.toDataURL();
-        stickerOverrides[currentEditIdx].restoreData = tempRestoreCanvas.toDataURL();
-        stickerOverrides[currentEditIdx].overlayData = tempOverlayCanvas.toDataURL();
-        
-        const sourceImg = await getSourceImage();
-        const rows = parseInt(els.rows.value);
-        const cols = parseInt(els.cols.value);
-        const tileW = Math.floor(sourceImg.width / cols);
-        const tileH = Math.floor(sourceImg.height / rows);
-        const r = Math.floor(currentEditIdx / cols);
-        const c = currentEditIdx % cols;
-        
-        const globalSettings = {
-            contour: parseInt(els.contour.value),
-            contourColor: els.contourColor.value,
-            padding: parseInt(els.padding.value),
-            shadowBlur: parseInt(els.shadowBlur.value),
-            shadowDist: parseInt(els.shadowDist.value),
-            shadowOpacity: parseInt(els.shadowOpacity.value) / 100,
-            shadowColor: els.shadowColor.value,
-            autoCenter: els.autoCenter.checked,
-            targetColor: els.targetColor.value
-        };
-        const settings = { ...globalSettings, ...stickerOverrides[currentEditIdx] };
-        
-        rawStickers[currentEditIdx] = await processStickerTile(sourceImg, r, c, tileW, tileH, settings);
-        
-        closeEditModal();
-        renderPreview(rows, cols);
-    };
-
-    window.applyToAll = async () => {
-        if (currentEditIdx === -1) return;
-        const confirmMsg = "確定要將目前的「去背參數」套用到所有圖片嗎？\n(注意：橡皮擦、還原筆刷與文字塗鴉內容【不會】被複製)";
-        if (!confirm(confirmMsg)) return;
-        
-        const newSettings = {
-            tolerance: parseInt(document.getElementById('e_tolerance').value),
-            smoothness: parseFloat(document.getElementById('e_smoothness').value),
-            shrink: parseFloat(document.getElementById('e_shrink').value),
-            defringe: parseFloat(document.getElementById('e_defringe').value),
-        };
-
-        for(let i=0; i<rawStickers.length; i++) {
-            if (!stickerOverrides[i]) stickerOverrides[i] = {};
-            stickerOverrides[i].tolerance = newSettings.tolerance;
-            stickerOverrides[i].smoothness = newSettings.smoothness;
-            stickerOverrides[i].shrink = newSettings.shrink;
-            stickerOverrides[i].defringe = newSettings.defringe;
-        }
-
-        els.runBtn.disabled = true; els.runBtn.textContent = "🔄 批次處理中...";
-        const sourceImg = await getSourceImage();
-        const rows = parseInt(els.rows.value);
-        const cols = parseInt(els.cols.value);
-        const tileW = Math.floor(sourceImg.width / cols);
-        const tileH = Math.floor(sourceImg.height / rows);
-        
-        const globalSettings = {
-            contour: parseInt(els.contour.value),
-            contourColor: els.contourColor.value,
-            padding: parseInt(els.padding.value),
-            shadowBlur: parseInt(els.shadowBlur.value),
-            shadowDist: parseInt(els.shadowDist.value),
-            shadowOpacity: parseInt(els.shadowOpacity.value) / 100,
-            shadowColor: els.shadowColor.value,
-            autoCenter: els.autoCenter.checked,
-            targetColor: els.targetColor.value
-        };
-
-        for(let r=0; r<rows; r++) {
-            for(let c=0; c<cols; c++) {
-                const idx = r * cols + c;
-                if(idx >= rawStickers.length) continue;
-                const settings = { ...globalSettings, ...stickerOverrides[idx] };
-                rawStickers[idx] = await processStickerTile(sourceImg, r, c, tileW, tileH, settings);
-            }
-        }
-        
-        els.runBtn.disabled = false; els.runBtn.textContent = "🚀 開始製作";
-        renderPreview(rows, cols);
-        alert("✅ 參數已套用！");
-    };
-
-    // --- Drag & Drop ---
-    window.handleDragStart = (e) => {
-        dragSrcIndex = +e.target.dataset.index;
-        e.target.classList.add('dragging');
-        e.dataTransfer.effectAllowed = 'move';
-    };
-
-    window.handleDragOver = (e) => {
-        if (e.preventDefault) e.preventDefault(); 
-        e.dataTransfer.dropEffect = 'move';
-        return false;
-    };
-
-    window.handleDragEnter = (e) => {
-        const target = e.target.closest('.sticker-card');
-        if (target && +target.dataset.index !== dragSrcIndex) {
-            target.classList.add('drag-over');
-        }
-    };
-
-    window.handleDragLeave = (e) => {
-        const target = e.target.closest('.sticker-card');
-        if (target) {
-            target.classList.remove('drag-over');
-        }
-    };
-
-    window.handleDrop = (e) => {
-        if (e.stopPropagation) e.stopPropagation();
-        
-        const target = e.target.closest('.sticker-card');
-        if (dragSrcIndex !== null && target) {
-            const targetIndex = +target.dataset.index;
-            if (dragSrcIndex !== targetIndex) {
-                reorderStickers(dragSrcIndex, targetIndex);
-            }
-        }
-        return false;
-    };
-
-    window.handleDragEnd = (e) => {
-        const cards = document.querySelectorAll('.sticker-card');
-        cards.forEach(card => {
-            card.classList.remove('dragging');
-            card.classList.remove('drag-over');
-        });
-        dragSrcIndex = null;
-    };
-
-    function reorderStickers(fromIndex, toIndex) {
-        let combined = rawStickers.map((img, i) => ({
-            img: img,
-            settings: stickerOverrides[i] || null,
-            isMain: selectedMainIdx === i,
-            isTab: selectedTabIdx === i
-        }));
-
-        const [movedItem] = combined.splice(fromIndex, 1);
-        combined.splice(toIndex, 0, movedItem);
-
-        rawStickers = combined.map(x => x.img);
-        stickerOverrides = {};
-        selectedMainIdx = -1;
-        selectedTabIdx = -1;
-
-        combined.forEach((item, index) => {
-            if (item.settings) stickerOverrides[index] = item.settings;
-            if (item.isMain) selectedMainIdx = index;
-            if (item.isTab) selectedTabIdx = index;
-        });
-
-        renderPreview(parseInt(els.rows.value), parseInt(els.cols.value));
-    }
-
-    function renderPreview(rows, cols) {
-        els.preview.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
-        els.preview.innerHTML = '';
-        const isEmojiMode = els.sizePreset.value === 'emoji';
-
-        rawStickers.forEach((cvs, i) => {
-            const url = resizeToOutput(cvs, 150, 150).toDataURL();
-            const div = document.createElement('div');
-            div.className = 'sticker-card';
-            div.draggable = true;
-            div.dataset.index = i;
-            div.ondragstart = handleDragStart;
-            div.ondragover = handleDragOver;
-            div.ondragenter = handleDragEnter;
-            div.ondragleave = handleDragLeave;
-            div.ondrop = handleDrop;
-            div.ondragend = handleDragEnd;
-
-            const mainClass = isEmojiMode ? 'tag-btn disabled' : 'tag-btn';
-            const isEdited = stickerOverrides[i] !== undefined;
-            const nameSuffix = isEdited ? ' *' : '';
-            const nameColor = isEdited ? 'color: var(--primary); font-weight:bold;' : '';
-
-            div.innerHTML = `
-                <div class="sticker-img-box ${previewBgClass}" onclick="viewImage('${url}')">
-                    <img src="${url}">
-                    <div class="edit-icon-btn" title="編輯此張貼圖" onclick="openEditModal(${i}); event.stopPropagation();">✏️</div>
-                    <div class="dl-icon-btn" onclick="downloadSingle(${i}, event)">⬇</div>
-                </div>
-                <div class="sticker-name" id="name-${i}" style="${nameColor}">${getFilename(i)}${nameSuffix}</div>
-                <div class="tags-row">
-                    <span class="${mainClass}" id="btn-main-${i}" onclick="setTag('main', ${i})">main</span>
-                    <span class="tag-btn" id="btn-tab-${i}" onclick="setTag('tab', ${i})">tab</span>
-                </div>
-            `;
-            els.preview.appendChild(div);
-        });
-        updateTagClasses();
-    }
-
-    window.setPreviewBg = (btn, mode) => { 
-        document.querySelectorAll('.bg-toggle-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active'); 
-        const map = { 'light': 'bg-light', 'line': 'bg-line', 'pink': 'bg-pink', 'yellow': 'bg-yellow', 'dark': '' };
-        previewBgClass = map[mode] || '';
-        renderPreview(parseInt(els.rows.value), parseInt(els.cols.value)); 
-    };
-
-    function getFilename(idx) {
-        const str = els.startNum.value.trim();
-        return String((parseInt(str)||1) + idx).padStart(str.length, '0') + '.png';
-    }
-    
-    function resizeToOutput(canvas, w, h) {
-        const c = document.createElement('canvas');
-        c.width = w;
-        c.height = h;
-        const ctx = c.getContext('2d');
-        const scale = Math.min(w/canvas.width, h/canvas.height);
-        const dw = canvas.width*scale;
-        const dh = canvas.height*scale;
-        ctx.drawImage(canvas, (w-dw)/2, (h-dh)/2, dw, dh);
-        return c; 
-    }
-
-    els.dlBtn.onclick = async () => {
-        const zip = new JSZip();
-        const w = parseInt(els.outW.value) || 370;
-        const h = parseInt(els.outH.value) || 320;
-        const dateStr = new Date().toISOString().slice(0,10).replace(/-/g,'');
-        const isCompress = els.compressPNG.checked;
-        
-        els.dlBtn.textContent = "📦 打包中...";
-        els.dlBtn.disabled = true;
-
-        for (let i = 0; i < rawStickers.length; i++) {
-            const cvs = rawStickers[i];
-            const outCvs = resizeToOutput(cvs, w, h);
-            
-            if (isCompress) {
-                const pngBuffer = await compressImage(outCvs, 256);
-                zip.file(getFilename(i), pngBuffer);
-            } else {
-                const url = outCvs.toDataURL();
-                zip.file(getFilename(i), url.split(',')[1], {base64:true});
-            }
-        }
-        
-        if (selectedMainIdx !== -1 && rawStickers[selectedMainIdx]) {
-            const mainCvs = resizeToOutput(rawStickers[selectedMainIdx], 240, 240);
-            if(isCompress) zip.file("main.png", await compressImage(mainCvs, 256));
-            else zip.file("main.png", mainCvs.toDataURL().split(',')[1], {base64:true});
-        }
-        if (selectedTabIdx !== -1 && rawStickers[selectedTabIdx]) {
-            const tabCvs = resizeToOutput(rawStickers[selectedTabIdx], 96, 74);
-            if(isCompress) zip.file("tab.png", await compressImage(tabCvs, 256));
-            else zip.file("tab.png", tabCvs.toDataURL().split(',')[1], {base64:true});
-        }
-        
-        zip.generateAsync({type:"blob"}).then(b => {
-            saveAs(b, `LineStickers_${dateStr}.zip`);
-            els.dlBtn.textContent = "下載全部 ZIP";
-            els.dlBtn.disabled = false;
-        });
-    };
-
-    window.downloadSingle = async (i, event) => {
-        if(event) event.stopPropagation();
-        const w = parseInt(els.outW.value) || 370;
-        const h = parseInt(els.outH.value) || 320;
-        const outCvs = resizeToOutput(rawStickers[i], w, h);
-        const isCompress = els.compressPNG.checked;
-
-        if (isCompress) {
-            const pngBuffer = await compressImage(outCvs, 256);
-            saveAs(new Blob([pngBuffer], {type: "image/png"}), getFilename(i));
-        } else {
-            const url = outCvs.toDataURL();
-            saveAs(dataURLtoBlob(url), getFilename(i));
-        }
-    };
-    
-    window.viewImage = (url) => {
-        els.modalImg.src = url;
-        els.modalImg.classList.remove('zoomed');
-        document.getElementById('imageModal').style.display = "block";
-    };
-    els.modalImg.onclick = (e) => { e.stopPropagation(); els.modalImg.classList.toggle('zoomed'); };
-    window.closeModal = () => { document.getElementById('imageModal').style.display = "none"; };
-    
-    window.showHelp = (key) => {
-        els.helpText.innerText = HELP_TEXTS[key];
-        els.helpModal.style.display = "block";
-    };
-    window.closeHelp = () => { els.helpModal.style.display = "none"; };
-    window.setColor = (hex) => els.targetColor.value = hex;
-    window.toggleTheme = () => {
-        isDark = !isDark;
-        document.body.classList.toggle('light-mode', !isDark);
-        document.getElementById('themeBtn').textContent = isDark ? '☀️ 切換明亮' : '🌙 切換暗黑';
-    };
-    
-    if (els.sizePreset.value === 'sticker') { els.outW.value = 370; els.outH.value = 320; }
-    else if (els.sizePreset.value === 'emoji') { els.outW.value = 270; els.outH.value = 270; }
-
-    loadSettings();
-    updateLabels();
 </script>
 </body>
 </html>

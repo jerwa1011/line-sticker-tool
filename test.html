@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LINE 貼圖製作大師 (V25-19: 即時預覽+淨化修正版)</title>
+    <title>LINE 貼圖製作大師 (V25-20: 高畫質懸浮預覽版)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -119,12 +119,17 @@
             margin-bottom: 15px; display: flex; align-items: center; gap: 8px;
         }
 
-        /* 即時預覽區塊 */
+        /* [優化] 即時預覽區塊 - 懸浮置頂 */
         .live-preview-container {
             background: var(--card-bg); border: 2px solid var(--primary); border-radius: 8px;
             padding: 10px; margin-bottom: 15px; text-align: center;
             display: flex; flex-direction: column; align-items: center; gap: 5px;
-            position: relative;
+            
+            /* Sticky Magic */
+            position: sticky; 
+            top: 0; 
+            z-index: 50; 
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
         }
         .live-preview-box {
             width: 150px; height: 150px;
@@ -365,7 +370,7 @@
 <body class="">
 
 <div class="header">
-    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-19 即時預覽+淨化修正版</span></h1>
+    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-20 高畫質懸浮預覽版</span></h1>
     <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️ 切換明亮</button>
 </div>
 
@@ -762,7 +767,7 @@
         'autoCenter': '【開啟】自動偵測內容並置中放大。\n【關閉】保留原始裁切位置。'
     };
 
-    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-19 | ${new Date().toISOString().slice(0, 10)}`;
+    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-20 | ${new Date().toISOString().slice(0, 10)}`;
 
     window.changeStep = (delta) => {
         const newStep = currentStep + delta;
@@ -1066,7 +1071,7 @@
         return await loadImage(virtualCvs.toDataURL());
     }
 
-    // [新增] 即時預覽功能
+    // [優化] 即時預覽功能 - 高解析度
     async function updateLivePreview() {
         if (!currentRawImg || currentStep !== 3) return;
         
@@ -1103,15 +1108,20 @@
 
         const resultCvs = await processStickerTile(sourceImg, r, c, tileW, tileH, globalSettings);
         
-        // 畫到預覽 Canvas 上
+        // 畫到預覽 Canvas 上 - 解析度翻倍
         const pCvs = els.livePreviewCanvas;
-        pCvs.width = 150; pCvs.height = 150; // 固定預覽大小
+        pCvs.width = 300; pCvs.height = 300; // 解析度高
+        // CSS 會控制它顯示為 150px
+        
         const ctx = pCvs.getContext('2d');
-        const scale = Math.min(150/resultCvs.width, 150/resultCvs.height);
+        const scale = Math.min(300/resultCvs.width, 300/resultCvs.height);
         const w = resultCvs.width * scale;
         const h = resultCvs.height * scale;
-        ctx.clearRect(0,0,150,150);
-        ctx.drawImage(resultCvs, (150-w)/2, (150-h)/2, w, h);
+        
+        ctx.clearRect(0,0,300,300);
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(resultCvs, (300-w)/2, (300-h)/2, w, h);
     }
 
     els.runBtn.addEventListener('click', async () => {
@@ -1499,38 +1509,35 @@
         ctx.globalCompositeOperation = 'destination-in'; ctx.drawImage(mask, 0, 0); return cvs;
     }
 
-    // [修正] 智慧型淨化演算法：只針對半透明或極近色處理
+    // [修正] 智慧型淨化演算法：力道加強但保持範圍克制
     function applyDefringe(imgCvs, targetHex, strength) {
         if (strength <= 0) return imgCvs;
         const ctx = imgCvs.getContext('2d'); const w = imgCvs.width; const h = imgCvs.height;
         const imgData = ctx.getImageData(0, 0, w, h); const d = imgData.data;
         const tr = parseInt(targetHex.slice(1, 3), 16); const tg = parseInt(targetHex.slice(3, 5), 16); const tb = parseInt(targetHex.slice(5, 7), 16);
         
-        // 縮小範圍，避免誤傷主體
-        const range = 100; // 從 280 降回 100
+        // 稍微加大範圍
+        const range = 130; 
 
         for (let i = 0; i < d.length; i += 4) {
             const alpha = d[i + 3];
             
-            // 只有當像素已經是半透明 (alpha < 250) 代表它是邊緣
-            // 或者顏色極度接近背景色 (dist < 50) 
-            // 才進行淨化處理
+            // 允許觸碰稍微不透明的邊緣 (252)
             if (alpha > 0) { 
                 const r = d[i], g = d[i + 1], b = d[i + 2];
                 const dist = Math.sqrt((r - tr) ** 2 + (g - tg) ** 2 + (b - tb) ** 2);
                 
-                // 條件：必須是非常接近背景色，或是已經被「寬容度」切成半透明的邊緣
-                if (dist < range && (alpha < 250 || dist < 60)) { 
+                if (dist < range && (alpha < 252 || dist < 60)) { 
                     
                     const factor = (1 - dist / range) * (strength / 10); 
                     
-                    // 1. 降低透明度 (Erode)
-                    d[i + 3] = Math.max(0, alpha - (alpha * factor * 2));
+                    // 1. 降低透明度 (Erode) - 力道加強 2.5 倍
+                    d[i + 3] = Math.max(0, alpha - (alpha * factor * 2.5));
 
-                    // 2. 降低飽和度 (Desaturate) - 讓邊緣顏色變灰
+                    // 2. 降低飽和度 (Desaturate)
                     if (d[i+3] > 0) {
                         const gray = (r * 0.299 + g * 0.587 + b * 0.114);
-                        const mix = Math.min(1, factor * 1.5); 
+                        const mix = Math.min(1, factor * 2.5); 
                         d[i] = r * (1 - mix) + gray * mix;
                         d[i+1] = g * (1 - mix) + gray * mix;
                         d[i+2] = b * (1 - mix) + gray * mix;
@@ -1566,16 +1573,15 @@
         els.preview.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
         els.preview.innerHTML = '';
         
-        // [修正] 表情貼模式下，Main 標籤顯示為 disabled
         const isEmojiMode = els.sizePreset.value === 'emoji';
 
         rawStickers.forEach((cvs, i) => {
-            const url = resizeToOutput(cvs, 150, 150);
+            // [優化] 預覽圖改為 300x300，提升清晰度
+            const url = resizeToOutput(cvs, 300, 300);
             const div = document.createElement('div');
             div.className = 'sticker-card';
-            div.draggable = true; // 啟用拖曳
+            div.draggable = true; 
 
-            // 拖曳事件監聽
             div.addEventListener('dragstart', (e) => handleDragStart(e, i));
             div.addEventListener('dragover', handleDragOver);
             div.addEventListener('dragenter', handleDragEnter);
@@ -1583,10 +1589,8 @@
             div.addEventListener('drop', (e) => handleDrop(e, i));
             div.addEventListener('dragend', handleDragEnd);
 
-            // [修正] Main 標籤樣式判斷
             const mainClass = isEmojiMode ? 'tag-btn disabled' : 'tag-btn';
             
-            // 是否有修改過
             const isEdited = stickerOverrides[i] !== undefined;
             const nameSuffix = isEdited ? ' *' : '';
             const nameColor = isEdited ? 'color: var(--primary); font-weight:bold;' : '';
@@ -1608,23 +1612,19 @@
         updateTagClasses();
     }
 
-    // --- 拖曳排序邏輯 (Drag & Drop Functions) ---
     function handleDragStart(e, index) {
         dragSrcIndex = index;
         e.target.classList.add('dragging');
         e.dataTransfer.effectAllowed = 'move';
-        // 為了讓圖像在拖曳時不包含背景
-        // e.dataTransfer.setDragImage(e.target.querySelector('img'), 20, 20);
     }
 
     function handleDragOver(e) {
-        if (e.preventDefault) e.preventDefault(); // 必須呼叫，否則 drop 不會觸發
+        if (e.preventDefault) e.preventDefault(); 
         e.dataTransfer.dropEffect = 'move';
         return false;
     }
 
     function handleDragEnter(e) {
-        // 尋找最近的 .sticker-card 父元素
         const card = e.target.closest('.sticker-card');
         if (card && !card.classList.contains('dragging')) {
             card.classList.add('drag-over');
@@ -1641,7 +1641,6 @@
     function handleDrop(e, targetIndex) {
         if (e.stopPropagation) e.stopPropagation();
         
-        // 移除所有視覺效果
         document.querySelectorAll('.sticker-card').forEach(col => col.classList.remove('drag-over'));
         
         if (dragSrcIndex !== null && dragSrcIndex !== targetIndex) {
@@ -1659,34 +1658,27 @@
     }
 
     function swapStickers(fromIdx, toIdx) {
-        // 交換 rawStickers
         const tempSticker = rawStickers[fromIdx];
         rawStickers[fromIdx] = rawStickers[toIdx];
         rawStickers[toIdx] = tempSticker;
 
-        // 交換 Overrides (編輯設定)
         const tempOverride = stickerOverrides[fromIdx];
         stickerOverrides[fromIdx] = stickerOverrides[toIdx];
         stickerOverrides[toIdx] = tempOverride;
 
-        // [修正] 交換 原始圖索引 (Source Indices)
         const tempSourceIdx = stickerSourceIndices[fromIdx];
         stickerSourceIndices[fromIdx] = stickerSourceIndices[toIdx];
         stickerSourceIndices[toIdx] = tempSourceIdx;
 
-        // 清理 undefined 的 override key
         if(stickerOverrides[fromIdx] === undefined) delete stickerOverrides[fromIdx];
         if(stickerOverrides[toIdx] === undefined) delete stickerOverrides[toIdx];
 
-        // 交換 Main / Tab 選擇
-        // 如果來源是 Main，那 Main 的索引要變為 目標索引
         if (selectedMainIdx === fromIdx) selectedMainIdx = toIdx;
         else if (selectedMainIdx === toIdx) selectedMainIdx = fromIdx;
 
         if (selectedTabIdx === fromIdx) selectedTabIdx = toIdx;
         else if (selectedTabIdx === toIdx) selectedTabIdx = fromIdx;
 
-        // 重新渲染
         renderPreview(parseInt(els.rows.value), parseInt(els.cols.value));
     }
 
@@ -1711,6 +1703,8 @@
         const scale = Math.min(w/canvas.width, h/canvas.height);
         const dw = canvas.width*scale;
         const dh = canvas.height*scale;
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(canvas, (w-dw)/2, (h-dh)/2, dw, dh);
         return c.toDataURL();
     }

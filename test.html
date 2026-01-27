@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LINE 貼圖製作大師 (V25-18: 拖曳完美修正版)</title>
+    <title>LINE 貼圖製作大師 (V25-18: 尺寸檔名邏輯優化版)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -210,6 +210,9 @@
         }
         input:focus, select:focus { outline: none; border-color: var(--primary); }
         
+        /* 鎖定輸入框的樣式 */
+        input:disabled { opacity: 0.6; cursor: not-allowed; border-color: transparent; }
+        
         .input-mini { width: 50px !important; text-align: center; font-size: 0.85rem; }
         .input-short { width: 70px !important; text-align: center; }
         
@@ -284,8 +287,9 @@
         .tag-btn.active-main { background: var(--main-color); border-color: var(--main-color); color: white; }
         .tag-btn.active-tab { background: #3498db; border-color: #3498db; color: white; }
         
+        /* 禁用的標籤樣式 */
         .tag-btn.disabled {
-            opacity: 0.3; pointer-events: none; background: #333; border-color: #444; color: #555;
+            opacity: 0.3; pointer-events: none; background: #333; border-color: #444; color: #555; cursor: default;
         }
 
         .export-bar { background: var(--panel-bg); border: 1px solid var(--border); padding: 12px; border-radius: 12px; margin-bottom: 20px; display: flex; gap: 12px; flex-wrap: wrap; }
@@ -342,7 +346,7 @@
 <body class="">
 
 <div class="header">
-    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-18 拖曳完美修正版</span></h1>
+    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-18 尺寸檔名邏輯優化版</span></h1>
     <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️ 切換明亮</button>
 </div>
 
@@ -568,7 +572,7 @@
         <div class="export-bar">
             <div class="export-group-box" style="min-width: 100px; flex: 0 0 auto;">
                 <div class="export-label-row"><span class="export-label-text">起始檔名</span></div>
-                <input type="text" id="startNum" value="001" class="input-short" placeholder="001">
+                <input type="text" id="startNum" value="01" class="input-short" placeholder="01">
             </div>
             
             <div class="export-group-box" style="flex:1;">
@@ -576,11 +580,11 @@
                 <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                     <select id="sizePreset" style="flex:1; min-width:80px;">
                         <option value="custom">✍️ 自訂</option>
-                        <option value="sticker">😃 貼圖</option>
+                        <option value="sticker" selected>😃 貼圖</option>
                         <option value="emoji">😘 表情</option>
                     </select>
                     <div style="display:flex; gap:5px; align-items:center;">
-                        <input type="number" id="outW" value="370" class="input-mini"><span>x</span><input type="number" id="outH" value="320" class="input-mini">
+                        <input type="number" id="outW" value="370" class="input-mini" disabled><span>x</span><input type="number" id="outH" value="320" class="input-mini" disabled>
                     </div>
                 </div>
             </div>
@@ -926,7 +930,9 @@
     }
 
     window.setTag = (type, index) => {
+        // [修正] 表情貼模式下，Main 鎖定不可選
         if (type === 'main' && els.sizePreset.value === 'emoji') return;
+        
         if (type === 'main') selectedMainIdx = (selectedMainIdx === index) ? -1 : index;
         else selectedTabIdx = (selectedTabIdx === index) ? -1 : index;
         updateTagClasses();
@@ -949,12 +955,25 @@
         });
     });
 
+    // [修正] 尺寸與檔名邏輯
     els.sizePreset.addEventListener('change', () => { 
-        if (els.sizePreset.value === 'sticker') { els.outW.value = 370; els.outH.value = 320; }
-        else if (els.sizePreset.value === 'emoji') { 
+        const mode = els.sizePreset.value;
+        if (mode === 'sticker') { 
+            // 貼圖: 370x320 鎖定, 檔名 01
+            els.outW.value = 370; els.outH.value = 320; 
+            els.outW.disabled = true; els.outH.disabled = true;
+            els.startNum.value = '01';
+        } else if (mode === 'emoji') { 
+            // 表情貼: 270x270 鎖定, 檔名 001, Main 鎖定
             els.outW.value = 270; els.outH.value = 270; 
-            selectedMainIdx = -1; updateTagClasses();
+            els.outW.disabled = true; els.outH.disabled = true;
+            els.startNum.value = '001';
+            selectedMainIdx = -1; // 強制取消 Main
+        } else {
+            // 自訂: 解鎖
+            els.outW.disabled = false; els.outH.disabled = false;
         }
+        updateTagClasses();
         renderPreview(parseInt(els.rows.value), parseInt(els.cols.value));
     });
 
@@ -1416,6 +1435,8 @@
     function renderPreview(rows, cols) {
         els.preview.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
         els.preview.innerHTML = '';
+        
+        // [修正] 表情貼模式下，Main 標籤顯示為 disabled
         const isEmojiMode = els.sizePreset.value === 'emoji';
 
         rawStickers.forEach((cvs, i) => {
@@ -1432,6 +1453,7 @@
             div.addEventListener('drop', (e) => handleDrop(e, i));
             div.addEventListener('dragend', handleDragEnd);
 
+            // [修正] Main 標籤樣式判斷
             const mainClass = isEmojiMode ? 'tag-btn disabled' : 'tag-btn';
             
             // 是否有修改過

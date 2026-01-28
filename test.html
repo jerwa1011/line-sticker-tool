@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LINE 貼圖製作大師 (V25-21: 尺寸規範修正版)</title>
+    <title>LINE 貼圖製作大師 (V25-22: 橡皮擦游標可視化版)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -348,6 +348,20 @@
         /* 橡皮擦游標 */
         .cursor-eraser { cursor: crosshair !important; }
         
+        /* [新增] 橡皮擦自訂游標樣式 */
+        #eraserCursor {
+            position: absolute;
+            border: 1px solid #ffffff;
+            box-shadow: 0 0 2px #000000; /* 雙層邊框增加對比 */
+            border-radius: 50%;
+            pointer-events: none; /* 讓點擊穿透 */
+            display: none;
+            transform: translate(-50%, -50%); /* 確保圓心對準滑鼠 */
+            z-index: 100;
+        }
+        /* 當橡皮擦啟用時，隱藏畫布原本的游標 */
+        .edit-preview-box.eraser-active { cursor: none !important; }
+
         /* 橡皮擦控制列 */
         .eraser-tools {
             display: flex; align-items: center; gap: 10px; margin-bottom: 10px; padding: 10px; background: var(--input-bg); border-radius: 8px; border: 1px solid var(--border);
@@ -365,7 +379,7 @@
 <body class="">
 
 <div class="header">
-    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-21 尺寸規範修正版</span></h1>
+    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-22 橡皮擦游標可視化版</span></h1>
     <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️ 切換明亮</button>
 </div>
 
@@ -654,6 +668,7 @@
         </div>
 
         <div class="edit-preview-box" id="editPreviewBox">
+            <div id="eraserCursor"></div>
             <canvas id="editCanvas"></canvas>
         </div>
         
@@ -744,7 +759,9 @@
         editCanvas: document.getElementById('editCanvas'),
         eraserBtn: document.getElementById('eraserBtn'),
         eraserSize: document.getElementById('eraserSize'),
-        livePreviewCanvas: document.getElementById('livePreviewCanvas')
+        livePreviewCanvas: document.getElementById('livePreviewCanvas'),
+        editPreviewBox: document.getElementById('editPreviewBox'),
+        eraserCursor: document.getElementById('eraserCursor')
     };
 
     const HELP_TEXTS = {
@@ -762,7 +779,7 @@
         'autoCenter': '【開啟】自動偵測內容並置中放大。\n【關閉】保留原始裁切位置。'
     };
 
-    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-21 | ${new Date().toISOString().slice(0, 10)}`;
+    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-22 | ${new Date().toISOString().slice(0, 10)}`;
 
     window.changeStep = (delta) => {
         const newStep = currentStep + delta;
@@ -1279,6 +1296,8 @@
         isErasing = false;
         els.eraserBtn.classList.remove('active');
         els.editCanvas.classList.remove('cursor-eraser');
+        els.eraserCursor.style.display = 'none'; // 重置游標
+        els.editPreviewBox.classList.remove('eraser-active');
         
         updateEditPreview();
     };
@@ -1288,7 +1307,9 @@
     window.toggleEraser = () => {
         isErasing = !isErasing;
         els.eraserBtn.classList.toggle('active', isErasing);
-        els.editCanvas.classList.toggle('cursor-eraser', isErasing);
+        // 使用自訂游標，切換 CSS class
+        els.editPreviewBox.classList.toggle('eraser-active', isErasing);
+        if(!isErasing) els.eraserCursor.style.display = 'none';
     };
 
     window.clearEraser = () => {
@@ -1301,9 +1322,21 @@
 
     // 橡皮擦繪圖事件
     els.editCanvas.addEventListener('mousedown', startDraw);
-    els.editCanvas.addEventListener('mousemove', draw);
+    els.editCanvas.addEventListener('mousemove', (e) => {
+        updateCursorPos(e); // 更新自訂游標位置
+        draw(e);
+    });
+    els.editCanvas.addEventListener('mouseenter', () => {
+        if(isErasing) els.eraserCursor.style.display = 'block';
+    });
+    els.editCanvas.addEventListener('mouseleave', () => {
+        els.eraserCursor.style.display = 'none';
+        stopDraw();
+    });
     els.editCanvas.addEventListener('mouseup', stopDraw);
-    els.editCanvas.addEventListener('mouseout', stopDraw);
+
+    // [新增] 橡皮擦大小改變事件 -> 更新游標大小
+    els.eraserSize.addEventListener('input', updateCursorSize);
 
     // 觸控支援
     els.editCanvas.addEventListener('touchstart', (e) => {
@@ -1327,6 +1360,40 @@
         els.editCanvas.dispatchEvent(mouseEvent);
     });
 
+    // [新增] 更新自訂游標位置與大小
+    function updateCursorPos(e) {
+        if (!isErasing) return;
+        
+        // 顯示游標
+        els.eraserCursor.style.display = 'block';
+        
+        // 取得滑鼠在 canvas 容器內的相對座標
+        const rect = els.editPreviewBox.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        // 移動游標 div
+        els.eraserCursor.style.left = x + 'px';
+        els.eraserCursor.style.top = y + 'px';
+        
+        // 確保大小正確
+        updateCursorSize();
+    }
+
+    function updateCursorSize() {
+        const size = parseInt(els.eraserSize.value);
+        // 因為是半徑 (radius)，所以直徑 (width/height) 要 * 2
+        // 但因為我們的 draw 邏輯有 scale 換算，這裡要對應視覺比例
+        // 我們的 draw(e) 中： scaleX = tempMaskCanvas.width / rect.width
+        // ctx.arc(x * scaleX, ..., size * scaleX, ...)
+        // 這代表 size 的值其實是對應到 "螢幕像素" 的半徑。
+        // 所以 CSS 的寬高應該是 size * 2
+        
+        const diameter = size * 2;
+        els.eraserCursor.style.width = diameter + 'px';
+        els.eraserCursor.style.height = diameter + 'px';
+    }
+
     function startDraw(e) {
         if(!isErasing) return;
         isDrawing = true;
@@ -1348,6 +1415,7 @@
         const size = parseInt(els.eraserSize.value);
         
         ctx.beginPath();
+        // size 是螢幕像素半徑，轉為 canvas 內部半徑
         ctx.arc(x * scaleX, y * scaleY, size * scaleX, 0, Math.PI * 2);
         ctx.fillStyle = 'rgba(0,0,0,1)';
         ctx.fill();

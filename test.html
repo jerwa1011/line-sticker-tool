@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LINE 貼圖製作大師 (V25-20: 高畫質懸浮預覽版)</title>
+    <title>LINE 貼圖製作大師 (V25-21: 尺寸規範修正版)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -119,17 +119,12 @@
             margin-bottom: 15px; display: flex; align-items: center; gap: 8px;
         }
 
-        /* [優化] 即時預覽區塊 - 懸浮置頂 */
+        /* 即時預覽區塊 - 懸浮置頂 */
         .live-preview-container {
             background: var(--card-bg); border: 2px solid var(--primary); border-radius: 8px;
             padding: 10px; margin-bottom: 15px; text-align: center;
             display: flex; flex-direction: column; align-items: center; gap: 5px;
-            
-            /* Sticky Magic */
-            position: sticky; 
-            top: 0; 
-            z-index: 50; 
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            position: sticky; top: 0; z-index: 50; box-shadow: 0 5px 15px rgba(0,0,0,0.3);
         }
         .live-preview-box {
             width: 150px; height: 150px;
@@ -370,7 +365,7 @@
 <body class="">
 
 <div class="header">
-    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-20 高畫質懸浮預覽版</span></h1>
+    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-21 尺寸規範修正版</span></h1>
     <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️ 切換明亮</button>
 </div>
 
@@ -618,7 +613,7 @@
                         <option value="emoji">😘 表情</option>
                     </select>
                     <div style="display:flex; gap:5px; align-items:center;">
-                        <input type="number" id="outW" value="370" class="input-mini" disabled><span>x</span><input type="number" id="outH" value="320" class="input-mini" disabled>
+                        <input type="number" id="outW" value="270" class="input-mini" disabled><span>x</span><input type="number" id="outH" value="270" class="input-mini" disabled>
                     </div>
                 </div>
             </div>
@@ -767,7 +762,7 @@
         'autoCenter': '【開啟】自動偵測內容並置中放大。\n【關閉】保留原始裁切位置。'
     };
 
-    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-20 | ${new Date().toISOString().slice(0, 10)}`;
+    els.footer.innerHTML = `© 2026 RiverART  |  LINE Sticker Tool V25-21 | ${new Date().toISOString().slice(0, 10)}`;
 
     window.changeStep = (delta) => {
         const newStep = currentStep + delta;
@@ -1023,13 +1018,13 @@
     els.sizePreset.addEventListener('change', () => { 
         const mode = els.sizePreset.value;
         if (mode === 'sticker') { 
-            // 貼圖: 370x320 鎖定, 檔名 01
-            els.outW.value = 370; els.outH.value = 320; 
+            // 貼圖: 270x270 鎖定, 檔名 01
+            els.outW.value = 270; els.outH.value = 270; 
             els.outW.disabled = true; els.outH.disabled = true;
             els.startNum.value = '01';
         } else if (mode === 'emoji') { 
-            // 表情貼: 270x270 鎖定, 檔名 001, Main 鎖定
-            els.outW.value = 270; els.outH.value = 270; 
+            // 表情貼: 180x180 鎖定, 檔名 001, Main 鎖定
+            els.outW.value = 180; els.outH.value = 180; 
             els.outW.disabled = true; els.outH.disabled = true;
             els.startNum.value = '001';
             selectedMainIdx = -1; // 強制取消 Main
@@ -1769,8 +1764,9 @@
         document.getElementById('themeBtn').textContent = isDark ? '☀️ 切換明亮' : '🌙 切換暗黑';
     };
     
-    if (els.sizePreset.value === 'sticker') { els.outW.value = 370; els.outH.value = 320; }
-    else if (els.sizePreset.value === 'emoji') { els.outW.value = 270; els.outH.value = 270; }
+    // 初始化設定，並確保預設選擇貼圖模式時尺寸正確
+    if (els.sizePreset.value === 'sticker') { els.outW.value = 270; els.outH.value = 270; }
+    else if (els.sizePreset.value === 'emoji') { els.outW.value = 180; els.outH.value = 180; }
 
     loadSettings();
     updateLabels();

@@ -3,17 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>雙欄圖片比對打包工具 (修復版)</title>
+    <title>雙欄圖片整理打包工具 (Pro版)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    
     <style>
         :root {
             --primary-color: #4a90e2;
+            --secondary-color: #2ecc71;
             --bg-color: #f0f2f5;
             --card-bg: #ffffff;
             --text-color: #333;
             --border-color: #ddd;
-            --pane-gap: 20px;
         }
 
         body {
@@ -28,224 +30,238 @@
             min-height: 100vh;
         }
 
-        h1 { color: var(--primary-color); margin-bottom: 10px; text-align: center;}
-        h2 { font-size: 1.1rem; color: #666; text-align: center; margin-bottom: 20px;}
+        h1 { color: var(--primary-color); margin-bottom: 5px; text-align: center;}
+        .subtitle { font-size: 0.9rem; color: #666; text-align: center; margin-bottom: 20px;}
 
-        /* 全域設定區 */
+        /* 設定區塊 */
         .global-settings {
-            width: 100%;
-            max-width: 900px;
-            background: var(--card-bg);
-            padding: 15px 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            margin-bottom: 20px;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
+            width: 100%; max-width: 1000px;
+            background: var(--card-bg); padding: 15px 20px;
+            border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            margin-bottom: 15px;
+            display: grid; grid-template-columns: 2fr 2fr 1fr; gap: 15px;
+            align-items: end;
         }
 
         .input-group { display: flex; flex-direction: column; }
-        .input-group label { font-size: 0.9em; font-weight: bold; margin-bottom: 5px; color: #555; }
-        .input-group input { padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; }
+        .input-group label { font-size: 0.85em; font-weight: bold; margin-bottom: 5px; color: #555; }
+        .input-group input, .input-group select { padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 14px;}
 
-        /* 雙欄主結構 */
+        /* 雙欄容器 */
         .split-view-container {
-            display: flex;
-            width: 100%;
-            max-width: 1200px;
-            gap: var(--pane-gap);
-            flex: 1;
-            align-items: stretch;
+            display: flex; width: 100%; max-width: 1200px;
+            gap: 20px; flex: 1; align-items: stretch;
         }
 
         .pane {
-            flex: 1;
-            background: var(--card-bg);
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
+            flex: 1; background: var(--card-bg);
+            border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            padding: 15px; display: flex; flex-direction: column;
             border-top: 4px solid var(--primary-color);
         }
-        .pane.right-pane { border-top-color: #2ecc71; }
-        .pane-title { font-size: 1.2em; font-weight: bold; margin-bottom: 15px; text-align: center; }
+        .pane.right-pane { border-top-color: var(--secondary-color); }
+        .pane-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .pane-title { font-weight: bold; font-size: 1.1em; }
 
-        /* 拖曳區 (關鍵修復部分) */
+        /* 拖曳上傳區 */
         .drop-zone {
-            height: 130px;
-            border: 2px dashed #ccc;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-            transition: all 0.3s;
-            margin-bottom: 15px;
-            background-color: #f9f9f9;
-            position: relative;
-            text-align: center;
-            padding: 10px;
+            height: 80px; border: 2px dashed #ccc; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            background-color: #fcfcfc; transition: all 0.2s;
+            margin-bottom: 10px; position: relative;
         }
+        .drop-zone.drag-over { background-color: #e1effe; border-color: var(--primary-color); transform: scale(1.01); }
+        .drop-zone * { pointer-events: none; } /* 讓文字不阻擋拖曳 */
+        .drop-zone .btns-wrapper { pointer-events: auto; display: flex; gap: 5px; }
         
-        /* 拖曳時的樣式 */
-        .drop-zone.drag-over { 
-            background-color: #e1effe; 
-            border-color: var(--primary-color); 
-            transform: scale(1.02); /* 稍微放大增加回饋感 */
-        }
-
-        /* 關鍵 CSS 修復：讓拖曳區內的所有元素都不會擋住拖曳事件 */
-        .drop-zone * {
-            pointer-events: none; 
-        }
-        
-        /* 但按鈕必須要可以點擊，所以把它加回來 */
-        .drop-zone .upload-btns, 
-        .drop-zone .btn-mini {
-            pointer-events: auto;
-        }
-
-        .drop-zone p { margin: 0 0 5px 0; font-size: 1em; color: #777; }
-        .drop-zone span { font-size: 0.8em; color: #999; }
-        
-        .upload-btns { margin-top: 10px; display: flex; gap: 5px; justify-content: center; }
         .btn-mini {
-            padding: 6px 12px; border: 1px solid #ccc; background: white; color: #555;
-            border-radius: 4px; cursor: pointer; font-size: 0.8em; transition: all 0.2s;
+            padding: 4px 10px; border: 1px solid #ccc; background: white; color: #555;
+            border-radius: 4px; cursor: pointer; font-size: 0.8em;
         }
-        .btn-mini:hover { background: #eee; border-color: #999; }
+        .btn-mini:hover { background: #eee; }
+        .btn-clear { color: #e74c3c; border-color: #fadbd8; }
+        .btn-clear:hover { background: #fdedec; }
 
-        /* 統計與預覽 */
-        .stats-bar { display: flex; justify-content: space-between; font-size: 0.85em; color: #666; margin-bottom: 10px; padding: 0 5px;}
-        
-        .preview-grid-wrapper {
-            flex: 1;
-            overflow-y: auto;
-            border: 1px solid #eee;
-            border-radius: 8px;
-            padding: 10px;
-            background: #fcfcfc;
+        /* 統計資訊 */
+        .pane-stats { font-size: 0.85em; color: #666; margin-bottom: 10px; padding: 0 5px; display: flex; justify-content: space-between;}
+
+        /* 預覽網格 (Sortable 作用區) */
+        .grid-container {
+            flex: 1; overflow-y: auto;
+            border: 1px solid #eee; border-radius: 8px;
+            padding: 10px; background: #fafafa;
             min-height: 300px;
         }
-
         .preview-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
-            gap: 10px;
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 10px;
         }
 
+        /* 單張卡片樣式 */
         .preview-item {
-            position: relative; aspect-ratio: 1; border-radius: 6px; overflow: hidden;
-            box-shadow: 0 2px 3px rgba(0,0,0,0.1); background: #eee; border: 1px solid #ddd;
+            position: relative; aspect-ratio: 1;
+            border-radius: 6px; overflow: hidden;
+            background: #eee; border: 1px solid #ddd;
+            cursor: grab; /* 提示可拖曳 */
+            transition: transform 0.1s;
         }
-        .preview-item img { width: 100%; height: 100%; object-fit: cover; }
+        .preview-item:active { cursor: grabbing; }
+        /* SortableJS 拖曳中的樣式 */
+        .sortable-ghost { opacity: 0.4; background: #c8ebfb; }
+        .sortable-drag { cursor: grabbing; opacity: 1; transform: scale(1.05); box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+
+        .preview-item img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+        
         .preview-item .remove-btn {
-            position: absolute; top: 2px; right: 2px; background: rgba(231, 76, 60, 0.9); color: white;
-            border: none; border-radius: 50%; width: 20px; height: 20px; cursor: pointer;
-            font-size: 12px; display: flex; align-items: center; justify-content: center; z-index: 2;
+            position: absolute; top: 2px; right: 2px;
+            background: rgba(0,0,0,0.5); color: white;
+            border: none; border-radius: 50%; width: 20px; height: 20px;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            font-size: 14px; z-index: 10;
         }
-        .preview-item:hover .remove-btn { background: rgb(231, 76, 60); transform: scale(1.1); }
+        .preview-item .remove-btn:hover { background: #e74c3c; }
+
+        .preview-item .file-index {
+            position: absolute; top: 2px; left: 2px;
+            background: rgba(0,0,0,0.6); color: #fff;
+            font-size: 10px; padding: 2px 5px; border-radius: 10px;
+            pointer-events: none;
+        }
+        
         .preview-item .file-name {
-            position: absolute; bottom: 0; left: 0; width: 100%; background: rgba(0,0,0,0.7);
-            color: white; font-size: 9px; padding: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center;
+            position: absolute; bottom: 0; left: 0; width: 100%;
+            background: rgba(0,0,0,0.7); color: white;
+            font-size: 10px; padding: 3px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center;
+            pointer-events: none;
         }
 
-        .global-actions {
-            width: 100%; max-width: 900px; text-align: center; margin-top: 25px;
-            padding: 20px; background: var(--card-bg); border-radius: 12px;
+        /* 底部總結與操作 */
+        .footer-panel {
+            width: 100%; max-width: 1000px; margin-top: 20px;
+            background: var(--card-bg); padding: 20px;
+            border-radius: 12px; text-align: center;
             box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
         }
-        .btn-action {
-            padding: 12px 40px; border: none; border-radius: 8px; font-size: 1.2em;
-            cursor: pointer; font-weight: bold; background-color: var(--primary-color); color: white;
-            transition: opacity 0.2s;
-        }
-        .btn-action:disabled { background-color: #ccc; cursor: not-allowed; }
-        .btn-action:hover:not(:disabled) { opacity: 0.9; }
 
-        .progress-container { margin-top: 15px; display: none; width: 100%; max-width: 600px; margin-left: auto; margin-right: auto;}
-        .progress-bar { width: 100%; height: 10px; background-color: #eee; border-radius: 5px; overflow: hidden; }
-        .progress-fill { height: 100%; background-color: #2ecc71; width: 0%; transition: width 0.3s; }
-        .progress-text { font-size: 0.8em; color: #666; margin-top: 5px; text-align: center;}
+        .total-stats {
+            margin-bottom: 15px; font-size: 1.1em; color: #444;
+            background: #eef2f7; display: inline-block; padding: 8px 20px; border-radius: 20px;
+        }
+        .total-stats strong { color: var(--primary-color); }
+
+        .btn-action {
+            padding: 12px 50px; font-size: 1.2em; font-weight: bold;
+            color: white; background-color: var(--primary-color);
+            border: none; border-radius: 8px; cursor: pointer;
+            transition: all 0.2s; box-shadow: 0 4px 6px rgba(74, 144, 226, 0.3);
+        }
+        .btn-action:disabled { background-color: #ccc; cursor: not-allowed; box-shadow: none; }
+        .btn-action:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(74, 144, 226, 0.4); }
+
+        /* 進度條 */
+        .progress-container { margin-top: 15px; display: none; width: 60%; margin-left: auto; margin-right: auto;}
+        .progress-bar { width: 100%; height: 8px; background: #eee; border-radius: 4px; overflow: hidden; }
+        .progress-fill { height: 100%; background: #2ecc71; width: 0%; transition: width 0.2s; }
+        .progress-text { font-size: 0.8em; color: #666; margin-top: 5px; }
 
         @media (max-width: 768px) {
             .split-view-container { flex-direction: column; }
-            .pane { max-height: 50vh; }
             .global-settings { grid-template-columns: 1fr; }
+            .pane { max-height: 500px; }
         }
         input[type="file"] { display: none; }
     </style>
 </head>
 <body>
 
-    <h1>雙欄圖片比對打包工具 (Fix版)</h1>
-    <h2>左右分別載入資料夾，比對後剔除不需要的照片，最後合併打包下載。</h2>
+    <h1>雙欄圖片整理工作台</h1>
+    <div class="subtitle">拖曳上傳 • 拖曳排序 • 批次命名 • 一鍵打包</div>
 
     <div class="global-settings">
         <div class="input-group">
-            <label for="zipNameInput">ZIP 下載檔名</label>
-            <input type="text" id="zipNameInput" placeholder="預設: combined_時間.zip">
+            <label>1. ZIP 檔名</label>
+            <input type="text" id="zipNameInput" placeholder="預設: images_日期時間.zip">
         </div>
         <div class="input-group">
-            <label for="renamePrefix">圖片批次重新命名</label>
-            <input type="text" id="renamePrefix" placeholder="例: final_image">
+            <label>2. 圖片批次重新命名 (Prefix)</label>
+            <input type="text" id="renamePrefix" placeholder="例: sticker (不填則使用原檔名)">
+        </div>
+        <div class="input-group">
+            <label>3. 編號位數 (Padding)</label>
+            <select id="paddingSelect">
+                <option value="1">1位 (1, 2, ...)</option>
+                <option value="2" selected>2位 (01, 02, ...)</option>
+                <option value="3">3位 (001, 002, ...)</option>
+                <option value="4">4位 (0001, ...)</option>
+            </select>
         </div>
     </div>
 
     <div class="split-view-container">
-        <div class="pane left-pane">
-            <div class="pane-title">左側資料來源</div>
+        <div class="pane" id="paneLeft">
+            <div class="pane-header">
+                <span class="pane-title" style="color: var(--primary-color)">左側素材庫</span>
+                <button class="btn-mini btn-clear" onclick="clearPane('left')">清空</button>
+            </div>
+            
             <div class="drop-zone" id="dropZoneLeft">
-                <p>拖曳資料夾/圖片至此</p>
-                <span>或使用按鈕</span>
-                <div class="upload-btns">
-                    <button class="btn-mini" onclick="document.getElementById('fileInputLeft').click()">選檔</button>
-                    <button class="btn-mini" onclick="document.getElementById('folderInputLeft').click()">選資料夾</button>
+                <div style="position: absolute; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                    <span style="color: #999; margin-bottom: 5px;">拖曳圖片/資料夾至此</span>
+                    <div class="btns-wrapper">
+                        <button class="btn-mini" onclick="document.getElementById('fileInputLeft').click()">選圖</button>
+                        <button class="btn-mini" onclick="document.getElementById('folderInputLeft').click()">選資料夾</button>
+                    </div>
                 </div>
             </div>
             <input type="file" id="fileInputLeft" multiple accept="image/*">
             <input type="file" id="folderInputLeft" webkitdirectory mozdirectory>
 
-            <div class="stats-bar">
-                <span>數量: <strong id="countLeft">0</strong></span>
-                <span>大小: <strong id="sizeLeft">0 MB</strong></span>
-                <button class="btn-mini" onclick="clearPane('left')" style="color: red; border-color: red;">清空</button>
+            <div class="pane-stats">
+                <span id="countLeft">0 張</span>
+                <span id="sizeLeft">0 MB</span>
             </div>
-            <div class="preview-grid-wrapper">
-                <div class="preview-grid" id="previewGridLeft"></div>
+
+            <div class="grid-container">
+                <div class="preview-grid" id="gridLeft"></div>
             </div>
-            <div id="loadingLeft" style="display:none; text-align: center; color: #666; margin-top: 5px;">掃描中...</div>
         </div>
 
-        <div class="pane right-pane">
-            <div class="pane-title" style="color: #2ecc71;">右側資料來源</div>
+        <div class="pane right-pane" id="paneRight">
+            <div class="pane-header">
+                <span class="pane-title" style="color: var(--secondary-color)">右側素材庫</span>
+                <button class="btn-mini btn-clear" onclick="clearPane('right')">清空</button>
+            </div>
+            
             <div class="drop-zone" id="dropZoneRight">
-                <p>拖曳資料夾/圖片至此</p>
-                <span>或使用按鈕</span>
-                <div class="upload-btns">
-                    <button class="btn-mini" onclick="document.getElementById('fileInputRight').click()">選檔</button>
-                    <button class="btn-mini" onclick="document.getElementById('folderInputRight').click()">選資料夾</button>
+                <div style="position: absolute; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                    <span style="color: #999; margin-bottom: 5px;">拖曳圖片/資料夾至此</span>
+                    <div class="btns-wrapper">
+                        <button class="btn-mini" onclick="document.getElementById('fileInputRight').click()">選圖</button>
+                        <button class="btn-mini" onclick="document.getElementById('folderInputRight').click()">選資料夾</button>
+                    </div>
                 </div>
             </div>
             <input type="file" id="fileInputRight" multiple accept="image/*">
             <input type="file" id="folderInputRight" webkitdirectory mozdirectory>
 
-            <div class="stats-bar">
-                <span>數量: <strong id="countRight">0</strong></span>
-                <span>大小: <strong id="sizeRight">0 MB</strong></span>
-                <button class="btn-mini" onclick="clearPane('right')" style="color: red; border-color: red;">清空</button>
+            <div class="pane-stats">
+                <span id="countRight">0 張</span>
+                <span id="sizeRight">0 MB</span>
             </div>
-            <div class="preview-grid-wrapper">
-                <div class="preview-grid" id="previewGridRight"></div>
+
+            <div class="grid-container">
+                <div class="preview-grid" id="gridRight"></div>
             </div>
-            <div id="loadingRight" style="display:none; text-align: center; color: #666; margin-top: 5px;">掃描中...</div>
         </div>
     </div>
 
-    <div class="global-actions">
-        <button class="btn-action" id="downloadBtn" disabled>合併打包並下載 ZIP</button>
+    <div class="footer-panel">
+        <div class="total-stats">
+            總計：<strong id="totalCount">0</strong> 張圖片 / 預估大小：<strong id="totalSize">0.00 MB</strong>
+        </div>
+        <br>
+        <button class="btn-action" id="downloadBtn" disabled>打包下載 ZIP</button>
+        
         <div class="progress-container" id="progressContainer">
             <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
             <div class="progress-text" id="progressText">處理中...</div>
@@ -253,269 +269,269 @@
     </div>
 
 <script>
-    let filesLeft = [];
-    let filesRight = [];
-    const PREVIEW_LIMIT = 200;
+    // === 資料狀態 ===
+    // 這裡改用 Map 或者物件陣列來管理，但為了配合 SortableJS，
+    // 我們會讓 DOM 順序成為「真實順序 (Source of Truth)」。
+    // 陣列只用來儲存檔案內容，操作時透過 data-id 查找。
+    let fileStorage = {}; // 格式: { 'id1': fileObj, 'id2': fileObj }
 
+    // === DOM ===
     const dom = {
         left: {
             dropZone: document.getElementById('dropZoneLeft'),
             fileInput: document.getElementById('fileInputLeft'),
             folderInput: document.getElementById('folderInputLeft'),
-            grid: document.getElementById('previewGridLeft'),
+            grid: document.getElementById('gridLeft'),
             count: document.getElementById('countLeft'),
-            size: document.getElementById('sizeLeft'),
-            loading: document.getElementById('loadingLeft')
+            size: document.getElementById('sizeLeft')
         },
         right: {
             dropZone: document.getElementById('dropZoneRight'),
             fileInput: document.getElementById('fileInputRight'),
             folderInput: document.getElementById('folderInputRight'),
-            grid: document.getElementById('previewGridRight'),
+            grid: document.getElementById('gridRight'),
             count: document.getElementById('countRight'),
-            size: document.getElementById('sizeRight'),
-            loading: document.getElementById('loadingRight')
+            size: document.getElementById('sizeRight')
         },
-        global: {
-            downloadBtn: document.getElementById('downloadBtn'),
-            zipNameInput: document.getElementById('zipNameInput'),
-            renamePrefix: document.getElementById('renamePrefix'),
-            progress: {
-                container: document.getElementById('progressContainer'),
-                fill: document.getElementById('progressFill'),
-                text: document.getElementById('progressText')
-            }
+        total: {
+            count: document.getElementById('totalCount'),
+            size: document.getElementById('totalSize'),
+            btn: document.getElementById('downloadBtn')
+        },
+        settings: {
+            zipName: document.getElementById('zipNameInput'),
+            prefix: document.getElementById('renamePrefix'),
+            padding: document.getElementById('paddingSelect')
+        },
+        progress: {
+            box: document.getElementById('progressContainer'),
+            fill: document.getElementById('progressFill'),
+            text: document.getElementById('progressText')
         }
     };
 
-    function updateDefaultZipName() {
+    // 初始化預設檔名
+    function initDefaultName() {
         const now = new Date();
-        const str = `combined_${now.getFullYear()}${(now.getMonth()+1).toString().padStart(2,'0')}${now.getDate().toString().padStart(2,'0')}_${now.getHours().toString().padStart(2,'0')}${now.getMinutes().toString().padStart(2,'0')}.zip`;
-        dom.global.zipNameInput.placeholder = str;
+        const str = `images_${now.getFullYear()}${(now.getMonth()+1).toString().padStart(2,'0')}${now.getDate().toString().padStart(2,'0')}.zip`;
+        dom.settings.zipName.placeholder = str;
     }
-    updateDefaultZipName();
+    initDefaultName();
 
-    // ----------------------------------------------------
-    // 事件監聽修復 (Drag & Drop Logic)
-    // ----------------------------------------------------
-    
-    // 全域防止瀏覽器預設開啟圖片行為
-    window.addEventListener("dragover", function(e){
-        e.preventDefault();
-    }, false);
-    
-    window.addEventListener("drop", function(e){
-        e.preventDefault();
-    }, false);
-
-    setupSideListeners('left');
-    setupSideListeners('right');
-
-    function setupSideListeners(side) {
-        const controls = dom[side];
-        const dz = controls.dropZone;
-
-        // 1. Drag Enter
-        dz.addEventListener('dragenter', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            dz.classList.add('drag-over');
-        }, false);
-
-        // 2. Drag Over (必須防止預設行為，否則 drop 不會觸發)
-        dz.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            dz.classList.add('drag-over');
-        }, false);
-
-        // 3. Drag Leave
-        dz.addEventListener('dragleave', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            // 這裡做個簡單判斷，只有離開 dropzone 本身才移除樣式
-            if (e.target === dz) {
-                dz.classList.remove('drag-over');
-            }
-        }, false);
-
-        // 4. Drop (最重要)
-        dz.addEventListener('drop', async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            dz.classList.remove('drag-over');
-
-            // 檢查是否有檔案
-            if (!e.dataTransfer) return;
-            
-            // 處理邏輯
-            if (e.dataTransfer.items) {
-                handleDropItems(e.dataTransfer.items, side);
-            } else if (e.dataTransfer.files) {
-                // 舊瀏覽器或特殊情境的 Fallback
-                handleInputFiles(e.dataTransfer.files, side);
-            }
-        }, false);
-
-        // 按鈕點選
-        controls.fileInput.addEventListener('change', (e) => handleInputFiles(e.target.files, side));
-        controls.folderInput.addEventListener('change', (e) => handleInputFiles(e.target.files, side));
-    }
-
-    async function handleDropItems(items, side) {
-        dom[side].loading.style.display = 'block';
-        const scanPromises = [];
-        for (let i = 0; i < items.length; i++) {
-            const item = items[i].webkitGetAsEntry ? items[i].webkitGetAsEntry() : null;
-            if (item) {
-                scanPromises.push(traverseFileTree(item, side));
-            } else if (items[i].kind === 'file') {
-                // 如果無法取得 Entry，嘗試直接拿 File
-                const file = items[i].getAsFile();
-                if(file) addFileToList(file, side);
-            }
-        }
-        await Promise.all(scanPromises);
-        dom[side].loading.style.display = 'none';
-        updatePaneUI(side);
-    }
-
-    function traverseFileTree(item, side) {
-        return new Promise((resolve) => {
-            if (item.isFile) {
-                item.file((file) => {
-                    addFileToList(file, side);
-                    resolve();
-                }, (err) => resolve()); // 錯誤容錯
-            } else if (item.isDirectory) {
-                const dirReader = item.createReader();
-                const readEntries = () => {
-                    dirReader.readEntries(async (entries) => {
-                        if (entries.length === 0) resolve();
-                        else {
-                            await Promise.all(entries.map(entry => traverseFileTree(entry, side)));
-                            readEntries();
-                        }
-                    }, (err) => resolve()); // 錯誤容錯
-                };
-                readEntries();
-            } else {
-                resolve();
+    // === 初始化 SortableJS (拖曳排序核心) ===
+    function initSortable(side) {
+        new Sortable(dom[side].grid, {
+            animation: 150,
+            ghostClass: 'sortable-ghost',
+            dragClass: 'sortable-drag',
+            onEnd: function (evt) {
+                // 當拖曳結束，重新計算編號顯示 (視覺上)
+                updateIndices(side);
             }
         });
+    }
+    initSortable('left');
+    initSortable('right');
+
+    // === 事件監聽設置 ===
+    setupSideEvents('left');
+    setupSideEvents('right');
+
+    function setupSideEvents(side) {
+        const dz = dom[side].dropZone;
+
+        // 拖曳上傳效果
+        dz.addEventListener('dragenter', (e) => { e.preventDefault(); dz.classList.add('drag-over'); });
+        dz.addEventListener('dragover', (e) => { e.preventDefault(); dz.classList.add('drag-over'); });
+        dz.addEventListener('dragleave', (e) => { 
+             if (e.relatedTarget && !dz.contains(e.relatedTarget)) {
+                dz.classList.remove('drag-over'); 
+             }
+        });
+        dz.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            dz.classList.remove('drag-over');
+            if (e.dataTransfer.items) handleDropItems(e.dataTransfer.items, side);
+        });
+
+        // 按鈕選取
+        dom[side].fileInput.addEventListener('change', (e) => handleInputFiles(e.target.files, side));
+        dom[side].folderInput.addEventListener('change', (e) => handleInputFiles(e.target.files, side));
+    }
+
+    // === 檔案處理邏輯 ===
+    async function handleDropItems(items, side) {
+        const promises = [];
+        for (let i=0; i<items.length; i++) {
+            const entry = items[i].webkitGetAsEntry ? items[i].webkitGetAsEntry() : null;
+            if (entry) promises.push(scanFiles(entry, side));
+            else if (items[i].kind === 'file') {
+                const f = items[i].getAsFile();
+                if(f) addFile(f, side);
+            }
+        }
+        await Promise.all(promises);
+        updateStats(side);
     }
 
     function handleInputFiles(files, side) {
-        dom[side].loading.style.display = 'block';
-        setTimeout(() => {
-            Array.from(files).forEach(file => addFileToList(file, side));
-            dom[side].loading.style.display = 'none';
-            updatePaneUI(side);
-        }, 50);
-    }
-
-    function addFileToList(file, side) {
-        // 寬鬆過濾：只要是 image 開頭或是常見圖片副檔名
-        if (!file.type.startsWith('image/') && !/\.(jpe?g|png|gif|webp|bmp|svg)$/i.test(file.name)) return;
-        
-        const fileObj = {
-            id: side + '_' + Date.now() + Math.random().toString(36).substr(2, 9),
-            file: file
-        };
-        if (side === 'left') filesLeft.push(fileObj);
-        else filesRight.push(fileObj);
-    }
-
-    function updatePaneUI(side) {
-        const targetArray = side === 'left' ? filesLeft : filesRight;
-        const controls = dom[side];
-
-        controls.count.textContent = targetArray.length;
-        const totalSize = targetArray.reduce((acc, curr) => acc + curr.file.size, 0);
-        controls.size.textContent = (totalSize / (1024 * 1024)).toFixed(2) + ' MB';
-
-        controls.grid.innerHTML = '';
-        const fragment = document.createDocumentFragment();
-        const renderList = targetArray.slice(0, PREVIEW_LIMIT);
-
-        renderList.forEach((item) => {
-            const div = document.createElement('div');
-            div.className = 'preview-item';
-            div.innerHTML = `
-                <img src="${URL.createObjectURL(item.file)}" loading="lazy">
-                <button class="remove-btn" onclick="removeFile('${item.id}')">×</button>
-                <div class="file-name" title="${item.file.name}">${item.file.name}</div>
-            `;
-            fragment.appendChild(div);
-        });
-
-        if (targetArray.length > PREVIEW_LIMIT) {
-            const moreInfo = document.createElement('div');
-            moreInfo.style.gridColumn = "1 / -1";
-            moreInfo.style.textAlign = "center"; moreInfo.style.padding = "10px"; moreInfo.style.fontSize = "0.9em"; moreInfo.style.color = "#888";
-            moreInfo.innerHTML = `還有 ${targetArray.length - PREVIEW_LIMIT} 張未顯示...`;
-            fragment.appendChild(moreInfo);
-        }
-        controls.grid.appendChild(fragment);
-
-        dom.global.downloadBtn.disabled = (filesLeft.length + filesRight.length) === 0;
-    }
-
-    window.removeFile = function(id) {
-        if (id.startsWith('left_')) {
-            filesLeft = filesLeft.filter(item => item.id !== id);
-            updatePaneUI('left');
-        } else if (id.startsWith('right_')) {
-            filesRight = filesRight.filter(item => item.id !== id);
-            updatePaneUI('right');
-        }
-    };
-
-    window.clearPane = function(side) {
-        if (side === 'left') { filesLeft = []; updatePaneUI('left'); }
-        else { filesRight = []; updatePaneUI('right'); }
+        Array.from(files).forEach(f => addFile(f, side));
+        updateStats(side);
+        // 清空 input 讓同檔案可再次選取
         dom[side].fileInput.value = '';
         dom[side].folderInput.value = '';
     }
 
-    dom.global.downloadBtn.addEventListener('click', () => {
-        const allFiles = [...filesLeft, ...filesRight];
+    function scanFiles(entry, side) {
+        return new Promise(resolve => {
+            if (entry.isFile) {
+                entry.file(f => { addFile(f, side); resolve(); }, () => resolve());
+            } else if (entry.isDirectory) {
+                const reader = entry.createReader();
+                const read = () => {
+                    reader.readEntries(async entries => {
+                        if (entries.length === 0) resolve();
+                        else {
+                            await Promise.all(entries.map(e => scanFiles(e, side)));
+                            read();
+                        }
+                    }, () => resolve());
+                };
+                read();
+            } else resolve();
+        });
+    }
+
+    function addFile(file, side) {
+        // 過濾
+        if (!file.type.startsWith('image/') && !/\.(jpe?g|png|gif|webp|svg)$/i.test(file.name)) return;
+
+        const id = Date.now() + Math.random().toString(36).substr(2, 9);
+        fileStorage[id] = file;
+
+        // 建立 DOM
+        const div = document.createElement('div');
+        div.className = 'preview-item';
+        div.setAttribute('data-id', id); // 綁定 ID
+        div.innerHTML = `
+            <img src="${URL.createObjectURL(file)}" loading="lazy">
+            <span class="file-index"></span>
+            <button class="remove-btn" onclick="removeItem(this, '${side}')">×</button>
+            <div class="file-name">${file.name}</div>
+        `;
+        dom[side].grid.appendChild(div);
+    }
+
+    // === UI 更新與統計 ===
+    function removeItem(btn, side) {
+        const item = btn.parentElement;
+        const id = item.getAttribute('data-id');
+        delete fileStorage[id]; // 刪除資料
+        item.remove(); // 刪除 DOM
+        updateStats(side);
+    }
+
+    window.clearPane = function(side) {
+        const grid = dom[side].grid;
+        // 清除 storage
+        Array.from(grid.children).forEach(child => {
+            const id = child.getAttribute('data-id');
+            delete fileStorage[id];
+        });
+        grid.innerHTML = '';
+        updateStats(side);
+    }
+
+    function updateStats(side) {
+        // 更新單邊
+        updateIndices(side); // 重算編號
+        
+        // 更新全域
+        const leftItems = getItems('left');
+        const rightItems = getItems('right');
+        
+        // 單邊統計
+        dom.left.count.textContent = leftItems.length + " 張";
+        dom.left.size.textContent = calcSize(leftItems) + " MB";
+        dom.right.count.textContent = rightItems.length + " 張";
+        dom.right.size.textContent = calcSize(rightItems) + " MB";
+
+        // 全域統計 (即時資訊)
+        const totalCount = leftItems.length + rightItems.length;
+        const totalSize = calcSize(leftItems, true) + calcSize(rightItems, true); // raw bytes
+        
+        dom.total.count.textContent = totalCount;
+        dom.total.size.textContent = (totalSize / (1024*1024)).toFixed(2) + " MB";
+        
+        dom.total.btn.disabled = totalCount === 0;
+    }
+
+    // 取得某邊目前的所有檔案 (依照 DOM 順序)
+    function getItems(side) {
+        const ids = Array.from(dom[side].grid.children).map(el => el.getAttribute('data-id'));
+        return ids.map(id => fileStorage[id]).filter(f => f);
+    }
+
+    function calcSize(files, raw=false) {
+        const bytes = files.reduce((acc, f) => acc + f.size, 0);
+        return raw ? bytes : (bytes / (1024*1024)).toFixed(2);
+    }
+
+    // 更新圖片左上角的編號顯示
+    function updateIndices(side) {
+        const items = dom[side].grid.children;
+        Array.from(items).forEach((item, index) => {
+            item.querySelector('.file-index').textContent = index + 1;
+        });
+    }
+
+    // === 打包下載 (含位數補零) ===
+    dom.total.btn.addEventListener('click', () => {
+        const leftFiles = getItems('left');
+        const rightFiles = getItems('right');
+        const allFiles = [...leftFiles, ...rightFiles]; // 順序：先左後右
+        
         if (allFiles.length === 0) return;
 
         const zip = new JSZip();
-        const prefix = dom.global.renamePrefix.value.trim();
-        
-        dom.global.progress.container.style.display = 'block';
-        dom.global.downloadBtn.disabled = true;
+        const prefix = dom.settings.prefix.value.trim();
+        const paddingLen = parseInt(dom.settings.padding.value);
 
-        allFiles.forEach((item, index) => {
-            let fileName = item.file.name;
+        dom.total.btn.disabled = true;
+        dom.progress.box.style.display = 'block';
+
+        allFiles.forEach((file, index) => {
+            let fileName = file.name;
+            
             if (prefix) {
                 const ext = fileName.substring(fileName.lastIndexOf('.'));
-                fileName = `${prefix}_${index + 1}${ext}`;
+                // 補零邏輯
+                const numStr = String(index + 1).padStart(paddingLen, '0');
+                fileName = `${prefix}_${numStr}${ext}`;
             } else {
-                 // 若無批次命名，加上前綴避免衝突
-                 const sidePrefix = item.id.startsWith('left_') ? 'L_' : 'R_';
-                 fileName = sidePrefix + fileName;
+                // 如果沒有 prefix，為防止檔名衝突，我們還是得處理
+                // 但使用者如果沒填 prefix，通常希望保留原名。
+                // 若遇衝突，JSZip 預設行為可能會覆蓋。
+                // 這裡我們不做強制改名，除非使用者要求。
             }
-            zip.file(fileName, item.file);
+            zip.file(fileName, file);
         });
 
-        zip.generateAsync({ type: "blob" }, (metadata) => {
-            const percent = metadata.percent.toFixed(0);
-            dom.global.progress.fill.style.width = percent + '%';
-            dom.global.progress.text.textContent = `打包中... ${percent}%`;
+        zip.generateAsync({type:"blob"}, (metadata) => {
+            const p = metadata.percent.toFixed(0);
+            dom.progress.fill.style.width = p + '%';
+            dom.progress.text.textContent = `打包中... ${p}%`;
         }).then((content) => {
-            let zipName = dom.global.zipNameInput.value.trim();
-            if (!zipName) zipName = dom.global.zipNameInput.placeholder;
-            if (!zipName.toLowerCase().endsWith('.zip')) zipName += '.zip';
-
-            saveAs(content, zipName);
-
+            let name = dom.settings.zipName.value.trim();
+            if(!name) name = dom.settings.zipName.placeholder;
+            if(!name.toLowerCase().endsWith('.zip')) name += '.zip';
+            
+            saveAs(content, name);
+            
             setTimeout(() => {
-                dom.global.progress.container.style.display = 'none';
-                dom.global.progress.fill.style.width = '0%';
-                dom.global.downloadBtn.disabled = false;
+                dom.progress.box.style.display = 'none';
+                dom.progress.fill.style.width = '0%';
+                dom.total.btn.disabled = false;
             }, 1000);
         });
     });

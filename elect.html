@@ -3,16 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>圖片整理打包工具 Pro</title>
+    <title>圖片整理打包工具 (UI優化版)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     
     <style>
-        /* === 1. CSS 變數系統 (支援暗黑模式) === */
+        /* === 1. CSS 變數 === */
         :root {
-            /* 明亮模式 (Light) */
             --primary-color: #3b82f6;
             --primary-hover: #2563eb;
             --secondary-color: #10b981;
@@ -22,15 +21,12 @@
             --text-sub: #6b7280;
             --border-color: #e5e7eb;
             --dropzone-bg: #f9fafb;
-            --dropzone-border: #d1d5db;
-            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            --preview-bg: #f3f4f6;
+            --item-bg: #ffffff;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
 
         [data-theme="dark"] {
-            /* 暗黑模式 (Dark) */
             --primary-color: #60a5fa;
-            --primary-hover: #3b82f6;
             --secondary-color: #34d399;
             --bg-color: #111827;
             --card-bg: #1f2937;
@@ -38,240 +34,217 @@
             --text-sub: #9ca3af;
             --border-color: #374151;
             --dropzone-bg: #111827;
-            --dropzone-border: #4b5563;
+            --item-bg: #2d3748;
             --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
-            --preview-bg: #111827;
         }
 
-        /* === 2. 全域樣式 === */
+        /* === 2. 基礎設定 === */
         body {
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            font-family: 'Inter', system-ui, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-main);
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            margin: 0; padding: 20px;
+            display: flex; flex-direction: column; align-items: center;
             min-height: 100vh;
-            transition: background-color 0.3s, color 0.3s;
         }
 
-        /* 頂部導航列 */
         .header-bar {
-            width: 100%;
-            max-width: 1200px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            width: 100%; max-width: 1200px;
+            display: flex; justify-content: space-between; align-items: center;
             margin-bottom: 20px;
         }
-
         h1 { margin: 0; font-size: 1.5rem; display: flex; align-items: center; gap: 10px; }
         h1 i { color: var(--primary-color); }
         
-        /* 模式切換按鈕 */
         .theme-toggle {
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            color: var(--text-main);
-            padding: 8px 15px;
-            border-radius: 20px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 0.9rem;
-            box-shadow: var(--shadow);
+            background: var(--card-bg); border: 1px solid var(--border-color);
+            color: var(--text-main); padding: 8px 15px; border-radius: 20px;
+            cursor: pointer; display: flex; align-items: center; gap: 8px;
             transition: all 0.2s;
         }
-        .theme-toggle:hover { transform: translateY(-1px); }
+        .theme-toggle:hover { transform: scale(1.05); }
 
-        /* 卡片通用樣式 */
         .card {
-            background: var(--card-bg);
-            border-radius: 12px;
-            box-shadow: var(--shadow);
-            border: 1px solid var(--border-color);
-            transition: background-color 0.3s, border-color 0.3s;
+            background: var(--card-bg); border-radius: 12px;
+            box-shadow: var(--shadow); border: 1px solid var(--border-color);
+            transition: background-color 0.3s;
         }
 
-        /* 設定區 */
+        /* === 3. 設定區 === */
         .global-settings {
-            width: 100%; max-width: 1000px;
-            padding: 20px; margin-bottom: 20px;
+            width: 100%; max-width: 1000px; padding: 20px; margin-bottom: 20px;
             display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 20px; align-items: end;
         }
-
-        .input-group label {
-            display: block; font-size: 0.85rem; font-weight: 600;
-            margin-bottom: 8px; color: var(--text-sub);
-        }
-        
+        .input-group label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 8px; color: var(--text-sub); }
         .input-field {
-            width: 100%; padding: 10px;
-            background: var(--bg-color);
-            border: 1px solid var(--border-color);
-            color: var(--text-main);
-            border-radius: 6px;
-            font-size: 0.95rem;
-            box-sizing: border-box; /* 修正寬度問題 */
+            width: 100%; padding: 10px; background: var(--bg-color);
+            border: 1px solid var(--border-color); color: var(--text-main);
+            border-radius: 6px; box-sizing: border-box;
         }
-        .input-field:focus { outline: 2px solid var(--primary-color); border-color: transparent; }
 
-        /* 雙欄佈局 */
+        /* === 4. 雙欄佈局 === */
         .split-container {
             display: flex; width: 100%; max-width: 1200px;
             gap: 20px; flex: 1; align-items: stretch;
+            /* 讓網格可以自由延伸，不需要被螢幕卡住 */
+            height: auto; 
         }
         
         .pane {
-            flex: 1; padding: 20px;
-            display: flex; flex-direction: column;
+            flex: 1; padding: 20px; display: flex; flex-direction: column;
             border-top: 4px solid var(--primary-color);
         }
         .pane.right-pane { border-top-color: var(--secondary-color); }
         
-        .pane-header {
-            display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;
-        }
-        .pane-title { font-weight: bold; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;}
-        
-        /* === 3. 拖曳區 (重點修正) === */
+        .pane-header { display: flex; justify-content: space-between; margin-bottom: 15px; }
+        .pane-title { font-weight: bold; font-size: 1.1rem; }
+        .btn-text { background: none; border: none; color: #ef4444; cursor: pointer; }
+
+        /* === 5. 拖曳區 === */
         .drop-zone {
-            height: 140px;
-            background-color: var(--dropzone-bg);
-            border: 2px dashed var(--dropzone-border);
-            border-radius: 8px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 15px;
-            transition: all 0.2s;
-            position: relative; /* 關鍵 */
+            height: 120px; background-color: var(--dropzone-bg);
+            border: 2px dashed var(--dropzone-border); border-radius: 8px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            margin-bottom: 15px; transition: all 0.2s; position: relative;
         }
-
-        .drop-zone.drag-over {
-            border-color: var(--primary-color);
-            background-color: rgba(59, 130, 246, 0.1);
-            transform: scale(1.01);
-        }
-
-        /* 讓文字不干擾拖曳，但按鈕可以點擊 */
-        .drop-zone-content { pointer-events: none; text-align: center; }
-        .drop-zone p { margin: 0 0 10px 0; color: var(--text-sub); font-size: 0.95rem; }
-        .drop-zone i { font-size: 2rem; color: var(--text-sub); margin-bottom: 10px; display: block;}
-
-        .drop-zone-btns {
-            pointer-events: auto; /* 恢復按鈕點擊 */
-            display: flex; gap: 10px; margin-top: 5px;
-        }
-
+        .drop-zone.drag-over { border-color: var(--primary-color); background-color: rgba(59, 130, 246, 0.1); transform: scale(1.01); }
+        .drop-zone-content { pointer-events: none; text-align: center; color: var(--text-sub); }
+        .drop-zone-btns { pointer-events: auto; display: flex; gap: 10px; margin-top: 10px; }
         .btn-small {
-            padding: 6px 14px;
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            color: var(--text-main);
-            border-radius: 20px;
-            font-size: 0.85rem;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex; align-items: center; gap: 6px;
+            padding: 6px 14px; background: var(--card-bg); border: 1px solid var(--border-color);
+            color: var(--text-main); border-radius: 20px; cursor: pointer;
+            display: flex; align-items: center; gap: 5px; font-size: 0.85rem;
         }
-        .btn-small:hover { background: var(--bg-color); border-color: var(--text-sub); }
-        .btn-small i { font-size: 0.9rem; margin: 0; color: var(--primary-color); }
+        .btn-small:hover { background: var(--bg-color); }
 
-        /* 預覽網格 */
+        /* === 6. 預覽網格與卡片設計 (重點修改) === */
         .grid-wrapper {
-            flex: 1; overflow-y: auto;
+            flex: 1; 
             background: var(--bg-color);
             border-radius: 8px; border: 1px solid var(--border-color);
-            padding: 10px; min-height: 300px;
+            padding: 15px; 
+            min-height: 400px; /* 增加最小高度 */
         }
         
         .preview-grid {
-            display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px;
+            display: grid;
+            /* 稍微加大卡片寬度，讓檔名好顯示 */
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); 
+            gap: 15px;
         }
 
+        /* 單一卡片容器 */
         .preview-item {
-            position: relative; aspect-ratio: 1;
-            border-radius: 8px; overflow: hidden;
-            background: var(--preview-bg);
+            background: var(--item-bg);
             border: 1px solid var(--border-color);
-            cursor: grab;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            transition: transform 0.1s;
         }
-        .preview-item:active { cursor: grabbing; }
-        .preview-item img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+
+        /* 拖曳時的 Ghost 樣式 (解決變大問題) */
+        .sortable-ghost {
+            opacity: 0.4;
+            background: var(--primary-color);
+            border: 2px dashed var(--primary-color);
+        }
+        /* 正在被拖曳的物件 */
+        .sortable-drag {
+            cursor: grabbing;
+            opacity: 1;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            transform: scale(1.05);
+        }
+
+        /* 上方：圖片區 (可拖曳) */
+        .img-container {
+            width: 100%;
+            aspect-ratio: 1; /* 保持正方形 */
+            position: relative;
+            cursor: grab;
+            background-color: #eee;
+        }
+        .img-container:active { cursor: grabbing; }
+        .img-container img {
+            width: 100%; height: 100%; object-fit: cover;
+            pointer-events: none; /* 禁止圖片本身的拖曳行為，交給 Sortable */
+        }
 
         .file-index {
-            position: absolute; top: 4px; left: 4px;
-            background: rgba(0,0,0,0.7); color: white;
-            font-size: 0.75rem; padding: 2px 6px; border-radius: 10px;
-            backdrop-filter: blur(2px); pointer-events: none;
+            position: absolute; top: 5px; left: 5px;
+            background: rgba(0,0,0,0.6); color: #fff;
+            font-size: 0.75rem; padding: 2px 8px; border-radius: 12px;
+            font-weight: bold; pointer-events: none;
         }
-        
-        .remove-btn {
-            position: absolute; top: 4px; right: 4px;
-            background: rgba(255, 255, 255, 0.9); color: #ef4444;
-            border: none; border-radius: 50%; width: 24px; height: 24px;
-            cursor: pointer; display: flex; align-items: center; justify-content: center;
-            font-size: 14px; transition: transform 0.2s;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-            z-index: 10; /* 確保在最上層 */
+
+        /* 下方：資訊與操作區 */
+        .info-bar {
+            padding: 8px 10px;
+            display: flex;
+            justify-content: space-between; /* 左名右刪 */
+            align-items: center;
+            border-top: 1px solid var(--border-color);
+            height: 36px;
+            background: var(--card-bg);
         }
-        .remove-btn:hover { transform: scale(1.1); background: #fff; }
 
         .file-name {
-            position: absolute; bottom: 0; width: 100%;
-            background: rgba(0,0,0,0.7); color: white;
-            font-size: 0.7rem; padding: 4px;
-            text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-            pointer-events: none;
+            font-size: 0.8rem;
+            color: var(--text-main);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 80%; /* 留空間給刪除按鈕 */
         }
 
-        /* 底部控制列 */
+        .trash-btn {
+            background: none; border: none;
+            color: #9ca3af;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            transition: color 0.2s;
+            display: flex; align-items: center;
+        }
+        .trash-btn:hover { color: #ef4444; background-color: rgba(239, 68, 68, 0.1); }
+
+        /* === 7. 底部控制列 (修改：不再 Sticky) === */
         .footer-bar {
-            width: 100%; max-width: 1000px; margin-top: 25px;
-            padding: 25px; text-align: center;
-            position: sticky; bottom: 20px;
-            z-index: 100;
+            width: 100%; max-width: 1000px;
+            margin: 40px auto 20px auto; /* 距離上方內容遠一點 */
+            padding: 30px; text-align: center;
+            /* 移除 position: sticky/bottom，改為自然流動 */
+            position: relative; 
+            z-index: 1;
         }
 
         .stats-badge {
             background: var(--bg-color); color: var(--text-main);
-            padding: 8px 16px; border-radius: 20px;
-            font-size: 0.95rem; border: 1px solid var(--border-color);
-            display: inline-block; margin-bottom: 15px;
+            padding: 8px 20px; border-radius: 20px;
+            font-size: 1rem; border: 1px solid var(--border-color);
+            display: inline-block; margin-bottom: 20px;
         }
 
         .btn-primary {
             background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
             color: white; border: none;
-            padding: 14px 40px; font-size: 1.1rem; font-weight: bold;
+            padding: 15px 50px; font-size: 1.2rem; font-weight: bold;
             border-radius: 30px; cursor: pointer;
             box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
-            transition: transform 0.2s, box-shadow 0.2s;
+            transition: transform 0.2s;
         }
-        .btn-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(59, 130, 246, 0.6); }
+        .btn-primary:hover:not(:disabled) { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(59, 130, 246, 0.5); }
         .btn-primary:disabled { background: #9ca3af; cursor: not-allowed; box-shadow: none; }
 
-        .btn-text {
-            background: none; border: none; color: #ef4444;
-            cursor: pointer; font-size: 0.85rem; padding: 5px 10px;
-            border-radius: 4px;
-        }
-        .btn-text:hover { background: rgba(239, 68, 68, 0.1); }
-
-        /* 進度條 */
-        .progress-box { display: none; width: 100%; max-width: 400px; margin: 15px auto 0; }
-        .progress-bar { width: 100%; height: 6px; background: var(--bg-color); border-radius: 3px; overflow: hidden; }
+        .progress-box { display: none; width: 100%; max-width: 500px; margin: 20px auto 0; }
+        .progress-bar { width: 100%; height: 8px; background: var(--bg-color); border-radius: 4px; overflow: hidden; }
         .progress-fill { height: 100%; background: var(--secondary-color); width: 0%; transition: width 0.2s; }
-        .progress-text { font-size: 0.8rem; color: var(--text-sub); margin-top: 5px; }
+        .progress-text { font-size: 0.85rem; color: var(--text-sub); margin-top: 8px; }
 
-        /* RWD */
         @media (max-width: 768px) {
             .split-container { flex-direction: column; }
             .global-settings { grid-template-columns: 1fr; }
@@ -282,7 +255,7 @@
 <body>
 
     <div class="header-bar">
-        <h1><i class="fa-solid fa-images"></i> 圖片整理工作台</h1>
+        <h1><i class="fa-solid fa-layer-group"></i> 圖片整理工作台</h1>
         <button class="theme-toggle" id="themeBtn">
             <i class="fa-solid fa-moon"></i> <span>暗黑模式</span>
         </button>
@@ -290,15 +263,15 @@
 
     <div class="card global-settings">
         <div class="input-group">
-            <label><i class="fa-solid fa-file-zipper"></i> ZIP 檔名</label>
+            <label>ZIP 檔名</label>
             <input type="text" id="zipNameInput" class="input-field" placeholder="預設: images_日期.zip">
         </div>
         <div class="input-group">
-            <label><i class="fa-solid fa-signature"></i> 批次命名 (Prefix)</label>
-            <input type="text" id="renamePrefix" class="input-field" placeholder="例: sticker (選填)">
+            <label>批次命名 (Prefix)</label>
+            <input type="text" id="renamePrefix" class="input-field" placeholder="例: photo (可選)">
         </div>
         <div class="input-group">
-            <label><i class="fa-solid fa-arrow-down-1-9"></i> 編號位數</label>
+            <label>編號位數</label>
             <select id="paddingSelect" class="input-field">
                 <option value="1">1位 (1, 2...)</option>
                 <option value="2" selected>2位 (01, 02...)</option>
@@ -308,27 +281,26 @@
     </div>
 
     <div class="split-container">
-        
         <div class="card pane">
             <div class="pane-header">
-                <span class="pane-title"><i class="fa-solid fa-folder-open"></i> 左側素材</span>
+                <span class="pane-title"><i class="fa-solid fa-inbox"></i> 左側素材</span>
                 <button class="btn-text" onclick="clearPane('left')">清空</button>
             </div>
             
             <div class="drop-zone" id="dropZoneLeft">
                 <div class="drop-zone-content">
-                    <i class="fa-solid fa-cloud-arrow-up"></i>
-                    <p>拖曳圖片或資料夾至此</p>
+                    <i class="fa-solid fa-cloud-arrow-up" style="font-size: 1.5rem; margin-bottom:5px;"></i>
+                    <p style="margin:0;">拖曳圖片或資料夾</p>
                 </div>
                 <div class="drop-zone-btns">
-                    <button class="btn-small" id="btnSelectFileLeft"><i class="fa-regular fa-image"></i> 選圖</button>
-                    <button class="btn-small" id="btnSelectFolderLeft"><i class="fa-regular fa-folder"></i> 選資料夾</button>
+                    <button class="btn-small" id="btnSelectFileLeft">選圖</button>
+                    <button class="btn-small" id="btnSelectFolderLeft">選資料夾</button>
                 </div>
             </div>
             <input type="file" id="fileInputLeft" multiple accept="image/*">
             <input type="file" id="folderInputLeft" webkitdirectory mozdirectory>
 
-            <div style="font-size: 0.85rem; color: var(--text-sub); margin-bottom: 5px; display:flex; justify-content:space-between;">
+            <div style="font-size: 0.85rem; color: var(--text-sub); margin-bottom: 8px; display:flex; justify-content:space-between;">
                 <span id="countLeft">0 張</span>
                 <span id="sizeLeft">0 MB</span>
             </div>
@@ -340,24 +312,24 @@
 
         <div class="card pane right-pane">
             <div class="pane-header">
-                <span class="pane-title" style="color: var(--secondary-color)"><i class="fa-solid fa-folder-open"></i> 右側素材</span>
+                <span class="pane-title" style="color: var(--secondary-color)"><i class="fa-solid fa-inbox"></i> 右側素材</span>
                 <button class="btn-text" onclick="clearPane('right')">清空</button>
             </div>
             
             <div class="drop-zone" id="dropZoneRight">
                 <div class="drop-zone-content">
-                    <i class="fa-solid fa-cloud-arrow-up"></i>
-                    <p>拖曳圖片或資料夾至此</p>
+                    <i class="fa-solid fa-cloud-arrow-up" style="font-size: 1.5rem; margin-bottom:5px;"></i>
+                    <p style="margin:0;">拖曳圖片或資料夾</p>
                 </div>
                 <div class="drop-zone-btns">
-                    <button class="btn-small" id="btnSelectFileRight"><i class="fa-regular fa-image"></i> 選圖</button>
-                    <button class="btn-small" id="btnSelectFolderRight"><i class="fa-regular fa-folder"></i> 選資料夾</button>
+                    <button class="btn-small" id="btnSelectFileRight">選圖</button>
+                    <button class="btn-small" id="btnSelectFolderRight">選資料夾</button>
                 </div>
             </div>
             <input type="file" id="fileInputRight" multiple accept="image/*">
             <input type="file" id="folderInputRight" webkitdirectory mozdirectory>
 
-            <div style="font-size: 0.85rem; color: var(--text-sub); margin-bottom: 5px; display:flex; justify-content:space-between;">
+            <div style="font-size: 0.85rem; color: var(--text-sub); margin-bottom: 8px; display:flex; justify-content:space-between;">
                 <span id="countRight">0 張</span>
                 <span id="sizeRight">0 MB</span>
             </div>
@@ -375,7 +347,7 @@
         </div>
         <br>
         <button class="btn-primary" id="downloadBtn" disabled>
-            <i class="fa-solid fa-box-archive"></i> 打包下載 ZIP
+            <i class="fa-solid fa-file-zipper"></i> 開始打包下載
         </button>
 
         <div class="progress-box" id="progressContainer">
@@ -385,7 +357,7 @@
     </div>
 
 <script>
-    // === 1. 暗黑模式邏輯 (Dark Mode) ===
+    // === 1. 暗黑模式 ===
     const themeBtn = document.getElementById('themeBtn');
     const htmlEl = document.documentElement;
     const iconEl = themeBtn.querySelector('i');
@@ -402,30 +374,21 @@
             textEl.textContent = '暗黑模式';
         }
     }
-
-    // 讀取初始設定
-    const savedTheme = localStorage.getItem('theme') || 'light';
-    applyTheme(savedTheme);
-
+    applyTheme(localStorage.getItem('theme') || 'light');
     themeBtn.addEventListener('click', () => {
-        const current = htmlEl.getAttribute('data-theme');
-        applyTheme(current === 'dark' ? 'light' : 'dark');
+        applyTheme(htmlEl.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
     });
 
-
     // === 2. 核心變數 ===
-    let fileStorage = {}; // { 'id': fileObj }
+    let fileStorage = {};
 
     const dom = {
         left: {
             zone: document.getElementById('dropZoneLeft'),
-            // inputs
             inpFile: document.getElementById('fileInputLeft'),
             inpFolder: document.getElementById('folderInputLeft'),
-            // buttons (修復點擊問題，直接綁定這些按鈕)
             btnFile: document.getElementById('btnSelectFileLeft'),
             btnFolder: document.getElementById('btnSelectFolderLeft'),
-            // display
             grid: document.getElementById('gridLeft'),
             count: document.getElementById('countLeft'),
             size: document.getElementById('sizeLeft')
@@ -455,48 +418,38 @@
         }
     };
 
-    // 初始化檔名 Placeholder
     const now = new Date();
     dom.set.zip.placeholder = `images_${now.getFullYear()}${(now.getMonth()+1).toString().padStart(2,'0')}${now.getDate().toString().padStart(2,'0')}.zip`;
 
-    // === 3. SortableJS 設定 ===
+    // === 3. SortableJS (修正版) ===
+    // 這裡只允許在 grid 區域內排序，且拖曳控制權在 img-container
     ['left', 'right'].forEach(side => {
         new Sortable(dom[side].grid, {
             animation: 150,
-            ghostClass: 'preview-item', // 簡單樣式
-            onEnd: () => updateUI(side) // 拖曳結束更新編號
+            handle: '.img-container', // 只允許拖曳圖片區域，不影響下方按鈕
+            ghostClass: 'sortable-ghost',
+            dragClass: 'sortable-drag',
+            onEnd: () => updateUI(side)
         });
     });
 
-    // === 4. 事件綁定 (修復按鈕點擊) ===
+    // === 4. 事件綁定 ===
     setupEvents('left');
     setupEvents('right');
 
     function setupEvents(side) {
         const d = dom[side];
-
-        // --- 按鈕點擊 (Explicit Binding) ---
-        d.btnFile.addEventListener('click', (e) => {
-            e.stopPropagation(); // 防止冒泡到 dropzone
-            d.inpFile.click();
-        });
-        d.btnFolder.addEventListener('click', (e) => {
-            e.stopPropagation();
-            d.inpFolder.click();
-        });
-
-        // --- Input Change ---
+        
+        d.btnFile.addEventListener('click', (e) => { e.stopPropagation(); d.inpFile.click(); });
+        d.btnFolder.addEventListener('click', (e) => { e.stopPropagation(); d.inpFolder.click(); });
+        
         d.inpFile.addEventListener('change', e => handleFiles(e.target.files, side));
         d.inpFolder.addEventListener('change', e => handleFiles(e.target.files, side));
 
-        // --- Drag & Drop ---
         const z = d.zone;
         z.addEventListener('dragenter', e => { e.preventDefault(); z.classList.add('drag-over'); });
         z.addEventListener('dragover', e => { e.preventDefault(); z.classList.add('drag-over'); });
-        z.addEventListener('dragleave', e => {
-            // 只有離開 zone 本身才移除 (避免子元素觸發)
-            if (e.target === z) z.classList.remove('drag-over');
-        });
+        z.addEventListener('dragleave', e => { if (e.target === z) z.classList.remove('drag-over'); });
         z.addEventListener('drop', async e => {
             e.preventDefault();
             z.classList.remove('drag-over');
@@ -508,7 +461,6 @@
     function handleFiles(files, side) {
         Array.from(files).forEach(f => addFile(f, side));
         updateUI(side);
-        // Reset inputs
         dom[side].inpFile.value = '';
         dom[side].inpFolder.value = '';
     }
@@ -553,21 +505,29 @@
         const id = Date.now() + Math.random().toString(36).substr(2, 9);
         fileStorage[id] = file;
 
+        // === 新的卡片 HTML 結構 ===
         const div = document.createElement('div');
         div.className = 'preview-item';
         div.dataset.id = id;
         div.innerHTML = `
-            <img src="${URL.createObjectURL(file)}" loading="lazy">
-            <span class="file-index">0</span>
-            <button class="remove-btn" onclick="removeEl(this, '${side}')"><i class="fa-solid fa-xmark"></i></button>
-            <div class="file-name">${file.name}</div>
+            <div class="img-container">
+                <span class="file-index">0</span>
+                <img src="${URL.createObjectURL(file)}" loading="lazy">
+            </div>
+            <div class="info-bar">
+                <div class="file-name" title="${file.name}">${file.name}</div>
+                <button class="trash-btn" onclick="removeEl(this, '${side}')" title="移除">
+                    <i class="fa-solid fa-trash-can"></i>
+                </button>
+            </div>
         `;
         dom[side].grid.appendChild(div);
     }
 
     // === 6. UI 更新與操作 ===
     window.removeEl = function(btn, side) {
-        const item = btn.parentElement;
+        // btn 是 trash-btn，往上找兩層到 preview-item
+        const item = btn.closest('.preview-item');
         delete fileStorage[item.dataset.id];
         item.remove();
         updateUI(side);
@@ -575,18 +535,17 @@
 
     window.clearPane = function(side) {
         dom[side].grid.innerHTML = '';
-        // 這裡不需嚴格清理 fileStorage 的垃圾資料，因為下載時只看 DOM ID
         updateUI(side);
     };
 
     function updateUI(side) {
-        // 1. 更新單邊編號
         const items = dom[side].grid.children;
+        // 更新編號
         Array.from(items).forEach((el, idx) => {
             el.querySelector('.file-index').textContent = idx + 1;
         });
 
-        // 2. 計算單邊大小
+        // 計算單邊
         let size = 0;
         Array.from(items).forEach(el => {
             const f = fileStorage[el.dataset.id];
@@ -595,7 +554,6 @@
         dom[side].count.textContent = items.length + " 張";
         dom[side].size.textContent = (size/1024/1024).toFixed(2) + " MB";
 
-        // 3. 更新全域
         updateTotal();
     }
 
@@ -614,7 +572,7 @@
         dom.dl.btn.disabled = allIds.length === 0;
     }
 
-    // === 7. 打包下載 ===
+    // === 7. 下載邏輯 ===
     dom.dl.btn.addEventListener('click', () => {
         const leftIds = Array.from(dom.left.grid.children).map(e => e.dataset.id);
         const rightIds = Array.from(dom.right.grid.children).map(e => e.dataset.id);
@@ -645,13 +603,12 @@
         zip.generateAsync({type:"blob"}, meta => {
             const p = meta.percent.toFixed(0);
             dom.dl.fill.style.width = p + '%';
-            dom.dl.text.textContent = `打包中... ${p}%`;
+            dom.dl.text.textContent = `打包處理中... ${p}%`;
         }).then(content => {
             let zipName = dom.set.zip.value.trim() || dom.set.zip.placeholder;
             if(!zipName.toLowerCase().endsWith('.zip')) zipName += '.zip';
             saveAs(content, zipName);
 
-            // Reset
             setTimeout(() => {
                 dom.dl.bar.style.display = 'none';
                 dom.dl.fill.style.width = '0%';

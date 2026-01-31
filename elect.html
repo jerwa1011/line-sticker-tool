@@ -2,17 +2,18 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>圖片打包 ZIP 工具 (支援資料夾)</title>
+    <meta name="viewport" content="width=width=device-width, initial-scale=1.0">
+    <title>雙欄圖片比對打包工具</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <style>
         :root {
             --primary-color: #4a90e2;
-            --bg-color: #f5f7fa;
+            --bg-color: #f0f2f5;
             --card-bg: #ffffff;
             --text-color: #333;
             --border-color: #ddd;
+            --pane-gap: 20px;
         }
 
         body {
@@ -22,474 +23,209 @@
             margin: 0;
             padding: 20px;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
         }
 
-        .container {
+        h1 { color: var(--primary-color); margin-bottom: 10px; text-align: center;}
+        h2 { font-size: 1.1rem; color: #666; text-align: center; margin-bottom: 20px;}
+
+        /* 全域設定區 */
+        .global-settings {
             width: 100%;
             max-width: 900px;
-            background-color: var(--card-bg);
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-            padding: 30px;
-        }
-
-        h1 {
-            text-align: center;
-            color: var(--primary-color);
+            background: var(--card-bg);
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
             margin-bottom: 20px;
-        }
-
-        .control-panel {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 20px;
-            margin-bottom: 20px;
-            padding: 20px;
-            background: #f8f9fa;
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
         }
 
-        .input-group {
+        .input-group { display: flex; flex-direction: column; }
+        .input-group label { font-size: 0.9em; font-weight: bold; margin-bottom: 5px; color: #555; }
+        .input-group input { padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; }
+
+        /* 雙欄主結構 */
+        .split-view-container {
+            display: flex;
+            width: 100%;
+            max-width: 1200px;
+            gap: var(--pane-gap);
+            flex: 1; /* 讓它佔滿剩餘高度 */
+            align-items: stretch;
+        }
+
+        /* 單一欄位樣式 */
+        .pane {
+            flex: 1;
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            padding: 20px;
             display: flex;
             flex-direction: column;
+            border-top: 4px solid var(--primary-color);
         }
+        .pane.right-pane { border-top-color: #2ecc71; }
 
-        .input-group label {
-            font-size: 0.9em;
-            font-weight: bold;
-            margin-bottom: 5px;
-            color: #555;
-        }
+        .pane-title { font-size: 1.2em; font-weight: bold; margin-bottom: 15px; text-align: center; }
 
-        .input-group input {
-            padding: 10px;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            font-size: 1em;
-        }
-
-        /* 拖曳上傳區 */
+        /* 拖曳區 */
         .drop-zone {
-            width: 100%;
-            height: 180px; /*稍微加高*/
-            border: 2px dashed var(--primary-color);
-            border-radius: 12px;
+            height: 120px;
+            border: 2px dashed #ccc;
+            border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
             flex-direction: column;
-            transition: background 0.3s;
-            margin-bottom: 20px;
-            background-color: #f0f7ff;
-            position: relative;
-        }
-
-        .drop-zone.drag-over {
-            background-color: #e1effe;
-            border-color: #2c3e50;
-        }
-
-        .drop-zone p {
-            margin: 0 0 10px 0;
-            font-size: 1.2em;
-            color: var(--primary-color);
-            pointer-events: none; /* 防止文字干擾拖曳 */
-        }
-
-        .drop-zone span {
-            font-size: 0.9em;
-            color: #666;
-            pointer-events: none;
-        }
-
-        /* 按鈕區塊 (在 Dropzone 內) */
-        .upload-btns {
-            margin-top: 15px;
-            display: flex;
-            gap: 10px;
-        }
-        
-        .btn-upload {
-            padding: 8px 16px;
-            border: 1px solid var(--primary-color);
-            background: white;
-            color: var(--primary-color);
-            border-radius: 20px;
-            cursor: pointer;
-            font-size: 0.9em;
-            transition: all 0.2s;
-        }
-
-        .btn-upload:hover {
-            background: var(--primary-color);
-            color: white;
-        }
-
-        .stats-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            transition: all 0.3s;
             margin-bottom: 15px;
-            font-size: 0.9em;
-            color: #666;
+            background-color: #f9f9f9;
+            position: relative;
+            text-align: center;
+            padding: 10px;
+        }
+        .drop-zone.drag-over { background-color: #e1effe; border-color: var(--primary-color); }
+        .drop-zone p { margin: 0 0 5px 0; font-size: 1em; color: #777; pointer-events: none; }
+        .drop-zone span { font-size: 0.8em; color: #999; pointer-events: none; }
+        
+        .upload-btns { margin-top: 10px; display: flex; gap: 5px; justify-content: center; }
+        .btn-mini {
+            padding: 5px 10px; border: 1px solid #ccc; background: white; color: #555;
+            border-radius: 4px; cursor: pointer; font-size: 0.8em; transition: all 0.2s;
+        }
+        .btn-mini:hover { background: #eee; }
+
+        /* 統計與預覽 */
+        .stats-bar { display: flex; justify-content: space-between; font-size: 0.85em; color: #666; margin-bottom: 10px; padding: 0 5px;}
+        
+        .preview-grid-wrapper {
+            flex: 1; /* 讓預覽區佔滿剩餘空間 */
+            overflow-y: auto;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            padding: 10px;
+            background: #fcfcfc;
+            min-height: 300px; /* 設定最小高度 */
         }
 
         .preview-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
-            max-height: 400px;
-            overflow-y: auto;
-            border: 1px solid #eee;
-            padding: 10px;
-            border-radius: 8px;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); /* 稍微縮小縮圖尺寸 */
+            gap: 10px;
         }
 
         .preview-item {
-            position: relative;
-            aspect-ratio: 1;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            background: #eee;
-            border: 1px solid #ddd;
+            position: relative; aspect-ratio: 1; border-radius: 6px; overflow: hidden;
+            box-shadow: 0 2px 3px rgba(0,0,0,0.1); background: #eee; border: 1px solid #ddd;
         }
-
-        .preview-item img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
+        .preview-item img { width: 100%; height: 100%; object-fit: cover; }
         .preview-item .remove-btn {
-            position: absolute;
-            top: 5px;
-            right: 5px;
-            background: rgba(255, 0, 0, 0.8);
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            cursor: pointer;
-            font-size: 14px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            position: absolute; top: 2px; right: 2px; background: rgba(231, 76, 60, 0.9); color: white;
+            border: none; border-radius: 50%; width: 20px; height: 20px; cursor: pointer;
+            font-size: 12px; display: flex; align-items: center; justify-content: center; z-index: 2;
         }
-
+        .preview-item:hover .remove-btn { background: rgb(231, 76, 60); }
         .preview-item .file-name {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            background: rgba(0,0,0,0.6);
-            color: white;
-            font-size: 10px;
-            padding: 4px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            text-align: center;
+            position: absolute; bottom: 0; left: 0; width: 100%; background: rgba(0,0,0,0.7);
+            color: white; font-size: 9px; padding: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center;
         }
 
-        .action-area {
-            text-align: center;
+        /* 底部全域操作區 */
+        .global-actions {
+            width: 100%; max-width: 900px; text-align: center; margin-top: 25px;
+            padding: 20px; background: var(--card-bg); border-radius: 12px;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
         }
-
-        .btn {
-            padding: 12px 30px;
-            border: none;
-            border-radius: 8px;
-            font-size: 1.1em;
-            cursor: pointer;
-            font-weight: bold;
+        .btn-action {
+            padding: 12px 40px; border: none; border-radius: 8px; font-size: 1.2em;
+            cursor: pointer; font-weight: bold; background-color: var(--primary-color); color: white;
+            transition: opacity 0.2s;
         }
+        .btn-action:disabled { background-color: #ccc; cursor: not-allowed; }
+        .btn-action:hover:not(:disabled) { opacity: 0.9; }
 
-        .btn-primary { background-color: var(--primary-color); color: white; }
-        .btn-danger { background-color: #ff4757; color: white; margin-right: 10px; }
-        .btn:disabled { background-color: #ccc; cursor: not-allowed; }
-
-        .progress-container { margin-top: 15px; display: none; }
+        .progress-container { margin-top: 15px; display: none; width: 100%; max-width: 600px; margin-left: auto; margin-right: auto;}
         .progress-bar { width: 100%; height: 10px; background-color: #eee; border-radius: 5px; overflow: hidden; }
         .progress-fill { height: 100%; background-color: #2ecc71; width: 0%; transition: width 0.3s; }
-        .progress-text { font-size: 0.8em; color: #666; margin-top: 5px; }
+        .progress-text { font-size: 0.8em; color: #666; margin-top: 5px; text-align: center;}
 
-        /* 隱藏原生 input */
-        #fileInput, #folderInput { display: none; }
+        /* RWD */
+        @media (max-width: 768px) {
+            .split-view-container { flex-direction: column; }
+            .pane { max-height: 50vh; }
+            .global-settings { grid-template-columns: 1fr; }
+        }
+
+        /* 隱藏 input */
+        input[type="file"] { display: none; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h1>圖片打包工具 (支援資料夾拖曳)</h1>
+    <h1>雙欄圖片比對打包工具</h1>
+    <h2>左右分別載入資料夾，比對後剔除不需要的照片，最後合併打包下載。</h2>
 
-    <div class="control-panel">
+    <div class="global-settings">
         <div class="input-group">
             <label for="zipNameInput">ZIP 下載檔名</label>
-            <input type="text" id="zipNameInput" placeholder="預設: images_時間.zip">
+            <input type="text" id="zipNameInput" placeholder="預設: combined_時間.zip">
         </div>
         <div class="input-group">
-            <label for="renamePrefix">圖片批次重新命名</label>
-            <input type="text" id="renamePrefix" placeholder="例: photo (將變 photo_1.jpg...)">
+            <label for="renamePrefix">圖片批次重新命名 (建議使用，避免檔名衝突)</label>
+            <input type="text" id="renamePrefix" placeholder="例: final_image (將變 final_image_1.jpg...)">
         </div>
     </div>
 
-    <div class="drop-zone" id="dropZone">
-        <p>將圖片 或 <strong>整個資料夾</strong> 拖曳至此</p>
-        <span>(支援巢狀資料夾掃描)</span>
+    <div class="split-view-container">
         
-        <div class="upload-btns">
-            <button class="btn-upload" onclick="document.getElementById('fileInput').click()">選取圖片檔案</button>
-            <button class="btn-upload" onclick="document.getElementById('folderInput').click()">選取資料夾</button>
-        </div>
-    </div>
-    
-    <input type="file" id="fileInput" multiple accept="image/*">
-    <input type="file" id="folderInput" webkitdirectory mozdirectory>
-
-    <div class="stats-bar">
-        <span>已選取: <strong id="countDisplay">0</strong> 張</span>
-        <span>總大小: <strong id="sizeDisplay">0 MB</strong></span>
-    </div>
-
-    <div class="preview-grid" id="previewGrid"></div>
-
-    <div class="progress-container" id="progressContainer">
-        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
-        <div class="progress-text" id="progressText">處理中...</div>
-    </div>
-
-    <div class="action-area">
-        <button class="btn btn-danger" id="clearBtn" style="display:none;">清空</button>
-        <button class="btn btn-primary" id="downloadBtn" disabled>打包下載 ZIP</button>
-    </div>
-</div>
-
-<script>
-    let selectedFiles = []; 
-    const dropZone = document.getElementById('dropZone');
-    const previewGrid = document.getElementById('previewGrid');
-    const countDisplay = document.getElementById('countDisplay');
-    const sizeDisplay = document.getElementById('sizeDisplay');
-    const downloadBtn = document.getElementById('downloadBtn');
-    const clearBtn = document.getElementById('clearBtn');
-    const progressContainer = document.getElementById('progressContainer');
-    const progressFill = document.getElementById('progressFill');
-    const progressText = document.getElementById('progressText');
-
-    // 初始化檔名
-    function updateDefaultZipName() {
-        const now = new Date();
-        const str = `images_${now.getFullYear()}${(now.getMonth()+1).toString().padStart(2,'0')}${now.getDate().toString().padStart(2,'0')}_${now.getHours().toString().padStart(2,'0')}${now.getMinutes().toString().padStart(2,'0')}.zip`;
-        document.getElementById('zipNameInput').placeholder = str;
-        return str;
-    }
-    updateDefaultZipName();
-
-    // ---------------------------------------------
-    // 核心邏輯修改：資料夾遞迴掃描
-    // ---------------------------------------------
-
-    // 1. 拖曳處理 (Drop Handler)
-    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-    dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('drag-over'); });
-
-    dropZone.addEventListener('drop', async (e) => {
-        e.preventDefault();
-        dropZone.classList.remove('drag-over');
-
-        const items = e.dataTransfer.items;
-        if (!items) return;
-
-        progressContainer.style.display = 'block';
-        progressText.textContent = "正在掃描資料夾...";
-
-        // 建立掃描任務陣列
-        const scanPromises = [];
-        for (let i = 0; i < items.length; i++) {
-            const item = items[i].webkitGetAsEntry(); // 關鍵 API
-            if (item) {
-                scanPromises.push(traverseFileTree(item));
-            }
-        }
-
-        // 等待所有掃描完成
-        await Promise.all(scanPromises);
-        
-        progressContainer.style.display = 'none';
-        updateUI();
-    });
-
-    // 遞迴函數：遍歷檔案樹
-    function traverseFileTree(item) {
-        return new Promise((resolve) => {
-            if (item.isFile) {
-                // 取得檔案物件
-                item.file((file) => {
-                    addFileToList(file);
-                    resolve();
-                });
-            } else if (item.isDirectory) {
-                // 讀取目錄
-                const dirReader = item.createReader();
-                const readEntries = () => {
-                    dirReader.readEntries(async (entries) => {
-                        if (entries.length === 0) {
-                            resolve(); // 空目錄或讀取完畢
-                        } else {
-                            // 遞迴處理子項目
-                            const subPromises = entries.map(entry => traverseFileTree(entry));
-                            await Promise.all(subPromises);
-                            readEntries(); // 繼續讀取 (Chrome 有時一次只回傳 100 個)
-                        }
-                    });
-                };
-                readEntries();
-            } else {
-                resolve();
-            }
-        });
-    }
-
-    // 2. 傳統按鈕上傳 (File Input & Folder Input)
-    document.getElementById('fileInput').addEventListener('change', (e) => {
-        handleInputFiles(e.target.files);
-        e.target.value = ''; 
-    });
-
-    document.getElementById('folderInput').addEventListener('change', (e) => {
-        handleInputFiles(e.target.files);
-        e.target.value = ''; 
-    });
-
-    function handleInputFiles(files) {
-        Array.from(files).forEach(file => addFileToList(file));
-        updateUI();
-    }
-
-    // 3. 加入檔案並過濾非圖片
-    function addFileToList(file) {
-        // 簡單過濾，忽略 .DS_Store 或非圖片
-        if (!file.type.startsWith('image/') && !/\.(jpe?g|png|gif|webp|bmp|svg)$/i.test(file.name)) {
-            return;
-        }
-        
-        // 避免完全重複的檔案 (選用，目前沒做嚴格檢查，只做簡單加入)
-        const fileObj = {
-            id: Date.now() + Math.random().toString(36).substr(2, 9),
-            file: file
-        };
-        selectedFiles.push(fileObj);
-    }
-
-    // ---------------------------------------------
-    // UI 更新與操作 (與上一版類似)
-    // ---------------------------------------------
-
-    function updateUI() {
-        countDisplay.textContent = selectedFiles.length;
-        const totalSize = selectedFiles.reduce((acc, curr) => acc + curr.file.size, 0);
-        sizeDisplay.textContent = (totalSize / (1024 * 1024)).toFixed(2) + ' MB';
-
-        downloadBtn.disabled = selectedFiles.length === 0;
-        clearBtn.style.display = selectedFiles.length > 0 ? 'inline-block' : 'none';
-
-        // 效能優化：如果檔案太多，不要全部重繪，這裡簡化處理直接重繪
-        // 若圖片超過 500 張建議改用分頁或虛擬列表
-        previewGrid.innerHTML = '';
-        const fragment = document.createDocumentFragment();
-
-        // 限制預覽顯示數量以免瀏覽器卡死 (例如最多顯示前 50 張，但實際會下載全部)
-        const previewLimit = 200; 
-        const renderList = selectedFiles.slice(0, previewLimit);
-
-        renderList.forEach((item) => {
-            const div = document.createElement('div');
-            div.className = 'preview-item';
-            const imgUrl = URL.createObjectURL(item.file);
-            div.innerHTML = `
-                <img src="${imgUrl}" loading="lazy">
-                <button class="remove-btn" onclick="removeFile('${item.id}')">×</button>
-                <div class="file-name" title="${item.file.name}">${item.file.name}</div>
-            `;
-            fragment.appendChild(div);
-        });
-        
-        if (selectedFiles.length > previewLimit) {
-            const moreInfo = document.createElement('div');
-            moreInfo.style.gridColumn = "1 / -1";
-            moreInfo.style.textAlign = "center";
-            moreInfo.style.padding = "10px";
-            moreInfo.style.color = "#666";
-            moreInfo.innerHTML = `還有 ${selectedFiles.length - previewLimit} 張圖片未顯示縮圖，但會被打包。`;
-            fragment.appendChild(moreInfo);
-        }
-
-        previewGrid.appendChild(fragment);
-    }
-
-    window.removeFile = function(id) {
-        selectedFiles = selectedFiles.filter(item => item.id !== id);
-        updateUI();
-    };
-
-    clearBtn.addEventListener('click', () => {
-        if(confirm('確定要清空嗎？')) {
-            selectedFiles = [];
-            updateUI();
-        }
-    });
-
-    // 4. 打包下載 (含批次重新命名)
-    downloadBtn.addEventListener('click', () => {
-        if (selectedFiles.length === 0) return;
-
-        const zip = new JSZip();
-        const prefix = document.getElementById('renamePrefix').value.trim();
-        
-        progressContainer.style.display = 'block';
-        downloadBtn.disabled = true;
-
-        selectedFiles.forEach((item, index) => {
-            let fileName = item.file.name;
-            if (prefix) {
-                const ext = fileName.substring(fileName.lastIndexOf('.')); // 保留副檔名
-                fileName = `${prefix}_${index + 1}${ext}`;
-            }
-            // 處理檔名重複問題 (如果沒開批次命名)
-            // 這裡簡單處理：如果檔名已存在 zip 中，JSZip 預設會覆蓋或你可以自己加邏輯
-            // 為求簡單，若沒改名，我們信任 JSZip 會處理 (或檔案本身路徑不同)
-            // 但因為我們將所有圖放在 ZIP 根目錄，若不同資料夾有同名檔案會衝突
-            // 進階解法：遇到同名自動加 (1)
+        <div class="pane left-pane">
+            <div class="pane-title">左側資料來源</div>
             
-            // 這裡我們假設使用者會用「批次重新命名」解決衝突，或者檔案本身不重複
-            zip.file(fileName, item.file);
-        });
+            <div class="drop-zone" id="dropZoneLeft">
+                <p>拖曳資料夾/圖片至此</p>
+                <div class="upload-btns">
+                    <button class="btn-mini" onclick="document.getElementById('fileInputLeft').click()">選檔</button>
+                    <button class="btn-mini" onclick="document.getElementById('folderInputLeft').click()">選資料夾</button>
+                </div>
+            </div>
+            <input type="file" id="fileInputLeft" multiple accept="image/*">
+            <input type="file" id="folderInputLeft" webkitdirectory mozdirectory>
 
-        zip.generateAsync({ type: "blob" }, (metadata) => {
-            const percent = metadata.percent.toFixed(0);
-            progressFill.style.width = percent + '%';
-            progressText.textContent = `壓縮中... ${percent}%`;
-        }).then((content) => {
-            let zipName = document.getElementById('zipNameInput').value.trim();
-            if (!zipName) zipName = document.getElementById('zipNameInput').placeholder;
-            if (!zipName.toLowerCase().endsWith('.zip')) zipName += '.zip';
+            <div class="stats-bar">
+                <span>數量: <strong id="countLeft">0</strong></span>
+                <span>大小: <strong id="sizeLeft">0 MB</strong></span>
+                <button class="btn-mini" onclick="clearPane('left')" style="color: red; border-color: red;">清空左側</button>
+            </div>
 
-            saveAs(content, zipName);
+            <div class="preview-grid-wrapper">
+                <div class="preview-grid" id="previewGridLeft"></div>
+            </div>
+            <div id="loadingLeft" style="display:none; text-align: center; font-size: 0.8em; color: #666;">掃描中...</div>
+        </div>
 
-            setTimeout(() => {
-                progressContainer.style.display = 'none';
-                progressFill.style.width = '0%';
-                downloadBtn.disabled = false;
-            }, 1000);
-        });
-    });
+        <div class="pane right-pane">
+            <div class="pane-title" style="color: #2ecc71;">右側資料來源</div>
+            
+            <div class="drop-zone" id="dropZoneRight">
+                <p>拖曳資料夾/圖片至此</p>
+                <div class="upload-btns">
+                    <button class="btn-mini" onclick="document.getElementById('fileInputRight').click()">選檔</button>
+                    <button class="btn-mini" onclick="document.getElementById('folderInputRight').click()">選資料夾</button>
+                </div>
+            </div>
+            <input type="file" id="fileInputRight" multiple accept="image/*">
+            <input type="file" id="folderInputRight" webkitdirectory mozdirectory>
 
-</script>
+            <div class="stats-bar">
+                <span>數量: <strong id="countRight">0</strong></span>
+                <span>大小: <strong id="sizeRight">0 MB</strong></span>
+                <button class="btn-mini" onclick="clearPane('right')" style="color: red; border-color: red;">清空右側</button>
+            </div>
 
-</body>
-</html>
+            <div

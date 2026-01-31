@@ -3,539 +3,415 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ImgSort Pro | 專業圖片整理工作台</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>ImgSort Pro | 極簡工作台</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
     
     <style>
-        /* === 1. 專業級配色系統 (CSS Variables) === */
+        /* === CSS 變數 (維持專業配色) === */
         :root {
-            /* 明亮模式 (Light - Ceramic) */
             --bg-body: #f3f4f6;
-            --bg-panel: #ffffff;
-            --bg-header: #ffffff;
-            --text-primary: #111827;
-            --text-secondary: #6b7280;
-            --accent-primary: #2563eb; /* 專業藍 */
-            --accent-hover: #1d4ed8;
-            --border-color: #e5e7eb;
-            --input-bg: #f9fafb;
+            --bg-bar: #ffffff;
+            --text-main: #1f2937;
+            --text-sub: #6b7280;
+            --accent: #2563eb;
+            --border: #e5e7eb;
             --item-bg: #ffffff;
-            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-            --scrollbar-track: #f1f1f1;
+            --scrollbar-bg: #f1f1f1;
             --scrollbar-thumb: #c1c1c1;
         }
 
         [data-theme="dark"] {
-            /* 暗黑模式 (Dark - Obsidian) - 預設 */
-            --bg-body: #121212; /* 極深灰 */
-            --bg-panel: #1e1e1e; /* 面板灰 */
-            --bg-header: #252526;
-            --text-primary: #e5e5e5;
-            --text-secondary: #a0a0a0;
-            --accent-primary: #3b82f6; /* 亮藍 */
-            --accent-hover: #60a5fa;
-            --border-color: #333333;
-            --input-bg: #2d2d2d;
+            --bg-body: #121212;
+            --bg-bar: #1e1e1e;
+            --text-main: #e5e5e5;
+            --text-sub: #a0a0a0;
+            --accent: #3b82f6;
+            --border: #333333;
             --item-bg: #252526;
-            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
-            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
-            --scrollbar-track: #1e1e1e;
+            --scrollbar-bg: #1e1e1e;
             --scrollbar-thumb: #444;
         }
 
-        /* === 2. 全域基礎樣式 === */
         * { box-sizing: border-box; }
         
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: 'Inter', sans-serif;
             background-color: var(--bg-body);
-            color: var(--text-primary);
+            color: var(--text-main);
             margin: 0;
-            height: 100vh; /* 全螢幕應用程式感 */
+            height: 100vh;
             display: flex;
             flex-direction: column;
-            overflow: hidden; /* 防止 Body 捲動，只讓內容區捲動 */
-            transition: background 0.3s, color 0.3s;
+            overflow: hidden;
         }
 
-        /* 自訂捲軸 (更像 App) */
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: var(--scrollbar-track); }
-        ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
-
-        /* === 3. 頂部導航欄 (Top Bar) === */
-        .app-header {
-            height: 60px;
-            background-color: var(--bg-header);
-            border-bottom: 1px solid var(--border-color);
+        /* === 1. 極簡頂部列 (Compact Header) === */
+        .app-bar {
+            height: 50px; /* 壓到最小高度 */
+            background-color: var(--bg-bar);
+            border-bottom: 1px solid var(--border);
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            padding: 0 20px;
+            padding: 0 15px;
+            gap: 15px;
             flex-shrink: 0;
             z-index: 10;
         }
 
-        .brand {
-            display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.1rem; letter-spacing: -0.5px;
-        }
-        .brand i { color: var(--accent-primary); font-size: 1.2rem; }
+        .brand { font-weight: 700; font-size: 1rem; white-space: nowrap; color: var(--accent); }
+        .brand i { margin-right: 5px; }
 
-        .header-controls { display: flex; gap: 15px; align-items: center; }
-
-        .theme-switch {
-            background: none; border: 1px solid var(--border-color); color: var(--text-secondary);
-            width: 36px; height: 36px; border-radius: 8px; cursor: pointer;
-            display: flex; align-items: center; justify-content: center; transition: all 0.2s;
-        }
-        .theme-switch:hover { color: var(--text-primary); border-color: var(--text-primary); background: var(--input-bg); }
-
-        /* === 4. 設定工具列 (Settings Toolbar) === */
-        .toolbar {
-            background-color: var(--bg-panel);
-            padding: 15px 20px;
-            border-bottom: 1px solid var(--border-color);
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            flex-shrink: 0;
+        /* 設定區直接併入頂部 */
+        .settings-row {
+            display: flex; flex: 1; gap: 10px; align-items: center;
         }
 
-        .input-group { position: relative; }
-        .input-group label {
-            position: absolute; top: -8px; left: 10px;
-            background: var(--bg-panel); padding: 0 5px;
-            font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;
+        .compact-input {
+            background: var(--bg-body); border: 1px solid var(--border);
+            color: var(--text-main); padding: 4px 8px; border-radius: 4px;
+            font-size: 0.85rem; width: 100%; max-width: 180px;
         }
-        
-        .form-control {
-            width: 100%; background: var(--input-bg); border: 1px solid var(--border-color);
-            color: var(--text-primary); padding: 10px 12px; border-radius: 6px;
-            font-size: 0.9rem; transition: border 0.2s; font-family: inherit;
-        }
-        .form-control:focus { outline: none; border-color: var(--accent-primary); }
+        .compact-input:focus { outline: none; border-color: var(--accent); }
 
-        /* === 5. 主要工作區 (Main Workspace) === */
+        .theme-btn {
+            background: none; border: none; color: var(--text-sub);
+            cursor: pointer; font-size: 1rem; padding: 5px;
+        }
+        .theme-btn:hover { color: var(--text-main); }
+
+        /* === 2. 工作區 (Workspace) === */
         .workspace {
-            flex: 1;
+            flex: 1; /* 佔滿剩餘所有空間 */
             display: flex;
-            padding: 20px;
-            gap: 20px;
-            overflow: hidden; /* 內部滾動 */
+            padding: 10px; /* 減少邊距 */
+            gap: 10px;
+            overflow: hidden;
         }
 
         .pane {
             flex: 1;
-            background-color: var(--bg-panel);
-            border-radius: 12px;
-            border: 1px solid var(--border-color);
+            background-color: var(--bg-bar);
+            border-radius: 8px;
+            border: 1px solid var(--border);
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            box-shadow: var(--shadow-sm);
-            transition: box-shadow 0.2s;
+            position: relative; /* For empty state overlay */
         }
-        .pane:hover { box-shadow: var(--shadow-md); }
 
-        /* Pane Header */
+        /* Pane Header: 極簡化，放入按鈕 */
         .pane-header {
-            padding: 15px;
-            border-bottom: 1px solid var(--border-color);
+            height: 40px;
+            padding: 0 10px;
+            border-bottom: 1px solid var(--border);
             display: flex; justify-content: space-between; align-items: center;
-            background: var(--bg-panel);
+            background: var(--bg-bar);
+            flex-shrink: 0;
         }
-        .pane-title { font-weight: 600; display: flex; align-items: center; gap: 8px; }
-        .pane-stats { font-size: 0.8rem; color: var(--text-secondary); font-variant-numeric: tabular-nums;}
-        
-        .pane-actions button {
-            background: none; border: none; color: var(--text-secondary); cursor: pointer;
-            padding: 5px; border-radius: 4px; transition: color 0.2s;
-        }
-        .pane-actions button:hover { color: #ef4444; background: rgba(239, 68, 68, 0.1); }
 
-        /* Drop Zone (Compact) */
-        .drop-zone {
-            margin: 10px 15px;
-            padding: 15px;
-            border: 2px dashed var(--border-color);
-            border-radius: 8px;
-            text-align: center;
-            transition: all 0.2s;
-            background: var(--input-bg);
-            position: relative;
-        }
-        .drop-zone:hover, .drop-zone.drag-over {
-            border-color: var(--accent-primary); background: rgba(37, 99, 235, 0.05);
-        }
-        .drop-zone p { margin: 0; font-size: 0.85rem; color: var(--text-secondary); pointer-events: none;}
-        
-        .btn-group {
-            margin-top: 10px; display: flex; gap: 8px; justify-content: center; pointer-events: auto;
-        }
-        .btn-xs {
-            padding: 4px 10px; font-size: 0.75rem; border-radius: 4px;
-            border: 1px solid var(--border-color); background: var(--bg-panel);
-            color: var(--text-primary); cursor: pointer; display: flex; align-items: center; gap: 4px;
-        }
-        .btn-xs:hover { border-color: var(--text-secondary); }
+        .pane-title { font-weight: 600; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; }
+        .pane-stats { font-size: 0.75rem; color: var(--text-sub); margin-left: 10px; }
 
-        /* Grid Area */
-        .grid-scroller {
+        .pane-tools { display: flex; gap: 5px; }
+        
+        .tool-btn {
+            background: var(--bg-body); border: 1px solid var(--border);
+            color: var(--text-main); border-radius: 4px;
+            padding: 4px 8px; font-size: 0.75rem; cursor: pointer;
+            display: flex; align-items: center; gap: 4px; transition: all 0.2s;
+        }
+        .tool-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .btn-trash:hover { border-color: #ef4444; color: #ef4444; }
+
+        /* Grid Area (Drop Zone is THE GRID) */
+        .grid-area {
             flex: 1;
             overflow-y: auto;
-            padding: 15px;
-            background: var(--bg-body); /* 讓內容區有點區隔 */
+            padding: 10px;
+            position: relative;
+            background: var(--bg-body);
         }
+
+        /* Empty State Overlay (取代巨大的拖曳框) */
+        .empty-state {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            color: var(--text-sub); pointer-events: none; /* 讓點擊穿透 */
+            z-index: 0;
+        }
+        .empty-state i { font-size: 3rem; margin-bottom: 10px; opacity: 0.2; }
+        .empty-state p { font-size: 0.9rem; opacity: 0.6; }
+
+        /* 當有內容時隱藏提示 */
+        .image-grid:not(:empty) + .empty-state { display: none; }
+        /* 因為 SortableJS 可能會留 ghost 元素，改用 JS 控制顯示隱藏較穩，這裡先用 CSS */
 
         .image-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-            gap: 12px;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 8px;
+            min-height: 100%; /* 讓拖曳區填滿 */
+            position: relative;
+            z-index: 1;
         }
 
-        /* Image Card (Professional Look) */
+        /* 拖曳時的高亮 */
+        .pane.drag-over .grid-area { background: rgba(37, 99, 235, 0.1); }
+        .pane.drag-over { border-color: var(--accent); }
+
+        /* === 3. 卡片樣式 (微縮版) === */
         .img-card {
             background: var(--item-bg);
-            border-radius: 6px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
             overflow: hidden;
-            border: 1px solid var(--border-color);
-            position: relative;
-            box-shadow: var(--shadow-sm);
-            transition: transform 0.1s;
             display: flex; flex-direction: column;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
         }
         
-        /* Dragging States */
-        .sortable-ghost { opacity: 0.2; background: var(--accent-primary); border: 2px dashed var(--accent-primary); }
-        .sortable-drag { opacity: 1; transform: scale(1.05); box-shadow: var(--shadow-lg); z-index: 100; cursor: grabbing; }
-
         .img-preview {
             aspect-ratio: 1;
-            position: relative;
             background: #000;
+            position: relative;
             cursor: grab;
         }
+        .img-preview img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
         .img-preview:active { cursor: grabbing; }
-        .img-preview img {
-            width: 100%; height: 100%; object-fit: contain; /* 完整顯示圖片 */
-            pointer-events: none;
-        }
 
-        .card-meta {
-            padding: 6px 8px;
-            border-top: 1px solid var(--border-color);
+        .card-info {
+            padding: 4px 6px;
             display: flex; justify-content: space-between; align-items: center;
-            height: 32px;
+            border-top: 1px solid var(--border);
             background: var(--item-bg);
+            height: 26px;
         }
-
-        .filename {
-            font-size: 0.7rem; color: var(--text-secondary);
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80px;
-        }
-
-        .btn-trash {
-            border: none; background: none; color: var(--text-secondary);
-            cursor: pointer; font-size: 0.8rem; padding: 2px;
-            border-radius: 4px; display: flex; align-items: center;
-        }
-        .btn-trash:hover { color: #ef4444; background: rgba(239, 68, 68, 0.1); }
+        .fname { font-size: 0.65rem; color: var(--text-sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 70px; }
+        .del-btn { border: none; background: none; color: var(--text-sub); cursor: pointer; font-size: 0.75rem; padding: 0; }
+        .del-btn:hover { color: #ef4444; }
 
         .idx-badge {
-            position: absolute; top: 4px; left: 4px;
+            position: absolute; top: 2px; left: 2px;
             background: rgba(0,0,0,0.6); color: white;
-            font-size: 0.65rem; padding: 2px 6px; border-radius: 4px;
-            pointer-events: none; backdrop-filter: blur(2px);
+            font-size: 0.6rem; padding: 1px 4px; border-radius: 3px; pointer-events: none;
         }
 
-        /* === 6. 底部狀態列 (Bottom Status Bar) === */
-        .status-bar {
-            height: 60px;
-            background: var(--bg-panel);
-            border-top: 1px solid var(--border-color);
+        /* === 4. 底部列 (Footer) === */
+        .footer-bar {
+            height: 40px; /* 壓到最小 */
+            background: var(--bg-bar);
+            border-top: 1px solid var(--border);
             display: flex; justify-content: space-between; align-items: center;
-            padding: 0 20px;
+            padding: 0 15px;
             flex-shrink: 0;
-            z-index: 20;
+            font-size: 0.85rem;
         }
 
-        .total-info {
-            font-size: 0.9rem; color: var(--text-secondary);
-            display: flex; gap: 15px;
+        .dl-btn {
+            background: var(--accent); color: white; border: none;
+            padding: 5px 15px; border-radius: 4px; cursor: pointer;
+            font-size: 0.85rem; font-weight: 500; display: flex; align-items: center; gap: 5px;
         }
-        .total-info strong { color: var(--text-primary); }
+        .dl-btn:disabled { background: var(--border); color: var(--text-sub); cursor: not-allowed; }
+        .dl-btn:hover:not(:disabled) { opacity: 0.9; }
 
-        .action-area { display: flex; align-items: center; gap: 15px; }
+        /* Progress & Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--scrollbar-bg); }
+        ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
 
-        .btn-download {
-            background: var(--accent-primary);
-            color: white; border: none;
-            padding: 10px 24px; border-radius: 6px;
-            font-weight: 600; font-size: 0.9rem;
-            cursor: pointer; display: flex; align-items: center; gap: 8px;
-            transition: background 0.2s;
-        }
-        .btn-download:hover:not(:disabled) { background: var(--accent-hover); }
-        .btn-download:disabled { background: var(--border-color); color: var(--text-secondary); cursor: not-allowed; }
-
-        /* Progress Overlay */
         .progress-overlay {
-            position: fixed; bottom: 70px; right: 20px;
-            background: var(--bg-panel); border: 1px solid var(--border-color);
-            padding: 15px; border-radius: 8px; box-shadow: var(--shadow-lg);
-            width: 300px; display: none; z-index: 50;
+            position: fixed; bottom: 50px; right: 15px;
+            background: var(--bg-bar); padding: 10px; border: 1px solid var(--border);
+            border-radius: 6px; width: 200px; display: none; z-index: 50; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
         }
-        .progress-bar { width: 100%; height: 6px; background: var(--input-bg); border-radius: 3px; overflow: hidden; margin-bottom: 5px; }
-        .progress-fill { height: 100%; background: var(--accent-primary); width: 0%; transition: width 0.1s; }
-        .progress-text { font-size: 0.8rem; color: var(--text-secondary); text-align: right; }
+        .p-bar { height: 4px; background: var(--bg-body); width: 100%; border-radius: 2px; overflow: hidden; }
+        .p-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.1s; }
 
-        /* RWD */
-        @media (max-width: 768px) {
-            .workspace { flex-direction: column; overflow-y: auto; }
-            .pane { min-height: 400px; }
-            .toolbar { grid-template-columns: 1fr; }
-            .status-bar { flex-direction: column; height: auto; padding: 15px; gap: 10px; }
-        }
-        
         input[type="file"] { display: none; }
     </style>
 </head>
 <body>
 
-    <header class="app-header">
-        <div class="brand">
-            <i class="fa-solid fa-layer-group"></i> ImgSort Pro
-        </div>
-        <div class="header-controls">
-            <button class="theme-switch" id="themeBtn" title="切換主題">
-                <i class="fa-solid fa-moon"></i>
-            </button>
-        </div>
-    </header>
-
-    <div class="toolbar">
-        <div class="input-group">
-            <label>ZIP 檔名設定</label>
-            <input type="text" id="zipNameInput" class="form-control" placeholder="images_YYYYMMDD.zip">
-        </div>
-        <div class="input-group">
-            <label>批次命名 (Prefix)</label>
-            <input type="text" id="renamePrefix" class="form-control" placeholder="例: trip_japan (選填)">
-        </div>
-        <div class="input-group">
-            <label>序號位數 (Padding)</label>
-            <select id="paddingSelect" class="form-control">
-                <option value="1">1位 (1, 2, 3...)</option>
-                <option value="2" selected>2位 (01, 02, 03...)</option>
-                <option value="3">3位 (001, 002, 003...)</option>
+    <header class="app-bar">
+        <div class="brand"><i class="fa-solid fa-layer-group"></i> ImgSort</div>
+        
+        <div class="settings-row">
+            <input type="text" id="zipNameInput" class="compact-input" placeholder="ZIP 檔名">
+            <input type="text" id="renamePrefix" class="compact-input" placeholder="前綴 (Prefix)">
+            <select id="paddingSelect" class="compact-input" style="width: 80px;">
+                <option value="1">1位</option>
+                <option value="2" selected>2位</option>
+                <option value="3">3位</option>
             </select>
         </div>
-    </div>
+
+        <button class="theme-btn" id="themeBtn"><i class="fa-solid fa-moon"></i></button>
+    </header>
 
     <div class="workspace">
         
-        <div class="pane">
+        <div class="pane" id="paneLeft">
             <div class="pane-header">
-                <div class="pane-title"><i class="fa-regular fa-folder-open"></i> 來源 / 暫存區 (左)</div>
-                <div class="pane-stats">
-                    <span id="countLeft">0</span> 張 / <span id="sizeLeft">0.0</span> MB
-                </div>
-                <div class="pane-actions">
-                    <button onclick="clearPane('left')" title="清空此區"><i class="fa-solid fa-trash"></i></button>
-                </div>
-            </div>
-            
-            <div class="drop-zone" id="dropZoneLeft">
-                <p>拖曳圖片/資料夾 至此</p>
-                <div class="btn-group">
-                    <button class="btn-xs" id="btnFileLeft"><i class="fa-regular fa-image"></i> 選圖</button>
-                    <button class="btn-xs" id="btnFolderLeft"><i class="fa-regular fa-folder"></i> 選資料夾</button>
+                <div class="pane-title">來源 (左) <span class="pane-stats" id="infoLeft">0 張</span></div>
+                <div class="pane-tools">
+                    <button class="tool-btn" id="btnAddFileLeft"><i class="fa-solid fa-plus"></i> 圖</button>
+                    <button class="tool-btn" id="btnAddFolderLeft"><i class="fa-solid fa-folder-plus"></i> 資料夾</button>
+                    <button class="tool-btn btn-trash" onclick="clearPane('left')"><i class="fa-solid fa-trash"></i></button>
                 </div>
                 <input type="file" id="inpFileLeft" multiple accept="image/*">
                 <input type="file" id="inpFolderLeft" webkitdirectory mozdirectory>
             </div>
-
-            <div class="grid-scroller">
+            <div class="grid-area">
                 <div class="image-grid" id="gridLeft"></div>
+                <div class="empty-state" id="emptyLeft">
+                    <i class="fa-solid fa-cloud-arrow-up"></i>
+                    <p>拖曳檔案至此</p>
+                </div>
             </div>
         </div>
 
-        <div class="pane">
+        <div class="pane" id="paneRight">
             <div class="pane-header">
-                <div class="pane-title" style="color: var(--accent-primary);"><i class="fa-solid fa-star"></i> 精選 / 輸出區 (右)</div>
-                <div class="pane-stats">
-                    <span id="countRight">0</span> 張 / <span id="sizeRight">0.0</span> MB
-                </div>
-                <div class="pane-actions">
-                    <button onclick="clearPane('right')" title="清空此區"><i class="fa-solid fa-trash"></i></button>
-                </div>
-            </div>
-            
-            <div class="drop-zone" id="dropZoneRight">
-                <p>拖曳圖片/資料夾 至此</p>
-                <div class="btn-group">
-                    <button class="btn-xs" id="btnFileRight"><i class="fa-regular fa-image"></i> 選圖</button>
-                    <button class="btn-xs" id="btnFolderRight"><i class="fa-regular fa-folder"></i> 選資料夾</button>
+                <div class="pane-title" style="color: var(--accent)">精選 (右) <span class="pane-stats" id="infoRight">0 張</span></div>
+                <div class="pane-tools">
+                    <button class="tool-btn" id="btnAddFileRight"><i class="fa-solid fa-plus"></i> 圖</button>
+                    <button class="tool-btn" id="btnAddFolderRight"><i class="fa-solid fa-folder-plus"></i> 資料夾</button>
+                    <button class="tool-btn btn-trash" onclick="clearPane('right')"><i class="fa-solid fa-trash"></i></button>
                 </div>
                 <input type="file" id="inpFileRight" multiple accept="image/*">
                 <input type="file" id="inpFolderRight" webkitdirectory mozdirectory>
             </div>
-
-            <div class="grid-scroller">
+            <div class="grid-area">
                 <div class="image-grid" id="gridRight"></div>
+                <div class="empty-state" id="emptyRight">
+                    <i class="fa-solid fa-star"></i>
+                    <p>拖曳檔案至此</p>
+                </div>
             </div>
         </div>
-
     </div>
 
-    <footer class="status-bar">
-        <div class="total-info">
-            <span>總計: <strong id="totalCount">0</strong> 張</span>
-            <span>大小: <strong id="totalSize">0.00 MB</strong></span>
+    <footer class="footer-bar">
+        <div style="color: var(--text-sub)">
+            總計: <strong id="totalCount" style="color: var(--text-main)">0</strong> 張 
+            (<span id="totalSize">0.00 MB</span>)
         </div>
-        <div class="action-area">
-            <button class="btn-download" id="downloadBtn" disabled>
-                <i class="fa-solid fa-file-export"></i> 打包下載 ZIP
-            </button>
-        </div>
+        <button class="dl-btn" id="downloadBtn" disabled>
+            <i class="fa-solid fa-file-export"></i> 打包下載
+        </button>
     </footer>
 
     <div class="progress-overlay" id="progressPopup">
-        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
-        <div class="progress-text" id="progressText">準備中...</div>
+        <div class="p-bar"><div class="p-fill" id="progressFill"></div></div>
+        <div style="font-size: 0.7rem; text-align: right; margin-top: 4px; color: var(--text-sub)" id="progressText">處理中...</div>
     </div>
 
 <script>
-    // === 1. Theme Manager ===
+    // === 1. Init & Theme ===
     const htmlEl = document.documentElement;
     const themeBtn = document.getElementById('themeBtn');
     
     function setTheme(theme) {
         htmlEl.setAttribute('data-theme', theme);
         localStorage.setItem('theme', theme);
-        const icon = themeBtn.querySelector('i');
-        if (theme === 'dark') {
-            icon.className = 'fa-solid fa-sun'; // Show sun icon in dark mode
-        } else {
-            icon.className = 'fa-solid fa-moon';
-        }
+        themeBtn.innerHTML = theme === 'dark' ? '<i class="fa-solid fa-sun"></i>' : '<i class="fa-solid fa-moon"></i>';
     }
-    
-    // Default to dark mode if no preference
-    const savedTheme = localStorage.getItem('theme') || 'dark';
-    setTheme(savedTheme);
+    setTheme(localStorage.getItem('theme') || 'dark');
+    themeBtn.addEventListener('click', () => setTheme(htmlEl.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'));
 
-    themeBtn.addEventListener('click', () => {
-        const current = htmlEl.getAttribute('data-theme');
-        setTheme(current === 'dark' ? 'light' : 'dark');
-    });
-
-    // === 2. Data & Elements ===
-    let fileStorage = {}; // { 'id': fileObj }
-
+    // === 2. Data & Selectors ===
+    let fileStorage = {};
     const dom = {
         left: {
-            zone: document.getElementById('dropZoneLeft'),
+            pane: document.getElementById('paneLeft'),
             grid: document.getElementById('gridLeft'),
-            count: document.getElementById('countLeft'),
-            size: document.getElementById('sizeLeft'),
-            // Inputs & Buttons
+            empty: document.getElementById('emptyLeft'),
+            info: document.getElementById('infoLeft'),
+            // Inputs
             iFile: document.getElementById('inpFileLeft'),
             iFolder: document.getElementById('inpFolderLeft'),
-            bFile: document.getElementById('btnFileLeft'),
-            bFolder: document.getElementById('btnFolderLeft')
+            // Buttons
+            bFile: document.getElementById('btnAddFileLeft'),
+            bFolder: document.getElementById('btnAddFolderLeft')
         },
         right: {
-            zone: document.getElementById('dropZoneRight'),
+            pane: document.getElementById('paneRight'),
             grid: document.getElementById('gridRight'),
-            count: document.getElementById('countRight'),
-            size: document.getElementById('sizeRight'),
-            // Inputs & Buttons
+            empty: document.getElementById('emptyRight'),
+            info: document.getElementById('infoRight'),
             iFile: document.getElementById('inpFileRight'),
             iFolder: document.getElementById('inpFolderRight'),
-            bFile: document.getElementById('btnFileRight'),
-            bFolder: document.getElementById('btnFolderRight')
+            bFile: document.getElementById('btnAddFileRight'),
+            bFolder: document.getElementById('btnAddFolderRight')
         },
         footer: {
-            totalCount: document.getElementById('totalCount'),
-            totalSize: document.getElementById('totalSize'),
-            dlBtn: document.getElementById('downloadBtn')
+            count: document.getElementById('totalCount'),
+            size: document.getElementById('totalSize'),
+            btn: document.getElementById('downloadBtn')
         },
-        progress: {
-            popup: document.getElementById('progressPopup'),
+        prog: {
+            box: document.getElementById('progressPopup'),
             fill: document.getElementById('progressFill'),
-            text: document.getElementById('progressText')
+            txt: document.getElementById('progressText')
         },
-        settings: {
+        sets: {
             zip: document.getElementById('zipNameInput'),
-            prefix: document.getElementById('renamePrefix'),
-            padding: document.getElementById('paddingSelect')
+            pre: document.getElementById('renamePrefix'),
+            pad: document.getElementById('paddingSelect')
         }
     };
-
-    // Init Zip Name
+    
+    // Default Zip Name
     const now = new Date();
-    dom.settings.zip.placeholder = `images_${now.getFullYear()}${(now.getMonth()+1).toString().padStart(2,'0')}${now.getDate().toString().padStart(2,'0')}.zip`;
+    dom.sets.zip.placeholder = `images_${now.getFullYear()}${(now.getMonth()+1).toString().padStart(2,'0')}${now.getDate().toString().padStart(2,'0')}.zip`;
 
-    // === 3. SortableJS with Cross-Drag (Shared Group) ===
-    const sortableConfig = {
-        group: 'shared', // 關鍵：允許跨欄位拖曳
+    // === 3. Sortable & Logic ===
+    const sortParams = {
+        group: 'shared',
         animation: 150,
-        handle: '.img-preview', // 只能拖曳圖片區域
+        handle: '.img-preview',
         ghostClass: 'sortable-ghost',
-        dragClass: 'sortable-drag',
-        onEnd: function(evt) {
-            // 拖曳結束後，兩邊都要更新，因為可能從左搬到右
-            updateUI('left');
-            updateUI('right');
-        }
+        onEnd: () => { updateUI('left'); updateUI('right'); }
     };
+    new Sortable(dom.left.grid, sortParams);
+    new Sortable(dom.right.grid, sortParams);
 
-    new Sortable(dom.left.grid, sortableConfig);
-    new Sortable(dom.right.grid, sortableConfig);
+    // === 4. Events ===
+    setupPane('left');
+    setupPane('right');
 
-    // === 4. Event Listeners ===
-    setupPaneEvents('left');
-    setupPaneEvents('right');
-
-    function setupPaneEvents(side) {
+    function setupPane(side) {
         const d = dom[side];
         
-        // Buttons trigger inputs
-        d.bFile.addEventListener('click', (e) => { e.stopPropagation(); d.iFile.click(); });
-        d.bFolder.addEventListener('click', (e) => { e.stopPropagation(); d.iFolder.click(); });
+        // Button Clicks
+        d.bFile.addEventListener('click', () => d.iFile.click());
+        d.bFolder.addEventListener('click', () => d.iFolder.click());
         
-        // Input Change
+        // Inputs
         d.iFile.addEventListener('change', e => handleFiles(e.target.files, side));
         d.iFolder.addEventListener('change', e => handleFiles(e.target.files, side));
 
-        // Drag & Drop Zone logic
-        const z = d.zone;
-        z.addEventListener('dragenter', e => { e.preventDefault(); z.classList.add('drag-over'); });
-        z.addEventListener('dragover', e => { e.preventDefault(); z.classList.add('drag-over'); });
-        z.addEventListener('dragleave', e => { if (e.target === z) z.classList.remove('drag-over'); });
-        z.addEventListener('drop', async e => {
+        // Drag & Drop on the WHOLE PANE
+        const pane = d.pane;
+        pane.addEventListener('dragenter', e => { e.preventDefault(); pane.classList.add('drag-over'); });
+        pane.addEventListener('dragover', e => { e.preventDefault(); pane.classList.add('drag-over'); });
+        pane.addEventListener('dragleave', e => { if(e.target === pane) pane.classList.remove('drag-over'); });
+        pane.addEventListener('drop', async e => {
             e.preventDefault();
-            z.classList.remove('drag-over');
-            if (e.dataTransfer.items) await scanItems(e.dataTransfer.items, side);
+            pane.classList.remove('drag-over');
+            if(e.dataTransfer.items) await scanItems(e.dataTransfer.items, side);
         });
     }
 
-    // === 5. File Processing ===
+    // === 5. File Handling ===
     function handleFiles(files, side) {
-        Array.from(files).forEach(f => addFileToUI(f, side));
+        Array.from(files).forEach(f => addCard(f, side));
         updateUI(side);
-        // Clear inputs
-        dom[side].iFile.value = '';
-        dom[side].iFolder.value = '';
+        dom[side].iFile.value = ''; dom[side].iFolder.value = '';
     }
 
     async function scanItems(items, side) {
@@ -545,7 +421,7 @@
             if (entry) promises.push(traverse(entry, side));
             else if (items[i].kind === 'file') {
                 const f = items[i].getAsFile();
-                if(f) addFileToUI(f, side);
+                if(f) addCard(f, side);
             }
         }
         await Promise.all(promises);
@@ -554,9 +430,8 @@
 
     function traverse(entry, side) {
         return new Promise(resolve => {
-            if (entry.isFile) {
-                entry.file(f => { addFileToUI(f, side); resolve(); });
-            } else if (entry.isDirectory) {
+            if (entry.isFile) entry.file(f => { addCard(f, side); resolve(); });
+            else if (entry.isDirectory) {
                 const reader = entry.createReader();
                 const read = () => {
                     reader.readEntries(async entries => {
@@ -572,13 +447,11 @@
         });
     }
 
-    function addFileToUI(file, side) {
+    function addCard(file, side) {
         if (!file.type.startsWith('image/') && !/\.(jpe?g|png|gif|webp|svg|bmp)$/i.test(file.name)) return;
-        
         const id = Date.now() + Math.random().toString(36).substr(2, 9);
         fileStorage[id] = file;
 
-        // Create Card DOM
         const div = document.createElement('div');
         div.className = 'img-card';
         div.dataset.id = id;
@@ -587,21 +460,19 @@
                 <span class="idx-badge">0</span>
                 <img src="${URL.createObjectURL(file)}" loading="lazy">
             </div>
-            <div class="card-meta">
-                <div class="filename" title="${file.name}">${file.name}</div>
-                <button class="btn-trash" onclick="removeCard(this)"><i class="fa-solid fa-xmark"></i></button>
+            <div class="card-info">
+                <span class="fname" title="${file.name}">${file.name}</span>
+                <button class="del-btn" onclick="removeCard(this)"><i class="fa-solid fa-xmark"></i></button>
             </div>
         `;
         dom[side].grid.appendChild(div);
     }
 
-    // === 6. UI Actions ===
+    // === 6. UI Logic ===
     window.removeCard = function(btn) {
         const card = btn.closest('.img-card');
-        // Determine which side it is currently in
         const gridId = card.parentElement.id; 
         const side = gridId === 'gridLeft' ? 'left' : 'right';
-        
         delete fileStorage[card.dataset.id];
         card.remove();
         updateUI(side);
@@ -610,93 +481,74 @@
     window.clearPane = function(side) {
         dom[side].grid.innerHTML = '';
         updateUI(side);
-        // Note: We don't aggressively clear fileStorage keys for simplicity, 
-        // as download only looks at DOM IDs.
     };
 
     function updateUI(side) {
-        // Update Indices for the specific side
-        const items = dom[side].grid.children;
-        Array.from(items).forEach((el, idx) => {
-            el.querySelector('.idx-badge').textContent = idx + 1;
-        });
+        const d = dom[side];
+        const cards = d.grid.children;
+        
+        // Show/Hide Empty State
+        d.empty.style.display = cards.length > 0 ? 'none' : 'flex';
 
-        // Calculate Side Stats
+        // Indices & Size
         let size = 0;
-        Array.from(items).forEach(el => {
+        Array.from(cards).forEach((el, idx) => {
+            el.querySelector('.idx-badge').textContent = idx + 1;
             const f = fileStorage[el.dataset.id];
             if(f) size += f.size;
         });
-        dom[side].count.textContent = items.length;
-        dom[side].size.textContent = (size/1024/1024).toFixed(1);
-
-        updateTotal();
-    }
-
-    function updateTotal() {
-        const leftIds = Array.from(dom.left.grid.children).map(e => e.dataset.id);
-        const rightIds = Array.from(dom.right.grid.children).map(e => e.dataset.id);
-        const allIds = [...leftIds, ...rightIds];
-
-        let totalSize = 0;
-        allIds.forEach(id => {
-            if(fileStorage[id]) totalSize += fileStorage[id].size;
+        d.info.textContent = `${cards.length} 張 (${(size/1024/1024).toFixed(1)}MB)`;
+        
+        // Global
+        const all = [...dom.left.grid.children, ...dom.right.grid.children];
+        let tSize = 0;
+        all.forEach(el => {
+            const f = fileStorage[el.dataset.id];
+            if(f) tSize += f.size;
         });
-
-        dom.footer.totalCount.textContent = allIds.length;
-        dom.footer.totalSize.textContent = (totalSize/1024/1024).toFixed(2) + " MB";
-        dom.footer.dlBtn.disabled = allIds.length === 0;
+        dom.footer.count.textContent = all.length;
+        dom.footer.size.textContent = (tSize/1024/1024).toFixed(2) + " MB";
+        dom.footer.btn.disabled = all.length === 0;
     }
 
-    // === 7. Download Logic ===
-    dom.footer.dlBtn.addEventListener('click', () => {
-        // Collect Left then Right
-        const leftIds = Array.from(dom.left.grid.children).map(e => e.dataset.id);
-        const rightIds = Array.from(dom.right.grid.children).map(e => e.dataset.id);
-        const allIds = [...leftIds, ...rightIds];
-
-        if(allIds.length === 0) return;
+    // === 7. Download ===
+    dom.footer.btn.addEventListener('click', () => {
+        const all = [...dom.left.grid.children, ...dom.right.grid.children];
+        if(all.length===0) return;
 
         const zip = new JSZip();
-        const prefix = dom.settings.prefix.value.trim();
-        const padLen = parseInt(dom.settings.padding.value);
-        
-        // UI State
-        dom.footer.dlBtn.disabled = true;
-        dom.progress.popup.style.display = 'block';
+        const pre = dom.sets.pre.value.trim();
+        const pad = parseInt(dom.sets.pad.value);
 
-        allIds.forEach((id, idx) => {
-            const file = fileStorage[id];
-            if(!file) return;
+        dom.footer.btn.disabled = true;
+        dom.prog.box.style.display = 'block';
 
-            let name = file.name;
-            if(prefix) {
-                const ext = name.substring(name.lastIndexOf('.'));
-                const num = (idx+1).toString().padStart(padLen, '0');
-                name = `${prefix}_${num}${ext}`;
+        all.forEach((el, idx) => {
+            const f = fileStorage[el.dataset.id];
+            if(!f) return;
+            let n = f.name;
+            if(pre) {
+                const ext = n.substring(n.lastIndexOf('.'));
+                n = `${pre}_${(idx+1).toString().padStart(pad, '0')}${ext}`;
             }
-            zip.file(name, file);
+            zip.file(n, f);
         });
 
-        zip.generateAsync({type:"blob"}, meta => {
-            const p = meta.percent.toFixed(0);
-            dom.progress.fill.style.width = p + '%';
-            dom.progress.text.textContent = `正在壓縮... ${p}%`;
-        }).then(content => {
-            let zipName = dom.settings.zip.value.trim() || dom.settings.zip.placeholder;
-            if(!zipName.toLowerCase().endsWith('.zip')) zipName += '.zip';
-            
-            saveAs(content, zipName);
-
-            // Reset
+        zip.generateAsync({type:"blob"}, m => {
+            const p = m.percent.toFixed(0);
+            dom.prog.fill.style.width = p+'%';
+            dom.prog.txt.textContent = `壓縮中 ${p}%`;
+        }).then(blob => {
+            let zName = dom.sets.zip.value.trim() || dom.sets.zip.placeholder;
+            if(!zName.toLowerCase().endsWith('.zip')) zName += '.zip';
+            saveAs(blob, zName);
             setTimeout(() => {
-                dom.progress.popup.style.display = 'none';
-                dom.progress.fill.style.width = '0%';
-                dom.footer.dlBtn.disabled = false;
+                dom.prog.box.style.display = 'none';
+                dom.prog.fill.style.width = '0%';
+                dom.footer.btn.disabled = false;
             }, 1000);
         });
     });
-
 </script>
 </body>
 </html>

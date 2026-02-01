@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LINE 貼圖整理打包工具 (Fix版)</title>
+    <title>LINE 貼圖打包 + 校對圖生成器</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -13,194 +13,92 @@
     <style>
         /* === CSS 變數 === */
         :root {
-            --bg-body: #f3f4f6;
-            --bg-bar: #ffffff;
-            --text-main: #1f2937;
-            --text-sub: #6b7280;
-            --accent: #2563eb;
-            --border: #e5e7eb;
-            --item-bg: #ffffff;
-            
-            /* 狀態色 */
-            --bg-main: #fee2e2;
-            --border-main: #ef4444;
-            --bg-tab: #dcfce7;
-            --border-tab: #22c55e;
+            --bg-body: #f3f4f6; --bg-bar: #ffffff; --text-main: #1f2937; --text-sub: #6b7280;
+            --accent: #2563eb; --border: #e5e7eb; --item-bg: #ffffff;
+            --bg-main: #fee2e2; --border-main: #ef4444; --bg-tab: #dcfce7; --border-tab: #22c55e;
             --glow-color: rgba(37, 99, 235, 0.6);
         }
-
         [data-theme="dark"] {
-            --bg-body: #121212;
-            --bg-bar: #1e1e1e;
-            --text-main: #e5e5e5;
-            --text-sub: #a0a0a0;
-            --accent: #3b82f6;
-            --border: #333333;
-            --item-bg: #252526;
-            
-            --bg-main: #451a1a; 
-            --border-main: #f87171;
-            --bg-tab: #14532d;
-            --border-tab: #4ade80;
+            --bg-body: #121212; --bg-bar: #1e1e1e; --text-main: #e5e5e5; --text-sub: #a0a0a0;
+            --accent: #3b82f6; --border: #333333; --item-bg: #252526;
+            --bg-main: #451a1a; --border-main: #f87171; --bg-tab: #14532d; --border-tab: #4ade80;
             --glow-color: rgba(96, 165, 250, 0.7);
         }
 
         * { box-sizing: border-box; }
-        
-        body {
-            font-family: 'Inter', sans-serif; background-color: var(--bg-body);
-            color: var(--text-main); margin: 0; height: 100vh;
-            display: flex; flex-direction: column; overflow: hidden;
-        }
+        body { font-family: 'Inter', sans-serif; background: var(--bg-body); color: var(--text-main); margin: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
-        /* === Header === */
-        .app-bar {
-            height: 50px; background-color: var(--bg-bar); border-bottom: 1px solid var(--border);
-            display: flex; align-items: center; padding: 0 15px; gap: 15px; flex-shrink: 0; z-index: 10;
-        }
+        /* Header */
+        .app-bar { height: 50px; background: var(--bg-bar); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 15px; gap: 15px; flex-shrink: 0; z-index: 10; }
         .brand { font-weight: 700; color: #06c755; font-size: 1rem; white-space: nowrap; }
-        .settings-row { display: flex; flex: 1; gap: 10px; align-items: center; overflow: hidden; }
-        .compact-input {
-            background: var(--bg-body); border: 1px solid var(--border);
-            color: var(--text-main); padding: 4px 8px; border-radius: 4px;
-            font-size: 0.85rem; width: 100%; max-width: 140px;
-        }
+        .settings-row { display: flex; flex: 1; gap: 8px; align-items: center; overflow: hidden; }
+        .compact-input { background: var(--bg-body); border: 1px solid var(--border); color: var(--text-main); padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; width: 100%; max-width: 120px; }
         .theme-btn { background: none; border: none; color: var(--text-sub); cursor: pointer; padding: 5px; font-size: 1rem; }
 
-        /* === Workspace === */
+        /* Workspace */
         .workspace { flex: 1; display: flex; padding: 10px; gap: 10px; overflow: hidden; }
-        
-        .pane {
-            flex: 1; background-color: var(--bg-bar); border-radius: 8px;
-            border: 1px solid var(--border); display: flex; flex-direction: column;
-            overflow: hidden; position: relative;
-        }
-
-        /* 修復版面擠壓問題 */
-        .pane-header {
-            height: 44px; padding: 0 8px; border-bottom: 1px solid var(--border);
-            display: flex; justify-content: space-between; align-items: center;
-            background: var(--bg-bar); flex-shrink: 0; flex-wrap: nowrap; /* 禁止換行 */
-            gap: 10px;
-        }
-        .pane-title { 
-            font-weight: 600; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-            display: flex; align-items: center;
-        }
-        
+        .pane { flex: 1; background: var(--bg-bar); border-radius: 8px; border: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; position: relative; }
+        .pane-header { height: 44px; padding: 0 8px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--bg-bar); flex-shrink: 0; flex-wrap: nowrap; gap: 10px; }
+        .pane-title { font-weight: 600; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; }
         .pane-tools { display: flex; gap: 5px; flex-shrink: 0; }
-        .tool-btn {
-            background: var(--bg-body); border: 1px solid var(--border);
-            color: var(--text-main); border-radius: 4px; padding: 5px 10px;
-            font-size: 0.75rem; cursor: pointer; display: flex; align-items: center; gap: 5px;
-            white-space: nowrap; transition: all 0.2s;
-        }
+        .tool-btn { background: var(--bg-body); border: 1px solid var(--border); color: var(--text-main); border-radius: 4px; padding: 5px 10px; font-size: 0.75rem; cursor: pointer; display: flex; align-items: center; gap: 5px; white-space: nowrap; transition: all 0.2s; }
         .tool-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--item-bg); }
         .btn-trash-all { color: #ef4444; }
         .btn-trash-all:hover { background: #fee2e2; border-color: #ef4444; }
 
-        /* 網格區 */
+        /* Grid */
         .grid-area { flex: 1; overflow-y: auto; padding: 10px; position: relative; background: var(--bg-body); }
-        .image-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(115px, 1fr)); gap: 12px; min-height: 100%; padding-bottom: 40px;}
-        
-        .empty-state {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            color: var(--text-sub); pointer-events: none;
-        }
+        .image-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(115px, 1fr)); gap: 12px; min-height: 100%; padding-bottom: 40px; }
+        .empty-state { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-sub); pointer-events: none; }
         .image-grid:not(:empty) + .empty-state { display: none; }
 
-        /* === 卡片樣式 === */
-        .img-card {
-            background: var(--item-bg); border: 1px solid var(--border); border-radius: 6px;
-            overflow: hidden; display: flex; flex-direction: column;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.1); position: relative;
-            transition: transform 0.15s, box-shadow 0.15s;
-        }
-
-        /* 藍色光暈 */
-        .img-card:hover {
-            border-color: var(--accent);
-            box-shadow: 0 0 0 2px var(--glow-color); /* 使用 outline 效果更佳 */
-            transform: translateY(-2px); z-index: 10;
-        }
-
-        /* 狀態顏色邏輯 */
+        /* Card */
+        .img-card { background: var(--item-bg); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 1px 2px rgba(0,0,0,0.1); position: relative; transition: transform 0.15s; }
+        .img-card:hover { border-color: var(--accent); box-shadow: 0 0 0 2px var(--glow-color); transform: translateY(-2px); z-index: 10; }
         .img-card.is-main { background-color: var(--bg-main); border: 1px solid var(--border-main); }
         .img-card.is-tab { background-color: var(--bg-tab); border: 1px solid var(--border-tab); }
-        
-        /* 雙重狀態：漸層背景 */
-        .img-card.is-main.is-tab {
-            background: linear-gradient(135deg, var(--bg-main) 0%, var(--bg-tab) 100%);
-            border: 1px solid var(--accent);
-        }
+        .img-card.is-main.is-tab { background: linear-gradient(135deg, var(--bg-main) 0%, var(--bg-tab) 100%); border: 1px solid var(--accent); }
 
         .img-preview { aspect-ratio: 1; background: #000; position: relative; cursor: grab; }
         .img-preview img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
         .img-preview:active { cursor: grabbing; }
 
-        .idx-badge {
-            position: absolute; top: 3px; left: 3px;
-            background: rgba(0,0,0,0.6); color: white;
-            font-size: 0.65rem; padding: 1px 5px; border-radius: 3px; pointer-events: none; font-family: monospace;
-        }
-
+        .idx-badge { position: absolute; top: 3px; left: 3px; background: rgba(0,0,0,0.6); color: white; font-size: 0.65rem; padding: 1px 5px; border-radius: 3px; pointer-events: none; font-family: monospace; }
         .card-info { padding: 6px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 5px; }
         .fname { font-size: 0.7rem; color: var(--text-sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
-        
         .card-actions { display: flex; gap: 4px; }
-        .tag-btn {
-            flex: 1; border: 1px solid var(--border); background: var(--bg-body);
-            color: var(--text-sub); font-size: 0.65rem; border-radius: 3px;
-            cursor: pointer; padding: 3px 0; font-weight: 600; transition: all 0.1s;
-        }
+        .tag-btn { flex: 1; border: 1px solid var(--border); background: var(--bg-body); color: var(--text-sub); font-size: 0.65rem; border-radius: 3px; cursor: pointer; padding: 3px 0; font-weight: 600; transition: all 0.1s; }
         .tag-btn:hover { background: var(--border); color: var(--text-main); }
-
-        /* 選中按鈕樣式 */
         .is-main .btn-main { background: var(--border-main); color: white; border-color: var(--border-main); }
         .is-tab .btn-tab { background: var(--border-tab); color: white; border-color: var(--border-tab); }
-        
-        /* 雙選時按鈕仍然保持各自顏色 */
         .is-main.is-tab .btn-main { background: #ef4444; }
         .is-main.is-tab .btn-tab { background: #22c55e; }
 
-        /* 刪除按鈕 (修復：移到最上層) */
-        .card-delete {
-            position: absolute; top: 3px; right: 3px;
-            width: 24px; height: 24px; border-radius: 50%;
-            background: rgba(255, 255, 255, 0.9);
-            color: #ef4444; border: 1px solid #ef4444;
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer; z-index: 20; /* 確保在最上層 */
-            opacity: 0.8; transition: all 0.2s;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        }
+        .card-delete { position: absolute; top: 3px; right: 3px; width: 24px; height: 24px; border-radius: 50%; background: rgba(255, 255, 255, 0.9); color: #ef4444; border: 1px solid #ef4444; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 20; opacity: 0.8; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
         .card-delete:hover { transform: scale(1.1); opacity: 1; background: #ef4444; color: white; }
 
-        /* === Footer === */
-        .footer-bar {
-            height: 40px; background: var(--bg-bar); border-top: 1px solid var(--border);
-            display: flex; justify-content: space-between; align-items: center; padding: 0 15px; flex-shrink: 0;
-            font-size: 0.85rem;
-        }
-        .dl-btn {
-            background: var(--accent); color: white; border: none; padding: 6px 20px;
-            border-radius: 4px; cursor: pointer; font-weight: 500;
-        }
-        .dl-btn:disabled { background: var(--border); cursor: not-allowed; }
+        /* Footer */
+        .footer-bar { height: 45px; background: var(--bg-bar); border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; padding: 0 15px; flex-shrink: 0; font-size: 0.85rem; }
+        
+        .footer-left { display: flex; align-items: center; gap: 15px; }
+        .footer-right { display: flex; align-items: center; gap: 10px; }
 
-        .progress-overlay {
-            position: fixed; bottom: 50px; right: 15px; background: var(--bg-bar);
-            padding: 10px; border: 1px solid var(--border); border-radius: 6px;
-            width: 220px; display: none; z-index: 50; box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-        }
+        .col-select-group { display: flex; align-items: center; gap: 5px; background: var(--bg-body); padding: 3px 8px; border-radius: 4px; border: 1px solid var(--border); }
+        .col-select-group label { font-size: 0.75rem; color: var(--text-sub); }
+        .col-select-group input { width: 40px; border: none; background: transparent; color: var(--text-main); text-align: center; font-weight: bold; }
+        .col-select-group input:focus { outline: none; }
+
+        .btn-action { border: none; padding: 6px 15px; border-radius: 4px; cursor: pointer; font-weight: 500; font-size: 0.85rem; display: flex; align-items: center; gap: 6px; }
+        .btn-export-img { background: #3b82f6; color: white; } /* 藍色 */
+        .btn-export-img:hover { background: #2563eb; }
+        .btn-dl-zip { background: #10b981; color: white; } /* 綠色 */
+        .btn-dl-zip:hover { background: #059669; }
+        .btn-action:disabled { background: var(--border); color: var(--text-sub); cursor: not-allowed; }
+
+        .progress-overlay { position: fixed; bottom: 60px; right: 15px; background: var(--bg-bar); padding: 10px; border: 1px solid var(--border); border-radius: 6px; width: 220px; display: none; z-index: 50; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
         .p-fill { height: 4px; background: var(--accent); width: 0%; transition: width 0.1s; }
 
-        /* RWD: 當螢幕小的時候隱藏按鈕文字 */
-        @media (max-width: 600px) {
-            .tool-btn span { display: none; }
-            .brand span { display: none; }
-        }
+        @media (max-width: 600px) { .tool-btn span, .brand span { display: none; } .footer-left { display: none; } }
         input[type="file"] { display: none; }
     </style>
 </head>
@@ -256,8 +154,17 @@
     </div>
 
     <footer class="footer-bar">
-        <div id="footerInfo">總計: 0 張</div>
-        <button class="dl-btn" id="dlBtn" disabled><i class="fa-solid fa-file-export"></i> 打包下載</button>
+        <div class="footer-left">
+            <div id="footerInfo">總計: 0 張</div>
+        </div>
+        <div class="footer-right">
+            <div class="col-select-group" title="校對圖每行顯示幾張">
+                <label>列欄數:</label>
+                <input type="number" id="previewCols" value="4" min="1" max="10">
+            </div>
+            <button class="btn-action btn-export-img" id="imgBtn" disabled><i class="fa-regular fa-image"></i> 輸出校對圖</button>
+            <button class="btn-action btn-dl-zip" id="dlBtn" disabled><i class="fa-solid fa-file-export"></i> 打包 ZIP</button>
+        </div>
     </footer>
 
     <div class="progress-overlay" id="progPopup">
@@ -275,15 +182,14 @@
     const dom = {
         left: { grid: $('gridLeft'), empty: $('emptyLeft'), info: $('infoLeft'), iFile: $('iFileL'), iFolder: $('iFolderL'), bFile: $('bFileL'), bFolder: $('bFolderL') },
         right: { grid: $('gridRight'), empty: $('emptyRight'), info: $('infoRight'), iFile: $('iFileR'), iFolder: $('iFolderR'), bFile: $('bFileR'), bFolder: $('bFolderR') },
-        sets: { zip: $('zipNameInput'), pre: $('renamePrefix'), pad: $('paddingSelect') },
-        dl: $('dlBtn'), prog: { box: $('progPopup'), fill: $('progFill'), txt: $('progText') }
+        sets: { zip: $('zipNameInput'), pre: $('renamePrefix'), pad: $('paddingSelect'), cols: $('previewCols') },
+        btns: { zip: $('dlBtn'), img: $('imgBtn') },
+        prog: { box: $('progPopup'), fill: $('progFill'), txt: $('progText') }
     };
 
-    // 初始化
     const now = new Date();
     dom.sets.zip.placeholder = `Stickers_${now.getFullYear()}${(now.getMonth()+1).toString().padStart(2,'0')}${now.getDate().toString().padStart(2,'0')}.zip`;
 
-    // === 主題切換 ===
     const themeBtn = $('themeBtn');
     function toggleTheme() {
         const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
@@ -292,35 +198,23 @@
     }
     themeBtn.addEventListener('click', toggleTheme);
 
-    // === 事件綁定 (Fix layout 擠壓: 改用 Flex nowrap) ===
     function setupPane(side) {
         const d = dom[side];
         d.bFile.onclick = () => d.iFile.click();
         d.bFolder.onclick = () => d.iFolder.click();
         d.iFile.onchange = e => handleFiles(e.target.files, side);
         d.iFolder.onchange = e => handleFiles(e.target.files, side);
-
-        const grid = d.grid.parentElement; // grid-area
+        const grid = d.grid.parentElement;
         grid.ondragover = e => { e.preventDefault(); };
-        grid.ondrop = e => {
-            e.preventDefault();
-            if(e.dataTransfer.items) scanItems(e.dataTransfer.items, side);
-        };
+        grid.ondrop = e => { e.preventDefault(); if(e.dataTransfer.items) scanItems(e.dataTransfer.items, side); };
     }
-    setupPane('left');
-    setupPane('right');
+    setupPane('left'); setupPane('right');
 
-    // Sortable
     const sortConf = { group: 'shared', animation: 150, handle: '.img-preview', onEnd: () => { updateUI('left'); updateUI('right'); } };
     new Sortable(dom.left.grid, sortConf);
     new Sortable(dom.right.grid, sortConf);
 
-    // === 檔案處理 ===
-    function handleFiles(files, side) {
-        Array.from(files).forEach(f => addCard(f, side));
-        updateUI(side);
-        dom[side].iFile.value = ''; dom[side].iFolder.value = '';
-    }
+    function handleFiles(files, side) { Array.from(files).forEach(f => addCard(f, side)); updateUI(side); dom[side].iFile.value = ''; dom[side].iFolder.value = ''; }
 
     async function scanItems(items, side) {
         const promises = [];
@@ -342,25 +236,19 @@
             else if(entry.isDirectory) {
                 const reader = entry.createReader();
                 const read = () => reader.readEntries(async entries => {
-                    if(entries.length===0) resolve();
-                    else { await Promise.all(entries.map(e => traverse(e, side))); read(); }
+                    if(entries.length===0) resolve(); else { await Promise.all(entries.map(e => traverse(e, side))); read(); }
                 });
                 read();
             } else resolve();
         });
     }
 
-    // === 新增卡片 ===
     function addCard(file, side) {
         if(!file.type.startsWith('image/')) return;
         const id = Date.now() + Math.random().toString(36).substr(2, 9);
         fileStorage[id] = file;
-
         const div = document.createElement('div');
-        div.className = 'img-card';
-        div.dataset.id = id;
-        
-        // 刪除按鈕修復：獨立在最上層
+        div.className = 'img-card'; div.dataset.id = id;
         div.innerHTML = `
             <button class="card-delete" onclick="removeCard(this)" title="刪除"><i class="fa-solid fa-xmark"></i></button>
             <div class="img-preview">
@@ -373,146 +261,192 @@
                     <button class="tag-btn btn-main" onclick="toggleSpecial('${id}', 'main')">Main</button>
                     <button class="tag-btn btn-tab" onclick="toggleSpecial('${id}', 'tab')">Tab</button>
                 </div>
-            </div>
-        `;
+            </div>`;
         dom[side].grid.appendChild(div);
     }
 
-    // === Main/Tab 邏輯 (允許共存) ===
     window.toggleSpecial = function(id, type) {
         const card = document.querySelector(`.img-card[data-id="${id}"]`);
         if (!card) return;
-
         if (type === 'main') {
-            if (currentMainId === id) {
-                // 取消 Main
-                currentMainId = null;
-                card.classList.remove('is-main');
-            } else {
-                // 設定新 Main
-                if (currentMainId) {
-                    const old = document.querySelector(`.img-card[data-id="${currentMainId}"]`);
-                    if (old) old.classList.remove('is-main');
-                }
-                currentMainId = id;
-                card.classList.add('is-main');
-            }
+            if (currentMainId === id) { currentMainId = null; card.classList.remove('is-main'); }
+            else { if (currentMainId) { const old = document.querySelector(`.img-card[data-id="${currentMainId}"]`); if (old) old.classList.remove('is-main'); } currentMainId = id; card.classList.add('is-main'); }
         }
-
         if (type === 'tab') {
-            if (currentTabId === id) {
-                // 取消 Tab
-                currentTabId = null;
-                card.classList.remove('is-tab');
-            } else {
-                // 設定新 Tab
-                if (currentTabId) {
-                    const old = document.querySelector(`.img-card[data-id="${currentTabId}"]`);
-                    if (old) old.classList.remove('is-tab');
-                }
-                currentTabId = id;
-                card.classList.add('is-tab');
-            }
+            if (currentTabId === id) { currentTabId = null; card.classList.remove('is-tab'); }
+            else { if (currentTabId) { const old = document.querySelector(`.img-card[data-id="${currentTabId}"]`); if (old) old.classList.remove('is-tab'); } currentTabId = id; card.classList.add('is-tab'); }
         }
         updateUI(null);
     };
 
     window.removeCard = function(btn) {
-        const card = btn.closest('.img-card');
-        const id = card.dataset.id;
-        
-        if (currentMainId === id) currentMainId = null;
-        if (currentTabId === id) currentTabId = null;
-        
-        delete fileStorage[id];
-        card.remove();
-        updateUI('left'); updateUI('right');
+        const card = btn.closest('.img-card'); const id = card.dataset.id;
+        if (currentMainId === id) currentMainId = null; if (currentTabId === id) currentTabId = null;
+        delete fileStorage[id]; card.remove(); updateUI('left'); updateUI('right');
     };
 
     window.clearPane = function(side) {
         const cards = dom[side].grid.children;
-        Array.from(cards).forEach(c => {
-            const id = c.dataset.id;
-            if(currentMainId === id) currentMainId = null;
-            if(currentTabId === id) currentTabId = null;
-        });
-        dom[side].grid.innerHTML = '';
-        updateUI(side);
+        Array.from(cards).forEach(c => { const id = c.dataset.id; if(currentMainId === id) currentMainId = null; if(currentTabId === id) currentTabId = null; });
+        dom[side].grid.innerHTML = ''; updateUI(side);
     };
 
     function updateUI(side) {
         const leftCards = Array.from(dom.left.grid.children);
         const rightCards = Array.from(dom.right.grid.children);
         const all = [...leftCards, ...rightCards];
-
-        // 更新編號與顯示
         all.forEach((el, idx) => {
-            const id = el.dataset.id;
-            const badge = el.querySelector('.idx-badge');
-            
-            // 標記邏輯：如果被選為 M 或 T，徽章顯示文字，但依然保留流水號的概念(因為檔案還是會產出)
-            let labels = [];
-            if(id === currentMainId) labels.push("M");
-            if(id === currentTabId) labels.push("T");
-            
+            const id = el.dataset.id; const badge = el.querySelector('.idx-badge');
+            let labels = []; if(id === currentMainId) labels.push("M"); if(id === currentTabId) labels.push("T");
             if(labels.length > 0) {
                 badge.textContent = (idx+1) + " (" + labels.join("+") + ")";
-                badge.style.background = id === currentMainId && id === currentTabId 
-                    ? "linear-gradient(90deg, #ef4444, #22c55e)" 
-                    : (id === currentMainId ? "#ef4444" : "#22c55e");
-            } else {
-                badge.textContent = idx + 1;
-                badge.style.background = "rgba(0,0,0,0.6)";
-            }
+                badge.style.background = id === currentMainId && id === currentTabId ? "linear-gradient(90deg, #ef4444, #22c55e)" : (id === currentMainId ? "#ef4444" : "#22c55e");
+            } else { badge.textContent = idx + 1; badge.style.background = "rgba(0,0,0,0.6)"; }
         });
-
-        // Pane specific updates
-        if(side) {
-            dom[side].empty.style.display = dom[side].grid.children.length ? 'none' : 'flex';
-            dom[side].info.textContent = dom[side].grid.children.length;
-        } else {
-            dom.left.empty.style.display = dom.left.grid.children.length ? 'none' : 'flex';
-            dom.right.empty.style.display = dom.right.grid.children.length ? 'none' : 'flex';
-            dom.left.info.textContent = dom.left.grid.children.length;
-            dom.right.info.textContent = dom.right.grid.children.length;
-        }
-
+        if(side) { dom[side].empty.style.display = dom[side].grid.children.length ? 'none' : 'flex'; dom[side].info.textContent = dom[side].grid.children.length; }
+        else { dom.left.empty.style.display = dom.left.grid.children.length ? 'none' : 'flex'; dom.right.empty.style.display = dom.right.grid.children.length ? 'none' : 'flex'; dom.left.info.textContent = dom.left.grid.children.length; dom.right.info.textContent = dom.right.grid.children.length; }
         $('footerInfo').textContent = `總計: ${all.length} 張`;
-        dom.dl.disabled = all.length === 0;
+        const hasData = all.length > 0;
+        dom.btns.zip.disabled = !hasData;
+        dom.btns.img.disabled = !hasData;
     }
 
-    // === 圖片縮放 (High Quality) ===
     function resizeImage(file, w, h) {
         return new Promise(resolve => {
             const img = new Image();
             img.onload = () => {
-                const canvas = document.createElement('canvas');
-                canvas.width = w; canvas.height = h;
-                const ctx = canvas.getContext('2d');
-                ctx.imageSmoothingEnabled = true;
-                ctx.imageSmoothingQuality = 'high';
-                ctx.drawImage(img, 0, 0, w, h);
-                canvas.toBlob(blob => resolve(blob), 'image/png');
+                const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
+                const ctx = canvas.getContext('2d'); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+                ctx.drawImage(img, 0, 0, w, h); canvas.toBlob(blob => resolve(blob), 'image/png');
             };
             img.src = URL.createObjectURL(file);
         });
     }
 
-    // === 下載邏輯 (保留原圖 + 複製 Main/Tab) ===
-    dom.dl.onclick = async () => {
+    // === 2. 輸出校對圖 (Contact Sheet) ===
+    dom.btns.img.onclick = async () => {
         const leftCards = Array.from(dom.left.grid.children);
         const rightCards = Array.from(dom.right.grid.children);
         const all = [...leftCards, ...rightCards];
+        if (all.length === 0) return;
 
-        if(all.length === 0) return;
-        dom.dl.disabled = true;
+        dom.btns.img.disabled = true;
+        dom.prog.box.style.display = 'block';
+        dom.prog.txt.textContent = "繪製校對圖中...";
+        dom.prog.fill.style.width = '20%';
+
+        // 設定參數
+        const cols = parseInt(dom.sets.cols.value) || 4;
+        const rows = Math.ceil(all.length / cols);
+        const itemW = 240; // 小圖寬
+        const itemH = 240; // 小圖高
+        const pad = 20; // 間距
+        const textH = 30; // 文字區高度
+        const headerH = 60; // 標題區高度
+        
+        const canvasW = cols * (itemW + pad) + pad;
+        const canvasH = headerH + rows * (itemH + textH + pad) + pad;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = canvasW;
+        canvas.height = canvasH;
+        const ctx = canvas.getContext('2d');
+
+        // 畫背景
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvasW, canvasH);
+
+        // 畫標題
+        ctx.fillStyle = "#1f2937";
+        ctx.font = "bold 24px sans-serif";
+        ctx.textAlign = "left";
+        let title = dom.sets.zip.value.trim() || "LINE Sticker Check List";
+        if(title.toLowerCase().endsWith('.zip')) title = title.slice(0, -4);
+        ctx.fillText(`${title} (共 ${all.length} 張)`, pad, 40);
+
+        // 載入所有圖片
+        const loadImg = (url) => new Promise(res => { const i = new Image(); i.onload = () => res(i); i.src = url; });
+
+        for (let i = 0; i < all.length; i++) {
+            const el = all[i];
+            const id = el.dataset.id;
+            const file = fileStorage[id];
+            
+            // 計算位置
+            const r = Math.floor(i / cols);
+            const c = i % cols;
+            const x = pad + c * (itemW + pad);
+            const y = headerH + r * (itemH + textH + pad);
+
+            // 讀取圖片並繪製 (保持比例)
+            const img = await loadImg(URL.createObjectURL(file));
+            
+            // 計算縮放以適應方框
+            let dw = itemW, dh = itemH;
+            const ratio = img.width / img.height;
+            if (ratio > 1) { dh = itemW / ratio; } else { dw = itemH * ratio; }
+            const dx = x + (itemW - dw) / 2;
+            const dy = y + (itemH - dh) / 2;
+
+            ctx.drawImage(img, dx, dy, dw, dh);
+
+            // 繪製外框 (Main/Tab)
+            if (id === currentMainId) {
+                ctx.lineWidth = 5; ctx.strokeStyle = "#ef4444"; ctx.strokeRect(x, y, itemW, itemH);
+                // 畫 M 標籤
+                ctx.fillStyle = "#ef4444"; ctx.fillRect(x, y, 30, 20);
+                ctx.fillStyle = "#fff"; ctx.font = "bold 14px sans-serif"; ctx.fillText("M", x+8, y+15);
+            }
+            if (id === currentTabId) {
+                // 如果同時是 Main/Tab，稍微錯開
+                const offset = (id === currentMainId) ? 5 : 0;
+                ctx.lineWidth = 5; ctx.strokeStyle = "#22c55e"; 
+                // 如果已經有紅框，這個框畫在裡面
+                if (id === currentMainId) ctx.strokeRect(x+5, y+5, itemW-10, itemH-10);
+                else ctx.strokeRect(x, y, itemW, itemH);
+                
+                // 畫 T 標籤
+                ctx.fillStyle = "#22c55e"; ctx.fillRect(x + itemW - 30, y, 30, 20);
+                ctx.fillStyle = "#fff"; ctx.font = "bold 14px sans-serif"; ctx.fillText("T", x + itemW - 20, y+15);
+            }
+
+            // 畫編號 (左下角)
+            ctx.fillStyle = "#000"; ctx.font = "bold 14px sans-serif"; ctx.textAlign = "left";
+            ctx.fillText(`#${(i+1).toString().padStart(2, '0')}`, x, y + itemH + 20);
+
+            // 畫檔名 (右下角，截斷過長)
+            ctx.fillStyle = "#666"; ctx.font = "12px sans-serif"; ctx.textAlign = "right";
+            let fname = file.name;
+            if(fname.length > 15) fname = fname.substr(0, 12) + "...";
+            ctx.fillText(fname, x + itemW, y + itemH + 20);
+
+            // 更新進度條
+            const pct = Math.round(((i + 1) / all.length) * 100);
+            dom.prog.fill.style.width = pct + '%';
+        }
+
+        // 輸出 JPG
+        canvas.toBlob(blob => {
+            saveAs(blob, `${title}_check.jpg`);
+            dom.prog.box.style.display = 'none';
+            dom.btns.img.disabled = false;
+        }, "image/jpeg", 0.9);
+    };
+
+    // === 3. 打包 ZIP (不變) ===
+    dom.btns.zip.onclick = async () => {
+        const leftCards = Array.from(dom.left.grid.children);
+        const rightCards = Array.from(dom.right.grid.children);
+        const all = [...leftCards, ...rightCards];
+        if (all.length === 0) return;
+
+        dom.btns.zip.disabled = true;
         dom.prog.box.style.display = 'block';
 
         const zip = new JSZip();
         const pre = dom.sets.pre.value.trim();
         const pad = parseInt(dom.sets.pad.value);
         
-        // 1. 先處理標準序列 (所有圖片都保留)
         for (let i = 0; i < all.length; i++) {
             const id = all[i].dataset.id;
             const file = fileStorage[id];
@@ -520,45 +454,33 @@
 
             const pct = Math.round((i / (all.length + 2)) * 100);
             dom.prog.fill.style.width = pct + '%';
-            dom.prog.txt.textContent = `處理流水號 ${i+1}/${all.length}`;
+            dom.prog.txt.textContent = `打包流水號 ${i+1}/${all.length}`;
 
             let name = file.name;
             const ext = name.substring(name.lastIndexOf('.'));
             let finalName = "";
             const numStr = (i+1).toString().padStart(pad, '0');
-            
-            if (pre) finalName = `${pre}_${numStr}${ext}`;
-            else finalName = `${numStr}${ext}`; // 預設 01.png
-            
+            if (pre) finalName = `${pre}_${numStr}${ext}`; else finalName = `${numStr}${ext}`;
             zip.file(finalName, file);
         }
 
-        // 2. 額外產生 Main 檔
         if (currentMainId && fileStorage[currentMainId]) {
             dom.prog.txt.textContent = "產生 main.png...";
             const blob = await resizeImage(fileStorage[currentMainId], 240, 240);
             zip.file("main.png", blob);
         }
-
-        // 3. 額外產生 Tab 檔
         if (currentTabId && fileStorage[currentTabId]) {
             dom.prog.txt.textContent = "產生 tab.png...";
             const blob = await resizeImage(fileStorage[currentTabId], 96, 74);
             zip.file("tab.png", blob);
         }
 
-        dom.prog.txt.textContent = "壓縮打包中...";
-        dom.prog.fill.style.width = '100%';
-        
+        dom.prog.txt.textContent = "壓縮中..."; dom.prog.fill.style.width = '100%';
         zip.generateAsync({type:"blob"}).then(blob => {
             let zName = dom.sets.zip.value.trim() || dom.sets.zip.placeholder;
             if(!zName.toLowerCase().endsWith('.zip')) zName += '.zip';
             saveAs(blob, zName);
-            setTimeout(() => {
-                dom.prog.box.style.display = 'none';
-                dom.dl.disabled = false;
-                dom.prog.fill.style.width = '0%';
-            }, 1000);
+            setTimeout(() => { dom.prog.box.style.display = 'none'; dom.btns.zip.disabled = false; dom.prog.fill.style.width = '0%'; }, 1000);
         });
     };
 </script>

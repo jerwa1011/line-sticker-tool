@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LINE 貼圖打包 + 校對圖生成器</title>
+    <title>LINE 貼圖製作工作台 (校對優化版)</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -89,9 +89,9 @@
         .col-select-group input:focus { outline: none; }
 
         .btn-action { border: none; padding: 6px 15px; border-radius: 4px; cursor: pointer; font-weight: 500; font-size: 0.85rem; display: flex; align-items: center; gap: 6px; }
-        .btn-export-img { background: #3b82f6; color: white; } /* 藍色 */
+        .btn-export-img { background: #3b82f6; color: white; }
         .btn-export-img:hover { background: #2563eb; }
-        .btn-dl-zip { background: #10b981; color: white; } /* 綠色 */
+        .btn-dl-zip { background: #10b981; color: white; }
         .btn-dl-zip:hover { background: #059669; }
         .btn-action:disabled { background: var(--border); color: var(--text-sub); cursor: not-allowed; }
 
@@ -390,24 +390,17 @@
 
             ctx.drawImage(img, dx, dy, dw, dh);
 
-            // 繪製外框 (Main/Tab)
+            // === 修改處：僅繪製外框，移除文字標籤 ===
             if (id === currentMainId) {
-                ctx.lineWidth = 5; ctx.strokeStyle = "#ef4444"; ctx.strokeRect(x, y, itemW, itemH);
-                // 畫 M 標籤
-                ctx.fillStyle = "#ef4444"; ctx.fillRect(x, y, 30, 20);
-                ctx.fillStyle = "#fff"; ctx.font = "bold 14px sans-serif"; ctx.fillText("M", x+8, y+15);
+                ctx.lineWidth = 5; ctx.strokeStyle = "#ef4444"; 
+                ctx.strokeRect(x, y, itemW, itemH);
             }
             if (id === currentTabId) {
                 // 如果同時是 Main/Tab，稍微錯開
-                const offset = (id === currentMainId) ? 5 : 0;
                 ctx.lineWidth = 5; ctx.strokeStyle = "#22c55e"; 
                 // 如果已經有紅框，這個框畫在裡面
-                if (id === currentMainId) ctx.strokeRect(x+5, y+5, itemW-10, itemH-10);
+                if (id === currentMainId) ctx.strokeRect(x+6, y+6, itemW-12, itemH-12);
                 else ctx.strokeRect(x, y, itemW, itemH);
-                
-                // 畫 T 標籤
-                ctx.fillStyle = "#22c55e"; ctx.fillRect(x + itemW - 30, y, 30, 20);
-                ctx.fillStyle = "#fff"; ctx.font = "bold 14px sans-serif"; ctx.fillText("T", x + itemW - 20, y+15);
             }
 
             // 畫編號 (左下角)

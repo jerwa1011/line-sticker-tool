@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LINE 貼圖製作工作台 (校對優化版)</title>
+    <title>LINE 貼圖製作工作台 (背景模擬版)</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -83,10 +83,10 @@
         .footer-left { display: flex; align-items: center; gap: 15px; }
         .footer-right { display: flex; align-items: center; gap: 10px; }
 
-        .col-select-group { display: flex; align-items: center; gap: 5px; background: var(--bg-body); padding: 3px 8px; border-radius: 4px; border: 1px solid var(--border); }
-        .col-select-group label { font-size: 0.75rem; color: var(--text-sub); }
-        .col-select-group input { width: 40px; border: none; background: transparent; color: var(--text-main); text-align: center; font-weight: bold; }
-        .col-select-group input:focus { outline: none; }
+        .control-group { display: flex; align-items: center; gap: 5px; background: var(--bg-body); padding: 3px 8px; border-radius: 4px; border: 1px solid var(--border); }
+        .control-group label { font-size: 0.75rem; color: var(--text-sub); }
+        .control-group input, .control-group select { border: none; background: transparent; color: var(--text-main); text-align: left; font-weight: bold; font-size: 0.75rem; cursor: pointer; outline: none; }
+        .control-group input { width: 40px; text-align: center; }
 
         .btn-action { border: none; padding: 6px 15px; border-radius: 4px; cursor: pointer; font-weight: 500; font-size: 0.85rem; display: flex; align-items: center; gap: 6px; }
         .btn-export-img { background: #3b82f6; color: white; }
@@ -158,12 +158,19 @@
             <div id="footerInfo">總計: 0 張</div>
         </div>
         <div class="footer-right">
-            <div class="col-select-group" title="校對圖每行顯示幾張">
-                <label>列欄數:</label>
+            <div class="control-group" title="校對圖背景色">
+                <label>背景:</label>
+                <select id="previewBg">
+                    <option value="#ffffff">白色</option>
+                    <option value="#8cabd9">LINE藍</option>
+                </select>
+            </div>
+            <div class="control-group" title="校對圖每行顯示幾張">
+                <label>列欄:</label>
                 <input type="number" id="previewCols" value="4" min="1" max="10">
             </div>
-            <button class="btn-action btn-export-img" id="imgBtn" disabled><i class="fa-regular fa-image"></i> 輸出校對圖</button>
-            <button class="btn-action btn-dl-zip" id="dlBtn" disabled><i class="fa-solid fa-file-export"></i> 打包 ZIP</button>
+            <button class="btn-action btn-export-img" id="imgBtn" disabled><i class="fa-regular fa-image"></i> 校對圖</button>
+            <button class="btn-action btn-dl-zip" id="dlBtn" disabled><i class="fa-solid fa-file-export"></i> 打包ZIP</button>
         </div>
     </footer>
 
@@ -182,7 +189,7 @@
     const dom = {
         left: { grid: $('gridLeft'), empty: $('emptyLeft'), info: $('infoLeft'), iFile: $('iFileL'), iFolder: $('iFolderL'), bFile: $('bFileL'), bFolder: $('bFolderL') },
         right: { grid: $('gridRight'), empty: $('emptyRight'), info: $('infoRight'), iFile: $('iFileR'), iFolder: $('iFolderR'), bFile: $('bFileR'), bFolder: $('bFolderR') },
-        sets: { zip: $('zipNameInput'), pre: $('renamePrefix'), pad: $('paddingSelect'), cols: $('previewCols') },
+        sets: { zip: $('zipNameInput'), pre: $('renamePrefix'), pad: $('paddingSelect'), cols: $('previewCols'), bg: $('previewBg') },
         btns: { zip: $('dlBtn'), img: $('imgBtn') },
         prog: { box: $('progPopup'), fill: $('progFill'), txt: $('progText') }
     };
@@ -335,14 +342,13 @@
         dom.prog.txt.textContent = "繪製校對圖中...";
         dom.prog.fill.style.width = '20%';
 
-        // 設定參數
         const cols = parseInt(dom.sets.cols.value) || 4;
         const rows = Math.ceil(all.length / cols);
-        const itemW = 240; // 小圖寬
-        const itemH = 240; // 小圖高
-        const pad = 20; // 間距
-        const textH = 30; // 文字區高度
-        const headerH = 60; // 標題區高度
+        const itemW = 240; // 貼圖預設顯示寬度
+        const itemH = 240;
+        const pad = 20;
+        const textH = 30; 
+        const headerH = 60;
         
         const canvasW = cols * (itemW + pad) + pad;
         const canvasH = headerH + rows * (itemH + textH + pad) + pad;
@@ -352,11 +358,11 @@
         canvas.height = canvasH;
         const ctx = canvas.getContext('2d');
 
-        // 畫背景
-        ctx.fillStyle = "#ffffff";
+        // 背景
+        ctx.fillStyle = dom.sets.bg.value;
         ctx.fillRect(0, 0, canvasW, canvasH);
 
-        // 畫標題
+        // 標題
         ctx.fillStyle = "#1f2937";
         ctx.font = "bold 24px sans-serif";
         ctx.textAlign = "left";
@@ -364,7 +370,6 @@
         if(title.toLowerCase().endsWith('.zip')) title = title.slice(0, -4);
         ctx.fillText(`${title} (共 ${all.length} 張)`, pad, 40);
 
-        // 載入所有圖片
         const loadImg = (url) => new Promise(res => { const i = new Image(); i.onload = () => res(i); i.src = url; });
 
         for (let i = 0; i < all.length; i++) {
@@ -372,16 +377,13 @@
             const id = el.dataset.id;
             const file = fileStorage[id];
             
-            // 計算位置
             const r = Math.floor(i / cols);
             const c = i % cols;
             const x = pad + c * (itemW + pad);
             const y = headerH + r * (itemH + textH + pad);
 
-            // 讀取圖片並繪製 (保持比例)
             const img = await loadImg(URL.createObjectURL(file));
             
-            // 計算縮放以適應方框
             let dw = itemW, dh = itemH;
             const ratio = img.width / img.height;
             if (ratio > 1) { dh = itemW / ratio; } else { dw = itemH * ratio; }
@@ -390,35 +392,31 @@
 
             ctx.drawImage(img, dx, dy, dw, dh);
 
-            // === 修改處：僅繪製外框，移除文字標籤 ===
+            // === 只有外框 (Main=紅, Tab=綠) ===
             if (id === currentMainId) {
                 ctx.lineWidth = 5; ctx.strokeStyle = "#ef4444"; 
                 ctx.strokeRect(x, y, itemW, itemH);
             }
             if (id === currentTabId) {
-                // 如果同時是 Main/Tab，稍微錯開
                 ctx.lineWidth = 5; ctx.strokeStyle = "#22c55e"; 
-                // 如果已經有紅框，這個框畫在裡面
                 if (id === currentMainId) ctx.strokeRect(x+6, y+6, itemW-12, itemH-12);
                 else ctx.strokeRect(x, y, itemW, itemH);
             }
 
-            // 畫編號 (左下角)
+            // 編號
             ctx.fillStyle = "#000"; ctx.font = "bold 14px sans-serif"; ctx.textAlign = "left";
             ctx.fillText(`#${(i+1).toString().padStart(2, '0')}`, x, y + itemH + 20);
 
-            // 畫檔名 (右下角，截斷過長)
+            // 檔名
             ctx.fillStyle = "#666"; ctx.font = "12px sans-serif"; ctx.textAlign = "right";
             let fname = file.name;
             if(fname.length > 15) fname = fname.substr(0, 12) + "...";
             ctx.fillText(fname, x + itemW, y + itemH + 20);
 
-            // 更新進度條
             const pct = Math.round(((i + 1) / all.length) * 100);
             dom.prog.fill.style.width = pct + '%';
         }
 
-        // 輸出 JPG
         canvas.toBlob(blob => {
             saveAs(blob, `${title}_check.jpg`);
             dom.prog.box.style.display = 'none';

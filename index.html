@@ -3,332 +3,493 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LINE 貼圖製作大師 (V25-19: 橡皮擦精修版 - 更新)</title>
+    <title>LINE 貼圖製作大師 Pro (Compact)</title>
     
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 
     <style>
-        /* --- 配色系統 --- */
+        /* --- 專業級視覺系統 (Design System) --- */
         :root {
-            --primary: #06C755;
-            --primary-hover: #05a546;
-            --main-color: #ff5252;
-            --bg: #181818;
-            --card-bg: #252525;
-            --panel-bg: #2f2f2f;
-            --text-main: #e0e0e0;
-            --text-sub: #aaaaaa;
-            --border: #444444;
-            --input-bg: #333333;
-            --preview-bg: #1a1a1a;
-            --shadow: rgba(0,0,0,0.3);
-            --group-bg: rgba(255,255,255,0.05);
-            --header-hover: #3a3a3a;
+            --primary: #00B900; 
+            --primary-glow: rgba(0, 185, 0, 0.4);
+            --accent: #FF3366;
+            --bg-dark: #0F0F12;
+            --bg-gradient: radial-gradient(circle at 10% 20%, #1a2a22 0%, #0F0F12 60%);
+            
+            --glass-bg: rgba(30, 30, 35, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --glass-highlight: rgba(255, 255, 255, 0.03);
+            
+            --panel-bg: rgba(0, 0, 0, 0.3);
+            
+            --text-main: #FFFFFF;
+            --text-sub: #94949C;
+            --text-muted: #555560;
+            
+            --radius-lg: 16px; /* 緊縮圓角 */
+            --radius-md: 10px;
+            
+            --shadow-card: 0 10px 30px -10px rgba(0,0,0,0.5);
+            
+            --transition: all 0.2s ease-out; /* 加快動畫速度 */
         }
 
         body.light-mode {
-            --bg: #f8f6f2;
-            --card-bg: #ffffff;
-            --panel-bg: #f4f4f4;
-            --text-main: #333333;
-            --text-sub: #666666;
-            --border: #e0e0e0;
-            --input-bg: #ffffff;
-            --preview-bg: #eeeeee;
-            --shadow: rgba(0,0,0,0.05);
-            --group-bg: #f9f9f9;
-            --header-hover: #eaeaea;
+            --bg-dark: #F5F7FA;
+            --bg-gradient: linear-gradient(135deg, #F0F4F8 0%, #FFFFFF 100%);
+            --glass-bg: rgba(255, 255, 255, 0.9);
+            --glass-border: rgba(0, 0, 0, 0.05);
+            --glass-highlight: rgba(255, 255, 255, 0.5);
+            --panel-bg: rgba(240, 242, 245, 0.7);
+            --text-main: #1A1A1D;
+            --text-sub: #5E6C84;
+            --text-muted: #A0AEC0;
+            --primary-glow: rgba(6, 199, 85, 0.2);
+            --shadow-card: 0 5px 20px rgba(0,0,0,0.05);
         }
 
+        * { box-sizing: border-box; }
+
         body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", sans-serif; 
-            background: var(--bg); padding: 15px; color: var(--text-main); 
-            transition: background 0.3s, color 0.3s;
+            font-family: 'Inter', 'Noto Sans TC', sans-serif;
+            background: var(--bg-dark);
+            background-image: var(--bg-gradient);
+            background-attachment: fixed;
+            margin: 0; padding: 10px; /* 縮小邊距 */
+            color: var(--text-main);
+            min-height: 100vh;
+            line-height: 1.4; /* 緊縮行高 */
             padding-bottom: 60px;
         }
 
-        /* 版面結構 */
-        .header { display: flex; justify-content: space-between; align-items: center; max-width: 1300px; margin: 0 auto 10px auto; }
+        body::before {
+            content: ''; position: fixed; top: -20%; left: -10%; width: 50%; height: 50%;
+            background: radial-gradient(circle, var(--primary-glow) 0%, transparent 70%);
+            opacity: 0.15; z-index: -1; pointer-events: none; filter: blur(60px);
+        }
+
+        .header { 
+            display: flex; justify-content: space-between; align-items: center; 
+            max-width: 1400px; margin: 0 auto 10px auto; /* 緊縮 header */
+            padding: 0 5px;
+        }
+        
+        h1 { 
+            font-weight: 800; letter-spacing: -0.03em; font-size: 1.4rem; margin: 0; /* 縮小標題字體 */
+            background: linear-gradient(90deg, #fff 0%, #aaa 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            display: flex; align-items: baseline; gap: 8px;
+        }
+        body.light-mode h1 { background: linear-gradient(90deg, #333 0%, #666 100%); -webkit-background-clip: text; }
+
+        .tag-version {
+            font-size: 0.65rem; padding: 1px 6px; border-radius: 8px;
+            background: rgba(6, 199, 85, 0.1); color: var(--primary);
+            border: 1px solid rgba(6, 199, 85, 0.3); letter-spacing: 0.5px;
+            -webkit-text-fill-color: var(--primary);
+            vertical-align: middle;
+        }
+
         .container { 
-            max-width: 1300px; margin: 0 auto; 
-            display: grid; grid-template-columns: 360px 1fr; gap: 20px; 
+            max-width: 1400px; margin: 0 auto; 
+            display: grid; grid-template-columns: 320px 1fr; gap: 15px; /* 縮小左欄寬度與間距 */
             align-items: start;
         }
-        @media (max-width: 950px) { .container { grid-template-columns: 1fr; } }
+        @media (max-width: 900px) { .container { grid-template-columns: 1fr; } }
         
         .card { 
-            background: var(--card-bg); padding: 15px; border-radius: 12px; 
-            box-shadow: 0 4px 20px var(--shadow); display: flex; flex-direction: column; gap: 10px; 
-            position: relative;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            box-shadow: var(--shadow-card);
+            border-radius: var(--radius-lg);
+            padding: 15px; /* 緊縮卡片內距 */
+            display: flex; flex-direction: column; gap: 12px; 
+            position: relative; overflow: hidden;
         }
-        
-        /* 左側固定高度 */
+        .card::after {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+            background: linear-gradient(90deg, transparent, var(--glass-highlight), transparent);
+        }
+
         .sticky-sidebar {
             position: sticky; top: 10px; 
-            height: calc(100vh - 40px);
-            display: flex; flex-direction: column;
+            height: calc(100vh - 20px);
+            overflow-y: auto; 
+            scrollbar-width: none;
         }
+        .sticky-sidebar::-webkit-scrollbar { display: none; }
         
-        /* 嚮導模式樣式 */
         .stepper {
             display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 20px; padding: 0 10px; position: relative;
+            margin-bottom: 15px; padding: 0 5px; position: relative;
         }
         .stepper::before {
             content: ''; position: absolute; top: 50%; left: 10px; right: 10px;
-            height: 2px; background: var(--border); z-index: 0;
+            height: 2px; background: var(--glass-border); z-index: 0;
             transform: translateY(-50%);
         }
         .step-dot {
-            width: 30px; height: 30px; border-radius: 50%; background: var(--panel-bg);
-            border: 2px solid var(--border); color: var(--text-sub);
+            width: 28px; height: 28px; border-radius: 50%; /* 縮小步驟點 */
+            background: var(--bg-dark); border: 2px solid var(--text-muted); 
+            color: var(--text-muted);
             display: flex; justify-content: center; align-items: center;
-            font-weight: bold; z-index: 1; position: relative; transition: 0.3s;
+            font-weight: 700; font-size: 0.8rem; z-index: 1; 
+            transition: var(--transition);
+            box-shadow: 0 0 0 3px var(--glass-bg); 
         }
         .step-dot.active {
-            background: var(--primary); border-color: var(--primary); color: white; transform: scale(1.1);
+            background: var(--primary); border-color: var(--primary); 
+            color: #fff; box-shadow: 0 0 10px var(--primary-glow);
+            transform: scale(1.1);
         }
         .step-dot.completed {
-            background: var(--primary); border-color: var(--primary); color: white;
+            background: var(--bg-dark); border-color: var(--primary); color: var(--primary);
         }
 
-        .step-content {
-            flex: 1; overflow-y: auto; overflow-x: hidden;
-            padding-right: 5px; margin-bottom: 10px;
-            scrollbar-width: thin;
-        }
-        .step-content::-webkit-scrollbar { width: 6px; }
-        .step-content::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); border-radius: 3px; }
-        .step-content::-webkit-scrollbar-thumb { background: var(--text-sub); border-radius: 3px; }
-
-        .step-pane { display: none; animation: fadeIn 0.3s; }
+        .step-content { flex: 1; overflow-y: visible; margin-bottom: 5px; }
+        .step-pane { display: none; animation: fadeIn 0.3s ease-out; }
         .step-pane.active { display: block; }
 
-        .nav-buttons {
-            display: flex; gap: 10px; margin-top: auto; padding-top: 10px; border-top: 1px solid var(--border);
-        }
-
-        /* 內容區塊 */
         .section-box { 
-            border: 1px solid var(--border); border-radius: 8px; 
-            background: var(--panel-bg); margin-bottom: 15px; padding: 15px;
+            border-radius: var(--radius-md); 
+            background: var(--panel-bg); 
+            border: 1px solid var(--glass-border);
+            margin-bottom: 10px; padding: 12px; /* 緊縮 Section */
         }
         .section-title {
-            font-size: 1.1rem; font-weight: 700; color: var(--text-main); 
-            margin-bottom: 15px; display: flex; align-items: center; gap: 8px;
+            font-size: 0.75rem; font-weight: 700; color: var(--text-main); 
+            margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
+            text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.8;
         }
 
-        /* 右側原始圖預覽區 */
-        .orig-ref-container {
-            border: 1px solid var(--border); border-radius: 8px; background: var(--panel-bg);
-            margin-bottom: 15px; display: none; /* 初始隱藏 */
-            overflow: hidden; transition: all 0.3s ease;
-            outline: none;
+        .live-preview-container {
+            background: rgba(0,0,0,0.4); 
+            border: 1px solid var(--primary);
+            box-shadow: 0 0 15px rgba(6, 199, 85, 0.1);
+            border-radius: var(--radius-md);
+            padding: 10px; margin-bottom: 15px; text-align: center;
+            display: flex; flex-direction: column; align-items: center; gap: 8px;
+            position: sticky; top: 0; z-index: 50;
+            backdrop-filter: blur(10px);
         }
-        .orig-ref-container:focus-within { border-color: var(--primary); }
+        body.light-mode .live-preview-container { background: rgba(255,255,255,0.8); }
 
-        .orig-header { 
-            display: flex; justify-content: space-between; align-items: center; 
-            padding: 10px; cursor: pointer; user-select: none;
-            background: rgba(0,0,0,0.1); border-bottom: 1px solid transparent;
-            transition: background 0.2s;
+        .live-preview-box {
+            width: 100px; height: 100px; /* 縮小即時預覽圖 */
+            background-image: linear-gradient(45deg, #2a2a2a 25%, transparent 25%), linear-gradient(-45deg, #2a2a2a 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #2a2a2a 75%), linear-gradient(-45deg, transparent 75%, #2a2a2a 75%);
+            background-size: 16px 16px; background-color: #1a1a1a;
+            border-radius: 8px; overflow: hidden;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
         }
-        .orig-header:hover { background: var(--header-hover); }
-        .orig-label { font-size: 0.95rem; font-weight: bold; color: var(--text-main); display: flex; align-items: center; gap: 8px; }
-        .orig-toggle-icon { font-size: 0.8rem; color: var(--text-sub); transition: transform 0.3s; }
-        
-        .orig-ref-container.collapsed .orig-body { display: none; }
-        .orig-ref-container.collapsed .orig-toggle-icon { transform: rotate(-90deg); }
-        .orig-ref-container:not(.collapsed) .orig-header { border-bottom: 1px solid var(--border); }
-        
-        .orig-controls-top { display: flex; align-items: center; gap: 10px; }
-        .orig-body { padding: 10px; animation: slideDown 0.3s ease-out; }
+        .live-tag {
+            background: var(--primary); color: white; padding: 2px 8px; 
+            border-radius: 12px; font-size: 0.65rem; font-weight: 700;
+        }
+        .live-preview-box canvas { max-width: 100%; max-height: 100%; object-fit: contain; }
 
-        /* 移動控制工具列 */
-        .move-toolbar {
-            display: flex; gap: 5px; justify-content: center; margin-bottom: 10px; flex-wrap: wrap; align-items: center;
-            background: var(--card-bg); padding: 5px; border-radius: 6px; border: 1px solid var(--border);
-        }
-        .move-btn {
-            background: var(--input-bg); border: 1px solid var(--border); color: var(--text-main);
-            width: 32px; height: 32px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center;
-            font-size: 1.2rem; transition: 0.2s;
-        }
-        .move-btn:hover { background: var(--header-hover); border-color: var(--text-sub); }
-        .move-btn:active { background: var(--primary); color: white; border-color: var(--primary); }
-        .move-group { display: flex; gap: 2px; align-items: center; }
-        .move-divider { width: 1px; height: 20px; background: var(--border); margin: 0 5px; }
-        
-        .micro-switch {
-            display: flex; align-items: center; font-size: 0.85rem; color: var(--text-main);
-            background: rgba(6, 199, 85, 0.1); padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(6, 199, 85, 0.3);
-            margin-right: 5px; cursor: pointer;
-        }
-        .micro-switch input { margin-right: 5px; width: 14px; height: 14px; }
-        .micro-switch:hover { background: rgba(6, 199, 85, 0.2); }
-
-        #origPreviewBox { 
-            text-align: center; background: var(--input-bg); 
-            padding: 5px; border-radius: 6px; border: 1px solid var(--border); 
-            position: relative; overflow: hidden;
-        }
-        #origWrapper { position: relative; display: inline-block; max-width: 100%; }
-        #refCanvas { max-height: 200px; max-width: 100%; object-fit: contain; cursor: crosshair; display: block; }
-        #gridCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
-        #eyedropperHint { 
-            position: absolute; bottom: 5px; right: 5px; 
-            background: rgba(0,0,0,0.6); color: white; 
-            font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; pointer-events: none; 
-        }
-
-        /* 一般元件 */
-        h1 { margin: 0; font-size: 1.4rem; color: var(--text-main); font-weight: 800; letter-spacing: -0.5px; }
-        
         .upload-box { 
-            border: 2px dashed var(--border); border-radius: 8px; padding: 40px 15px; text-align: center; 
-            cursor: pointer; background: var(--input-bg); transition: 0.3s;
+            border: 2px dashed var(--text-muted); border-radius: var(--radius-md); 
+            padding: 20px 10px; text-align: center; 
+            cursor: pointer; background: rgba(255,255,255,0.02); 
+            transition: var(--transition);
         }
-        .upload-box:hover { border-color: var(--primary); background: rgba(6, 199, 85, 0.08); transform: scale(1.01); }
+        .upload-box:hover { 
+            border-color: var(--primary); background: rgba(6, 199, 85, 0.05); 
+            transform: translateY(-2px);
+        }
+        .upload-icon { font-size: 2rem; margin-bottom: 5px; opacity: 0.8; filter: grayscale(100%); transition: var(--transition); }
+        .upload-box:hover .upload-icon { filter: grayscale(0%); transform: scale(1.1); }
+
+        .row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; } /* 緊縮 row */
         
-        .row { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; } 
-        .col { flex: 1; display: flex; align-items: center; gap: 6px; }
-        
-        .label-group { display: flex; align-items: center; width: 85px; flex-shrink: 0; }
-        .label-text { font-weight: 600; font-size: 0.9rem; color: var(--text-main); white-space: nowrap; margin-right: 4px; }
+        .label-group { display: flex; align-items: center; width: 75px; flex-shrink: 0; }
+        .label-text { font-weight: 500; font-size: 0.8rem; color: var(--text-sub); }
         
         .info-btn {
             display: inline-flex; justify-content: center; align-items: center;
-            width: 14px; height: 14px; border-radius: 50%;
-            border: 1px solid var(--text-sub); color: var(--text-sub);
-            font-size: 10px; font-weight: bold; cursor: pointer;
+            width: 14px; height: 14px; border-radius: 50%; margin-left: 4px;
+            background: rgba(255,255,255,0.1); color: var(--text-sub);
+            font-size: 9px; cursor: pointer; transition: 0.2s;
         }
+        .info-btn:hover { background: var(--text-main); color: var(--bg-dark); }
 
         input[type="number"], input[type="text"], select { 
-            padding: 8px; border: 1px solid var(--border); border-radius: 4px; 
-            font-size: 0.9rem; background: var(--input-bg); color: var(--text-main);
+            padding: 6px 10px; height: 32px;
+            border: 1px solid var(--glass-border); border-radius: 6px; 
+            font-size: 0.85rem; font-family: inherit;
+            background: rgba(0,0,0,0.2); color: var(--text-main);
+            transition: 0.2s;
         }
-        input:focus, select:focus { outline: none; border-color: var(--primary); }
+        body.light-mode input[type="number"], body.light-mode input[type="text"], body.light-mode select {
+            background: #fff; border-color: #ddd;
+        }
+        input:focus, select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(6, 199, 85, 0.2); }
         
-        .input-mini { width: 50px !important; text-align: center; font-size: 0.85rem; }
-        .input-short { width: 70px !important; text-align: center; }
+        input[type="range"] {
+            -webkit-appearance: none; width: 100%; background: transparent; height: 20px; cursor: pointer;
+        }
+        input[type="range"]::-webkit-slider-runnable-track {
+            width: 100%; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px;
+        }
+        body.light-mode input[type="range"]::-webkit-slider-runnable-track { background: rgba(0,0,0,0.1); }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; height: 14px; width: 14px; border-radius: 50%;
+            background: #fff; border: 2px solid var(--primary);
+            margin-top: -5px; box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            transition: transform 0.1s;
+        }
+        input[type="range"]:hover::-webkit-slider-thumb { transform: scale(1.2); }
         
-        input[type="range"] { width: 100%; accent-color: var(--primary); height: 16px; cursor: pointer; }
-        input[type="color"] { width: 100%; height: 32px; border: none; cursor: pointer; padding: 0; border-radius: 4px; }
-        input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer; }
+        input[type="color"] {
+            width: 100%; height: 32px; border: none; cursor: pointer; padding: 0; 
+            border-radius: 6px; overflow: hidden;
+        }
+        
+        /* Checkbox 樣式 */
+        input[type="checkbox"] {
+            appearance: none; width: 36px; height: 20px;
+            background: rgba(255,255,255,0.1); border-radius: 20px;
+            position: relative; cursor: pointer; transition: 0.3s;
+            vertical-align: middle; border: 1px solid var(--glass-border); margin: 0;
+        }
+        input[type="checkbox"]::after {
+            content: ''; position: absolute; top: 2px; left: 2px;
+            width: 14px; height: 14px; background: #fff; border-radius: 50%;
+            transition: 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        input[type="checkbox"]:checked { background: var(--primary); border-color: transparent; }
+        input[type="checkbox"]:checked::after { left: 18px; }
 
-        .btn { width: 100%; padding: 10px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.95rem; transition: 0.2s; }
-        .btn-green { background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 10px rgba(6,199,85,0.2); }
-        .btn-green:hover { background: var(--primary-hover); transform: translateY(-1px); }
-        .btn-green:disabled { background: #555; color: #888; cursor: not-allowed; transform: none; box-shadow: none; }
-        .btn-secondary { background: var(--input-bg); border: 1px solid var(--border); color: var(--text-main); }
-        .btn-secondary:hover:not(:disabled) { background: var(--header-hover); border-color: var(--text-sub); }
-        .btn-secondary:disabled { opacity: 0.5; cursor: default; }
+        .btn { 
+            width: 100%; padding: 10px; border: none; border-radius: 8px; 
+            font-weight: 600; cursor: pointer; font-size: 0.9rem; 
+            transition: var(--transition); letter-spacing: 0.5px;
+            position: relative; overflow: hidden;
+        }
         
-        .theme-btn { background: transparent; border: 1px solid var(--border); color: var(--text-main); padding: 5px 12px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; font-weight: 500; }
+        .btn-green { 
+            background: linear-gradient(135deg, #06C755 0%, #05a546 100%); 
+            color: white; 
+            box-shadow: 0 4px 10px rgba(6,199,85,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .btn-green:hover { transform: translateY(-1px); box-shadow: 0 6px 15px rgba(6,199,85,0.4); filter: brightness(1.1); }
+        .btn-green:disabled { background: #333; color: #666; box-shadow: none; cursor: not-allowed; border: none; }
+        
+        .btn-secondary { 
+            background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); 
+            color: var(--text-main); 
+        }
+        .btn-secondary:hover:not(:disabled) { background: rgba(255,255,255,0.1); border-color: var(--text-sub); }
+        
+        .nav-buttons {
+            display: flex; gap: 10px; margin-top: auto; padding-top: 15px; border-top: 1px solid var(--glass-border);
+        }
 
-        #previewContainer { background: var(--preview-bg); padding: 20px; border-radius: 12px; min-height: 400px; display: grid; gap: 15px; align-content: start; border: 1px solid var(--border); }
-        .sticker-card { display: flex; flex-direction: column; gap: 8px; position: relative; }
+        .orig-ref-container {
+            border: 1px solid var(--glass-border); border-radius: var(--radius-md); 
+            background: var(--panel-bg); margin-bottom: 15px; overflow: hidden;
+            transition: var(--transition);
+        }
+        .orig-ref-container:focus-within { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
+
+        .orig-header { 
+            display: flex; justify-content: space-between; align-items: center; 
+            padding: 8px 12px; /* 緊縮 Header padding */
+            cursor: pointer; user-select: none;
+            background: rgba(255,255,255,0.03);
+        }
+        .orig-header:hover { background: rgba(255,255,255,0.06); }
+        .orig-label { font-size: 0.85rem; font-weight: 600; color: var(--text-main); display: flex; align-items: center; gap: 6px; }
+        
+        /* 關鍵修正：讓控制項在同一列 */
+        .orig-controls-top {
+            display: flex; align-items: center; gap: 12px; flex-wrap: nowrap;
+        }
+
+        .orig-ref-container.collapsed .orig-body { display: none; }
+        .orig-ref-container.collapsed .orig-toggle-icon { transform: rotate(-90deg); display:inline-block; transition: 0.3s; }
+        .orig-toggle-icon { transition: 0.3s; }
+
+        #previewContainer { 
+            background: rgba(0,0,0,0.2); 
+            padding: 15px; border-radius: var(--radius-md); min-height: 350px; 
+            display: grid; gap: 12px; align-content: start; 
+            border: 1px solid var(--glass-border); 
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.2);
+            margin-bottom: 15px; 
+        }
+        
+        .sticker-card { 
+            display: flex; flex-direction: column; gap: 6px; position: relative; 
+            cursor: grab; transition: var(--transition);
+        }
+        .sticker-card:hover { transform: translateY(-3px); }
+        .sticker-card.dragging { opacity: 0.5; transform: scale(0.95); }
+        .sticker-card.drag-over { 
+            border: 2px dashed var(--primary); border-radius: 12px; background: rgba(6, 199, 85, 0.1);
+        }
+        
         .sticker-img-box {
-            position: relative; width: 100%; aspect-ratio: 1; border: 1px solid #444; border-radius: 10px;
+            position: relative; width: 100%; aspect-ratio: 1; 
+            border-radius: 10px; border: 1px solid var(--glass-border);
             display: flex; align-items: center; justify-content: center; overflow: hidden;
-            background-image: linear-gradient(45deg, #333 25%, transparent 25%), linear-gradient(-45deg, #333 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #333 75%), linear-gradient(-45deg, transparent 75%, #333 75%);
-            background-size: 20px 20px; background-color: #222; cursor: zoom-in; transition: 0.2s;
+            background-image: linear-gradient(45deg, #222 25%, transparent 25%), linear-gradient(-45deg, #222 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #222 75%), linear-gradient(-45deg, transparent 75%, #222 75%);
+            background-size: 12px 12px; background-color: #111; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            transition: var(--transition);
         }
-        .sticker-img-box.bg-light { background: #ffffff; background-image: none; border-color: #ddd; }
-        .sticker-img-box.bg-line { background: #849ebf; background-image: none; border-color: #6a8caf; }
-        .sticker-img-box.bg-pink { background: #ffe6f2; background-image: none; border-color: #ffccdd; }
-        .sticker-img-box.bg-yellow { background: #fffde7; background-image: none; border-color: #fff9c4; }
+        .sticker-img-box.bg-light { background: #ffffff; background-image: none; }
+        .sticker-img-box.bg-line { background: #849ebf; background-image: none; }
+        .sticker-img-box.bg-pink { background: #ffe6f2; background-image: none; }
+        .sticker-img-box.bg-yellow { background: #fffde7; background-image: none; }
 
-        .sticker-img-box:hover { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary); }
-        .sticker-img-box img { max-width: 100%; max-height: 100%; object-fit: contain; }
-        
-        .dl-icon-btn {
-            position: absolute; bottom: 8px; right: 8px; width: 28px; height: 28px;
-            background: var(--primary); color: white; border-radius: 50%; display: flex; justify-content: center; align-items: center;
-            font-size: 1rem; cursor: pointer; box-shadow: 0 3px 8px rgba(0,0,0,0.4); z-index: 10;
+        .sticker-img-box:hover { 
+            border-color: var(--primary); 
+            box-shadow: 0 0 0 2px rgba(6, 199, 85, 0.3), 0 8px 15px rgba(0,0,0,0.3);
         }
+        .sticker-img-box img { max-width: 90%; max-height: 90%; object-fit: contain; pointer-events: none; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2)); }
         
-        /* 編輯按鈕樣式 */
-        .edit-icon-btn {
-            position: absolute; top: 8px; right: 8px; width: 28px; height: 28px;
-            background: #444; color: white; border-radius: 50%; display: flex; justify-content: center; align-items: center;
-            font-size: 0.9rem; cursor: pointer; box-shadow: 0 3px 8px rgba(0,0,0,0.4); z-index: 10;
-            border: 1px solid #666;
+        .dl-icon-btn, .edit-icon-btn {
+            position: absolute; width: 28px; height: 28px;
+            background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+            color: white; border-radius: 50%; display: flex; justify-content: center; align-items: center;
+            font-size: 0.9rem; cursor: pointer; border: 1px solid rgba(255,255,255,0.2);
+            transition: 0.2s; opacity: 0; transform: scale(0.8);
         }
-        .edit-icon-btn:hover { background: var(--header-hover); }
+        .dl-icon-btn { bottom: 6px; right: 6px; background: var(--primary); }
+        .edit-icon-btn { top: 6px; right: 6px; }
+        
+        .sticker-img-box:hover .dl-icon-btn, 
+        .sticker-img-box:hover .edit-icon-btn { opacity: 1; transform: scale(1); }
+        
+        .dl-icon-btn:hover { transform: scale(1.1); box-shadow: 0 0 8px var(--primary-glow); }
+        .edit-icon-btn:hover { background: #444; }
 
-        .sticker-name { text-align: center; color: var(--text-sub); font-size: 0.8rem; font-family: monospace; }
-        .tags-row { display: flex; justify-content: center; gap: 6px; }
+        .sticker-name { font-family: 'Roboto Mono', monospace; font-size: 0.7rem; color: var(--text-sub); text-align: center; }
+        
         .tag-btn {
-            border: 1px solid var(--border); background: var(--input-bg); color: var(--text-sub);
-            padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; cursor: pointer; transition: 0.2s; font-weight: bold;
+            border: 1px solid var(--glass-border); background: rgba(255,255,255,0.05); 
+            color: var(--text-sub); padding: 2px 8px; border-radius: 8px; 
+            font-size: 0.65rem; cursor: pointer; transition: 0.2s; font-weight: 600;
         }
-        .tag-btn:hover { border-color: var(--text-main); color: var(--text-main); }
-        .tag-btn.active-main { background: var(--main-color); border-color: var(--main-color); color: white; }
-        .tag-btn.active-tab { background: #3498db; border-color: #3498db; color: white; }
-        
-        .tag-btn.disabled {
-            opacity: 0.3; pointer-events: none; background: #333; border-color: #444; color: #555;
+        .tag-btn:hover { background: rgba(255,255,255,0.1); color: var(--text-main); }
+        .tag-btn.active-main { background: var(--accent); border-color: var(--accent); color: white; box-shadow: 0 2px 8px rgba(255, 51, 102, 0.4); }
+        .tag-btn.active-tab { background: #3498db; border-color: #3498db; color: white; box-shadow: 0 2px 8px rgba(52, 152, 219, 0.4); }
+        .tag-btn.disabled { opacity: 0.3; pointer-events: none; }
+
+        .export-bar { 
+            background: var(--glass-bg); 
+            border: 1px solid var(--glass-border); 
+            padding: 12px; border-radius: var(--radius-md); 
+            display: flex; gap: 12px; flex-wrap: wrap; 
+            box-shadow: 0 -5px 15px rgba(0,0,0,0.15); 
         }
 
-        .export-bar { background: var(--panel-bg); border: 1px solid var(--border); padding: 12px; border-radius: 12px; margin-bottom: 20px; display: flex; gap: 12px; flex-wrap: wrap; }
-        .export-group-box { background: var(--group-bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; display: flex; flex-direction: column; justify-content: center; }
-        .export-label-text { font-size: 0.8rem; color: var(--primary); font-weight: bold; }
+        .theme-btn { 
+            background: rgba(255,255,255,0.1); border: 1px solid var(--glass-border); 
+            color: var(--text-main); padding: 6px 12px; border-radius: 20px; 
+            cursor: pointer; font-size: 0.75rem; font-weight: 600; 
+            display: flex; align-items: center; gap: 5px;
+            transition: 0.3s;
+        }
+        .theme-btn:hover { background: rgba(255,255,255,0.2); }
 
-        .bg-toggles { display: flex; gap: 8px; justify-content: flex-end; margin-bottom: 10px; }
-        .bg-toggle-btn { width: 24px; height: 24px; border-radius: 50%; cursor: pointer; border: 2px solid #555; }
-        .bg-toggle-btn.active { border-color: var(--primary); transform: scale(1.1); box-shadow: 0 0 5px var(--primary); }
+        .move-toolbar {
+            background: rgba(0,0,0,0.2); padding: 5px; border-radius: 8px;
+            display: flex; gap: 5px; justify-content: center; flex-wrap: wrap; align-items: center;
+        }
+        .move-btn {
+            width: 32px; height: 32px; border-radius: 6px;
+            background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border);
+            color: var(--text-main); font-size: 1rem;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: 0.2s;
+        }
+        .move-btn:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
 
-        .footer { text-align: center; margin-top: 30px; color: var(--text-sub); font-size: 0.8rem; border-top: 1px solid var(--border); padding-top: 15px; }
-
-        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.95); animation: fadeIn 0.3s; }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.9); backdrop-filter: blur(5px); animation: fadeIn 0.3s; }
         .modal-content { 
             margin: auto; display: block; max-width: 90%; max-height: 90vh; 
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); border-radius: 8px; 
-            box-shadow: 0 0 20px rgba(0,0,0,0.5); transition: transform 0.2s ease; cursor: zoom-in;
+            transition: transform 0.2s ease; cursor: zoom-in;
         }
         .modal-content.zoomed { transform: translate(-50%, -50%) scale(2); cursor: zoom-out; }
-        .modal-close { position: absolute; top: 20px; right: 35px; color: #fff; font-size: 40px; font-weight: bold; cursor: pointer; z-index: 1001; }
-        
-        .help-modal-content { background: var(--card-bg); color: var(--text-main); padding: 20px; border-radius: 12px; width: 300px; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); border: 1px solid var(--border); }
-        .help-text { font-size: 0.95rem; line-height: 1.5; color: var(--text-main); white-space: pre-wrap; }
 
-        /* 單張編輯 Modal 樣式 */
         .edit-modal-content {
-            background: var(--card-bg); width: 450px; max-width: 90%; margin: 50px auto; padding: 20px; border-radius: 12px; position: relative;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid var(--border);
+            background: #1a1a1a; border: 1px solid #333; 
+            box-shadow: 0 20px 50px rgba(0,0,0,0.7);
+            color: #fff;
+            width: 400px; max-width: 95%; margin: 30px auto; padding: 15px; border-radius: 12px; position: relative;
         }
         .edit-preview-box {
-            width: 100%; height: 300px; background-image: linear-gradient(45deg, #333 25%, transparent 25%), linear-gradient(-45deg, #333 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #333 75%), linear-gradient(-45deg, transparent 75%, #333 75%);
-            background-size: 20px 20px; background-color: #222; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 20px;
+            width: 100%; height: 260px; background-image: linear-gradient(45deg, #333 25%, transparent 25%), linear-gradient(-45deg, #333 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #333 75%), linear-gradient(-45deg, transparent 75%, #333 75%);
+            background-size: 16px 16px; background-color: #222; border: 1px solid #444; border-radius: 8px; margin-bottom: 15px;
             display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative;
         }
         .edit-preview-box canvas { max-width: 100%; max-height: 100%; object-fit: contain; }
-        
-        /* 橡皮擦游標 */
-        .cursor-eraser { cursor: crosshair !important; }
-        
-        /* 橡皮擦控制列 */
         .eraser-tools {
-            display: flex; align-items: center; gap: 10px; margin-bottom: 10px; padding: 10px; background: var(--input-bg); border-radius: 8px; border: 1px solid var(--border);
+            display: flex; align-items: center; gap: 8px; margin-bottom: 10px; padding: 8px; background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px solid #444;
         }
-        .tool-btn {
-            background: transparent; border: 1px solid var(--border); color: var(--text-sub);
-            padding: 5px 10px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 5px;
-        }
-        .tool-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
 
-        @keyframes fadeIn { from {opacity: 0} to {opacity: 1} }
-        @keyframes slideDown { from {opacity:0; transform: translateY(-5px);} to {opacity:1; transform: translateY(0);} }
+        .tool-btn {
+            background: #2a2a2a; border: 1px solid #444; color: #aaa;
+            padding: 6px 12px; border-radius: 6px; font-size: 0.85rem;
+            transition: 0.2s; cursor: pointer;
+        }
+        .tool-btn.active { background: var(--primary); color: white; border-color: var(--primary); box-shadow: 0 0 10px var(--primary-glow); }
+
+        .help-modal-content { background: var(--card-bg); color: var(--text-main); padding: 20px; border-radius: 12px; width: 300px; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); border: 1px solid var(--glass-border); }
+        .help-text { font-size: 0.9rem; line-height: 1.5; color: var(--text-main); white-space: pre-wrap; }
+
+        hr { border: 0; border-top: 1px solid var(--glass-border); margin: 12px 0; }
+        .footer { color: var(--text-muted); font-size: 0.75rem; margin-top: 20px; border-top: 1px solid var(--glass-border); padding-top: 15px; text-align: center; }
+
+        @keyframes fadeIn { from {opacity: 0; transform: translateY(10px);} to {opacity: 1; transform: translateY(0);} }
+
+        .right-header-row {
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;
+        }
+        .bg-toggles { display: flex; gap: 8px; background: rgba(0,0,0,0.2); padding: 4px; border-radius: 20px; }
+        .bg-toggle-btn { 
+            width: 24px; height: 24px; border-radius: 50%; cursor: pointer; 
+            border: 2px solid transparent; transition: 0.2s;
+        }
+        .bg-toggle-btn:hover { transform: scale(1.1); }
+        .bg-toggle-btn.active { border-color: #fff; box-shadow: 0 0 8px rgba(255,255,255,0.3); transform: scale(1.15); }
+        
+        .input-mini { width: 45px; text-align: center; }
+        .input-short { width: 70px; text-align: center; }
+
+        #eraserCursor {
+            position: fixed; border: 2px solid #fff; box-shadow: 0 0 4px #000;
+            border-radius: 50%; pointer-events: none; display: none; transform: translate(-50%, -50%); z-index: 9999;
+        }
+        .edit-preview-box.eraser-active { cursor: none !important; }
+        .cursor-eraser { cursor: none; }
     </style>
 </head>
 <body class="">
 
 <div class="header">
-    <h1>LINE 貼圖製作大師 <span style="font-size:0.6em; color:var(--text-sub);">V25-19 橡皮擦精修版 - 更新</span></h1>
-    <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️ 切換明亮</button>
+    <h1>
+        <span style="color:var(--primary); font-size:1.2em;">●</span> 
+        LINE Sticker Studio 
+        <span class="tag-version">PRO Compact</span>
+    </h1>
+    <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">
+        <span>☀️</span>
+    </button>
 </div>
+
+<div id="eraserCursor"></div>
 
 <div class="container">
     <div class="card sticky-sidebar">
@@ -343,83 +504,90 @@
             
             <div id="step-pane-1" class="step-pane active">
                 <div class="section-box">
-                    <div class="section-title">📷 上傳圖片</div>
+                    <div class="section-title">📂 來源檔案</div>
                     <div class="upload-box" id="dropZone" onclick="document.getElementById('imgInput').click()">
-                        <div style="font-size:2rem; margin-bottom:10px;">📤</div>
-                        <span id="fileName">點擊選取或拖放圖片</span>
+                        <div class="upload-icon">📤</div>
+                        <div style="font-weight:600; margin-bottom:5px; font-size:0.9rem;">點擊或拖放圖片</div>
+                        <div style="font-size:0.75rem; color:var(--text-muted);" id="fileName">支援 JPG, PNG</div>
                         <input type="file" id="imgInput" accept="image/*" style="display:none">
                     </div>
                 </div>
-                <div style="color:var(--text-sub); font-size:0.9rem; padding:10px; line-height:1.5;">
-                    💡 提示：可使用鍵盤 <span style="border:1px solid #666; padding:0 3px; border-radius:3px;">↑↓←→</span> 移動圖片。<br>
-                    按住 <span style="border:1px solid #666; padding:0 3px; border-radius:3px;">Shift</span> 加速，按住 <span style="border:1px solid #666; padding:0 3px; border-radius:3px;">Ctrl</span> 縮放。
+                <div style="color:var(--text-sub); font-size:0.75rem; padding:8px; line-height:1.5; background:rgba(255,255,255,0.03); border-radius:8px;">
+                    💡 快捷鍵：<br>
+                    • <span style="color:var(--text-main); font-weight:bold;">↑↓←→</span> 移動圖片<br>
+                    • 按住 <span style="color:var(--text-main); font-weight:bold;">Shift</span> 加速移動<br>
+                    • 按住 <span style="color:var(--text-main); font-weight:bold;">Ctrl</span> 縮放圖片
                 </div>
             </div>
 
             <div id="step-pane-2" class="step-pane">
                 <div class="section-box">
-                    <div class="section-title">✂️ 裁切分割</div>
-                    <div class="row" style="justify-content: flex-start; gap: 20px;">
-                        <div style="display:flex; align-items:center;">
-                            <span class="label-text" style="width:auto; margin-right:5px;">垂直(列)</span>
-                            <input type="number" id="rows" value="4" min="1" class="input-mini">
+                    <div class="section-title">📐 格線裁切</div>
+                    <div class="row" style="gap: 15px;">
+                        <div style="flex:1;">
+                            <label style="font-size:0.75rem; color:var(--text-sub); display:block; margin-bottom:4px;">垂直 (列)</label>
+                            <input type="number" id="rows" value="4" min="1" style="width:100%;">
                         </div>
-                        <div style="display:flex; align-items:center;">
-                            <span class="label-text" style="width:auto; margin-right:5px;">水平(行)</span>
-                            <input type="number" id="cols" value="5" min="1" class="input-mini">
+                        <div style="flex:1;">
+                            <label style="font-size:0.75rem; color:var(--text-sub); display:block; margin-bottom:4px;">水平 (行)</label>
+                            <input type="number" id="cols" value="5" min="1" style="width:100%;">
                         </div>
-                    </div>
-                    <div style="font-size:0.8rem; color:var(--text-sub); margin-top:5px;">
-                        💡 勾選右側「微調模式」可進行 1px 極致微調
                     </div>
                 </div>
 
-                <div class="section-box" style="background: var(--group-bg);">
-                    <div class="row">
-                        <div class="label-group">
-                            <span class="label-text">自動置中</span>
+                <div class="section-box">
+                    <div class="row" style="justify-content:space-between; margin-bottom:0;">
+                        <div class="label-group" style="width:auto;">
+                            <span class="label-text" style="font-size:0.85rem; color:var(--text-main);">智能自動置中</span>
                             <span class="info-btn" onclick="showHelp('autoCenter')">?</span>
                         </div>
-                        <div style="flex:1; display:flex; align-items:center;">
-                            <input type="checkbox" id="autoCenter" checked>
-                            <span style="margin-left:6px; color:var(--text-sub); font-size:0.85rem;">裁切並自動放大置中</span>
-                        </div>
+                        <input type="checkbox" id="autoCenter" checked>
                     </div>
+                    <div style="font-size:0.75rem; color:var(--text-muted); margin-top:5px;">裁切後自動偵測主體並放大置中。</div>
                 </div>
             </div>
 
             <div id="step-pane-3" class="step-pane">
+                <div class="live-preview-container">
+                    <div class="live-tag">⚡ 即時預覽</div>
+                    <div class="live-preview-box" id="livePreviewBox">
+                        <canvas id="livePreviewCanvas" style="max-width:100%; max-height:100%;"></canvas>
+                    </div>
+                </div>
+
                 <div class="section-box">
-                    <div class="section-title">🎨 去背與後製</div>
+                    <div class="section-title">🎨 去背與特效</div>
                     
                     <div class="row">
                         <div class="label-group">
                             <span class="label-text">去背顏色</span>
                             <span class="info-btn" onclick="showHelp('color')">?</span>
                         </div>
-                        <input type="color" id="targetColor" value="#FFFFFF" style="flex:1;">
-                        <button class="btn btn-secondary" style="flex:1; padding:2px; font-size:0.8rem;" onclick="setColor('#FFFFFF')">白</button>
-                        <button class="btn btn-secondary" style="flex:1; padding:2px; font-size:0.8rem;" onclick="setColor('#00FF00')">綠</button>
+                        <div style="flex:1; display:flex; gap:5px;">
+                            <input type="color" id="targetColor" value="#FFFFFF" style="flex:1;">
+                            <button class="btn btn-secondary" style="width:auto; padding:0 8px; font-size:0.8rem;" onclick="setColor('#FFFFFF')">白</button>
+                            <button class="btn btn-secondary" style="width:auto; padding:0 8px; font-size:0.8rem;" onclick="setColor('#00FF00')">綠</button>
+                        </div>
                     </div>
 
                     <div class="row">
                         <div class="label-group">
-                            <span class="label-text">寬容度</span>
+                            <span class="label-text">去背寬容</span>
                             <span class="info-btn" onclick="showHelp('tolerance')">?</span>
                         </div>
                         <input type="range" id="tolerance" min="0" max="100" value="40">
-                        <span class="input-mini" id="val-tolerance" style="text-align:right;">40%</span>
+                        <span class="input-mini" id="val-tolerance" style="text-align:right; font-family:monospace; font-size:0.8rem;">40%</span>
                     </div>
 
-                    <hr style="border:0; border-top:1px dashed var(--border); margin:15px 0;">
+                    <hr>
 
                     <div class="row">
                         <div class="label-group">
-                            <span class="label-text">柔化</span>
+                            <span class="label-text">邊緣柔化</span>
                             <span class="info-btn" onclick="showHelp('smoothness')">?</span>
                         </div>
                         <input type="range" id="smoothness" min="0" max="10" step="0.5" value="0">
-                        <span class="input-mini" id="val-smoothness" style="text-align:right;">0</span>
+                        <span class="input-mini" id="val-smoothness" style="text-align:right; font-family:monospace; font-size:0.8rem;">0</span>
                     </div>
                     <div class="row">
                         <div class="label-group">
@@ -427,7 +595,7 @@
                             <span class="info-btn" onclick="showHelp('shrink')">?</span>
                         </div>
                         <input type="range" id="shrink" min="0" max="10" step="0.5" value="0">
-                        <span class="input-mini" id="val-shrink" style="text-align:right;">0</span>
+                        <span class="input-mini" id="val-shrink" style="text-align:right; font-family:monospace; font-size:0.8rem;">0</span>
                     </div>
                     <div class="row">
                         <div class="label-group">
@@ -435,16 +603,19 @@
                             <span class="info-btn" onclick="showHelp('defringe')">?</span>
                         </div>
                         <input type="range" id="defringe" min="0" max="20" step="1" value="0">
-                        <span class="input-mini" id="val-defringe" style="text-align:right;">0</span>
+                        <span class="input-mini" id="val-defringe" style="text-align:right; font-family:monospace; font-size:0.8rem;">0</span>
                     </div>
+                    
+                    <hr>
+                    
                     <div class="row">
                         <div class="label-group">
-                            <span class="label-text">描邊</span>
+                            <span class="label-text">描邊粗細</span>
                             <span class="info-btn" onclick="showHelp('contour')">?</span>
                         </div>
                         <input type="range" id="contour" min="0" max="20" step="1" value="5">
-                        <input type="color" id="contourColor" value="#FFFFFF" style="width:40px; flex:0 0 auto; margin-left:5px;" title="描邊顏色">
-                        <span class="input-mini" id="val-contour" style="text-align:right;">5</span>
+                        <input type="color" id="contourColor" value="#FFFFFF" style="width:30px; flex:0 0 auto; margin-left:5px;">
+                        <span class="input-mini" id="val-contour" style="text-align:right; font-family:monospace; font-size:0.8rem;">5</span>
                     </div>
 
                     <div class="row">
@@ -453,31 +624,31 @@
                             <span class="info-btn" onclick="showHelp('shadow')">?</span>
                         </div>
                         <input type="range" id="shadowBlur" min="0" max="30" step="1" value="0">
-                        <span class="input-mini" id="val-shadowBlur" style="text-align:right;">0</span>
+                        <span class="input-mini" id="val-shadowBlur" style="text-align:right; font-family:monospace; font-size:0.8rem;">0</span>
                     </div>
                     <div class="row">
                         <div class="label-group">
                             <span class="label-text">陰影距離</span>
                         </div>
                         <input type="range" id="shadowDist" min="0" max="20" step="1" value="2">
-                        <span class="input-mini" id="val-shadowDist" style="text-align:right;">2</span>
+                        <span class="input-mini" id="val-shadowDist" style="text-align:right; font-family:monospace; font-size:0.8rem;">2</span>
                     </div>
                     <div class="row">
                         <div class="label-group">
                             <span class="label-text">陰影濃度</span>
                         </div>
                         <input type="range" id="shadowOpacity" min="0" max="100" step="5" value="60">
-                        <input type="color" id="shadowColor" value="#000000" style="width:40px; flex:0 0 auto; margin-left:5px;" title="陰影顏色">
-                        <span class="input-mini" id="val-shadowOpacity" style="text-align:right;">60%</span>
+                        <input type="color" id="shadowColor" value="#000000" style="width:30px; flex:0 0 auto; margin-left:5px;">
+                        <span class="input-mini" id="val-shadowOpacity" style="text-align:right; font-family:monospace; font-size:0.8rem;">60%</span>
                     </div>
 
                     <div class="row">
                         <div class="label-group">
-                            <span class="label-text">留白</span>
+                            <span class="label-text">四周留白</span>
                             <span class="info-btn" onclick="showHelp('padding')">?</span>
                         </div>
                         <input type="range" id="padding" min="0" max="20" step="1" value="0">
-                        <span class="input-mini" id="val-padding" style="text-align:right;">0%</span>
+                        <span class="input-mini" id="val-padding" style="text-align:right; font-family:monospace; font-size:0.8rem;">0%</span>
                     </div>
                 </div>
             </div>
@@ -485,9 +656,9 @@
         </div>
 
         <div class="nav-buttons">
-            <button id="prevBtn" class="btn btn-secondary" onclick="changeStep(-1)" disabled>⬅ 上一步</button>
+            <button id="prevBtn" class="btn btn-secondary" onclick="changeStep(-1)" disabled>⬅</button>
             <button id="nextBtn" class="btn btn-green" onclick="changeStep(1)">下一步 ➡</button>
-            <button id="runBtn" class="btn btn-green" style="display:none;" disabled>🚀 開始製作</button>
+            <button id="runBtn" class="btn btn-green" style="display:none;" disabled>🚀 製作</button>
         </div>
 
     </div>
@@ -497,148 +668,161 @@
         <div class="orig-ref-container" id="refContainer" tabindex="0">
             <div class="orig-header" onclick="toggleRefAccordion()">
                 <div class="orig-label">
-                    <span class="orig-toggle-icon" id="refIcon">▼</span> 📌 原始圖參考
+                    <span class="orig-toggle-icon" id="refIcon" style="font-size:0.8em; margin-right:5px;">▼</span> 📌 參考底圖
                 </div>
                 <div class="orig-controls-top" onclick="event.stopPropagation()">
-                    <label style="display:flex; align-items:center; font-weight:normal; font-size:0.85rem; cursor:pointer;">
-                        <input type="checkbox" id="showGrid" checked style="width:16px; height:16px; margin-right:5px;"> 顯示格線
+                    <label style="display:flex; align-items:center; font-size:0.8rem; cursor:pointer; color:var(--text-sub); gap:6px;">
+                        <input type="checkbox" id="showGrid" checked style="width:30px; height:18px;"> 顯示格線
                     </label>
-                    <button class="btn btn-secondary" style="width:auto; padding:2px 8px; font-size:0.8rem;" onclick="toggleOrigSize()">預覽視窗縮放</button>
+                    <button class="btn btn-secondary" style="width:auto; padding:3px 10px; font-size:0.75rem; border-radius:12px;" onclick="toggleOrigSize()">切換高度</button>
                 </div>
             </div>
             
             <div class="orig-body">
                 <div class="move-toolbar">
-                    <label class="micro-switch" title="勾選後：移動1px / 縮放0.1%">
-                        <input type="checkbox" id="microMode"> 微調模式
+                    <label class="btn btn-secondary" style="width:auto; padding:0 8px; font-size:0.8rem; display:flex; align-items:center;">
+                        <input type="checkbox" id="microMode" style="width:30px; height:18px; margin-right:5px;"> 微調
                     </label>
-                    <div class="move-divider"></div>
-                    <div class="move-group">
-                        <button class="move-btn" onclick="moveImg(0, 1)" title="放大 (Ctrl+↑)">➕</button>
-                        <button class="move-btn" onclick="moveImg(0, -1)" title="縮小 (Ctrl+↓)">➖</button>
-                    </div>
-                    <div class="move-divider"></div>
-                    <div class="move-group">
-                        <button class="move-btn" onclick="moveImg('y', 1)" title="上移 (↑)">⬆️</button>
-                        <button class="move-btn" onclick="moveImg('y', -1)" title="下移 (↓)">⬇️</button>
-                        <button class="move-btn" onclick="moveImg('x', 1)" title="左移 (←)">⬅️</button>
-                        <button class="move-btn" onclick="moveImg('x', -1)" title="右移 (→)">➡️</button>
-                    </div>
-                    <div class="move-divider"></div>
-                    <button class="move-btn" style="width:auto; font-size:0.9rem; padding:0 8px;" onclick="resetMove()">重置</button>
+                    <div style="width:1px; height:20px; background:var(--glass-border); margin:0 5px;"></div>
+                    <button class="move-btn" onclick="moveImg(0, 1)" title="放大">＋</button>
+                    <button class="move-btn" onclick="moveImg(0, -1)" title="縮小">－</button>
+                    <div style="width:1px; height:20px; background:var(--glass-border); margin:0 5px;"></div>
+                    <button class="move-btn" onclick="moveImg('y', 1)" title="上移">↑</button>
+                    <button class="move-btn" onclick="moveImg('y', -1)" title="下移">↓</button>
+                    <button class="move-btn" onclick="moveImg('x', 1)" title="左移">←</button>
+                    <button class="move-btn" onclick="moveImg('x', -1)" title="右移">→</button>
+                    <div style="width:1px; height:20px; background:var(--glass-border); margin:0 5px;"></div>
+                    <button class="btn btn-secondary" style="width:auto; padding:0 10px; font-size:0.8rem;" onclick="resetMove()">重置</button>
                 </div>
 
-                <div id="origPreviewBox">
-                    <div id="origWrapper">
-                        <canvas id="refCanvas"></canvas>
-                        <canvas id="gridCanvas"></canvas>
+                <div id="origPreviewBox" style="text-align: center; background: rgba(0,0,0,0.3); padding: 5px; border-radius: 8px; margin-top:8px; position:relative;">
+                    <div id="origWrapper" style="position: relative; display: inline-block; max-width: 100%;">
+                        <canvas id="refCanvas" style="max-height: 200px; max-width: 100%; object-fit: contain; cursor: crosshair; display: block;"></canvas>
+                        <canvas id="gridCanvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;"></canvas>
                     </div>
-                    <div id="eyedropperHint">💡 點擊圖片可吸取顏色</div>
+                    <div id="eyedropperHint" style="position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.7); color: white; font-size: 0.7rem; padding: 2px 8px; border-radius: 10px; pointer-events: none; backdrop-filter: blur(4px);">💡 點圖吸色</div>
                 </div>
             </div>
         </div>
 
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-            <h2>🖼️ 匯出與預覽</h2>
+        <div class="right-header-row">
+            <h2 style="margin:0; font-size:1.1rem; display:flex; align-items:center; gap:8px;">🖼️ 成果 <span style="font-size:0.8rem; color:var(--text-sub); font-weight:400;">(拖曳排序)</span></h2>
             <div class="bg-toggles">
-                <div class="bg-toggle-btn active" style="background:#222;" onclick="setPreviewBg(this, 'dark')" title="暗黑底"></div>
-                <div class="bg-toggle-btn" style="background:#849ebf;" onclick="setPreviewBg(this, 'line')" title="LINE 聊天室"></div>
-                <div class="bg-toggle-btn" style="background:#ffffff;" onclick="setPreviewBg(this, 'light')" title="白底"></div>
-                <div class="bg-toggle-btn" style="background:#ffe6f2;" onclick="setPreviewBg(this, 'pink')" title="淺粉底"></div>
-                <div class="bg-toggle-btn" style="background:#fffde7;" onclick="setPreviewBg(this, 'yellow')" title="淺黃底"></div>
+                <div class="bg-toggle-btn active" style="background:#1e1e1e;" onclick="setPreviewBg(this, 'dark')" title="深色"></div>
+                <div class="bg-toggle-btn" style="background:#849ebf;" onclick="setPreviewBg(this, 'line')" title="LINE"></div>
+                <div class="bg-toggle-btn" style="background:#ffffff;" onclick="setPreviewBg(this, 'light')" title="淺色"></div>
+                <div class="bg-toggle-btn" style="background:#ffe6f2;" onclick="setPreviewBg(this, 'pink')" title="粉色"></div>
             </div>
         </div>
         
+        <div id="previewContainer">
+            <div style="grid-column:1/-1; text-align:center; color:var(--text-muted); padding:40px;">
+                <div style="font-size:2rem; margin-bottom:15px; opacity:0.3;">🎨</div>
+                請先完成左側設定並點擊「製作」
+            </div>
+        </div>
+
         <div class="export-bar">
-            <div class="export-group-box" style="min-width: 100px; flex: 0 0 auto;">
-                <div class="export-label-row"><span class="export-label-text">起始檔名</span></div>
-                <input type="text" id="startNum" value="001" class="input-short" placeholder="001">
+            <div style="flex:0 0 auto;">
+                <label style="font-size:0.75rem; color:var(--primary); font-weight:700; display:block; margin-bottom:4px;">編號</label>
+                <input type="text" id="startNum" value="01" class="input-short" placeholder="01" style="text-align:center;">
             </div>
             
-            <div class="export-group-box" style="flex:1;">
-                <div class="export-label-row"><span class="export-label-text">尺寸模式</span></div>
-                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <div style="flex:1;">
+                <label style="font-size:0.75rem; color:var(--primary); font-weight:700; display:block; margin-bottom:4px;">規格</label>
+                <div style="display:flex; gap:8px; align-items:center;">
                     <select id="sizePreset" style="flex:1; min-width:80px;">
+                        <option value="sticker" selected>😃 貼圖 (270px)</option>
+                        <option value="emoji">😘 表情 (180px)</option>
                         <option value="custom">✍️ 自訂</option>
-                        <option value="sticker">😃 貼圖</option>
-                        <option value="emoji">😘 表情</option>
                     </select>
-                    <div style="display:flex; gap:5px; align-items:center;">
-                        <input type="number" id="outW" value="370" class="input-mini"><span>x</span><input type="number" id="outH" value="320" class="input-mini">
+                    <div style="display:flex; gap:4px; align-items:center; background:rgba(0,0,0,0.2); padding:0 6px; height:32px; border-radius:6px;">
+                        <input type="number" id="outW" value="270" class="input-mini" disabled style="border:none; background:transparent; padding:0; height:auto;">
+                        <span style="color:var(--text-sub); font-size:0.8rem;">x</span>
+                        <input type="number" id="outH" value="270" class="input-mini" disabled style="border:none; background:transparent; padding:0; height:auto;">
                     </div>
                 </div>
             </div>
 
-            <div style="display:flex; align-items:center;">
-                <button id="dlBtn" class="btn btn-green" style="height:100%; padding:0 20px;">下載全部 ZIP</button>
+            <div style="display:flex; align-items:flex-end;">
+                <button id="dlBtn" class="btn btn-green" style="height:38px; padding:0 20px; font-size:0.85rem;">
+                    <span style="margin-right:5px;">📦</span> 打包下載
+                </button>
             </div>
         </div>
-
-        <div id="previewContainer">
-            <div style="grid-column:1/-1; text-align:center; color:#666; padding:50px;">請點擊左側「開始製作」</div>
-        </div>
+        
     </div>
 </div>
 
 <div class="footer" id="footerText"></div>
-<div id="imageModal" class="modal" onclick="closeModal()"><span class="modal-close">&times;</span><img class="modal-content" id="modalImg"></div>
+
+<div id="imageModal" class="modal" onclick="closeModal()">
+    <span class="modal-close" style="position:absolute; top:20px; right:30px; font-size:40px; cursor:pointer;">&times;</span>
+    <img class="modal-content" id="modalImg" style="box-shadow:0 0 50px rgba(0,0,0,0.8);">
+</div>
+
 <div id="helpModal" class="modal" onclick="closeHelp()">
-    <div class="help-modal-content" onclick="event.stopPropagation()">
-        <div class="help-title">💡 功能說明</div>
+    <div class="help-modal-content" style="background:var(--card-bg); backdrop-filter:blur(20px);" onclick="event.stopPropagation()">
+        <div style="font-size:1.1rem; font-weight:bold; margin-bottom:10px; border-bottom:1px solid #444; padding-bottom:8px;">💡 功能說明</div>
         <div id="helpText" class="help-text"></div>
-        <button class="btn btn-green" style="margin-top:20px; width:100%;" onclick="closeHelp()">知道了</button>
+        <button class="btn btn-green" style="margin-top:15px; width:100%; padding:8px;" onclick="closeHelp()">知道了</button>
     </div>
 </div>
 
 <div id="editModal" class="modal">
     <div class="edit-modal-content">
-        <h3 style="margin-top:0;">✏️ 單張微調 (Sticker #<span id="editIdx"></span>)</h3>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <h3 style="margin:0; font-size:1.1rem;">✏️ 精修 (Sticker #<span id="editIdx"></span>)</h3>
+            <button onclick="closeEditModal()" style="background:none; border:none; color:#aaa; font-size:1.5rem; cursor:pointer;">&times;</button>
+        </div>
         
         <div class="eraser-tools">
             <button class="tool-btn" id="eraserBtn" onclick="toggleEraser()">🧽 橡皮擦</button>
-            <div style="flex:1; display:flex; align-items:center; gap:5px;">
-                <span style="font-size:0.8rem; color:#aaa;">大小:</span>
+            <div style="flex:1; display:flex; align-items:center; gap:8px; margin:0 10px;">
+                <span style="font-size:0.75rem; color:#aaa;">大小</span>
                 <input type="range" id="eraserSize" min="1" max="50" value="10" style="flex:1;">
             </div>
-            <button class="tool-btn" style="border:none; color:#ff5252;" onclick="clearEraser()">❌ 清除塗抹</button>
+            <button class="tool-btn" style="color:#ff5252; border-color:rgba(255,82,82,0.3);" onclick="clearEraser()">❌</button>
         </div>
 
         <div class="edit-preview-box" id="editPreviewBox">
             <canvas id="editCanvas"></canvas>
         </div>
         
-        <div class="row">
-            <div class="label-group"><span class="label-text">寬容度</span></div>
-            <input type="range" id="e_tolerance" min="0" max="100">
-            <span class="input-mini" id="v_e_tolerance"></span>
-        </div>
-        <div class="row">
-            <div class="label-group"><span class="label-text">柔化</span></div>
-            <input type="range" id="e_smoothness" min="0" max="10" step="0.5">
-            <span class="input-mini" id="v_e_smoothness"></span>
-        </div>
-        <div class="row">
-            <div class="label-group"><span class="label-text">邊緣內縮</span></div>
-            <input type="range" id="e_shrink" min="0" max="10" step="0.5">
-            <span class="input-mini" id="v_e_shrink"></span>
-        </div>
-        <div class="row">
-            <div class="label-group"><span class="label-text">邊緣淨化</span></div>
-            <input type="range" id="e_defringe" min="0" max="20" step="1">
-            <span class="input-mini" id="v_e_defringe"></span>
+        <div style="background:rgba(0,0,0,0.2); padding:10px; border-radius:8px; margin-top:10px; display:grid; gap:8px;">
+            <div class="row" style="margin:0;">
+                <div class="label-group"><span class="label-text">寬容度</span></div>
+                <input type="range" id="e_tolerance" min="0" max="100">
+                <span class="input-mini" id="v_e_tolerance" style="font-family:monospace; font-size:0.8rem;"></span>
+            </div>
+            <div class="row" style="margin:0;">
+                <div class="label-group"><span class="label-text">柔化</span></div>
+                <input type="range" id="e_smoothness" min="0" max="10" step="0.5">
+                <span class="input-mini" id="v_e_smoothness" style="font-family:monospace; font-size:0.8rem;"></span>
+            </div>
+            <div class="row" style="margin:0;">
+                <div class="label-group"><span class="label-text">邊緣內縮</span></div>
+                <input type="range" id="e_shrink" min="0" max="10" step="0.5">
+                <span class="input-mini" id="v_e_shrink" style="font-family:monospace; font-size:0.8rem;"></span>
+            </div>
+            <div class="row" style="margin:0;">
+                <div class="label-group"><span class="label-text">邊緣淨化</span></div>
+                <input type="range" id="e_defringe" min="0" max="20" step="1">
+                <span class="input-mini" id="v_e_defringe" style="font-family:monospace; font-size:0.8rem;"></span>
+            </div>
         </div>
 
-        <div style="display:flex; gap:10px; margin-top:20px;">
+        <div style="display:flex; gap:10px; margin-top:15px;">
             <button class="btn btn-secondary" onclick="closeEditModal()">取消</button>
-            <button class="btn btn-green" onclick="saveEdit()">✅ 保存修改</button>
-            <button class="btn btn-secondary" onclick="applyToAll()">應用到所有</button>
+            <button class="btn btn-green" onclick="saveEdit()">✅ 確定</button>
         </div>
     </div>
 </div>
 
 <script>
     let rawStickers = [];
-    let stickerOverrides = {}; // 儲存單張設定
+    let stickerSourceIndices = []; 
+    let stickerOverrides = {}; 
     let isDark = true;
     let selectedMainIdx = -1, selectedTabIdx = -1;
     let previewBgClass = 'bg-dark';
@@ -649,8 +833,10 @@
     let currentEditIdx = -1;
     let isErasing = false;
     let isDrawing = false;
-    let tempMaskCanvas = null; // 暫存橡皮擦遮罩
-    let lastX = 0, lastY = 0; // 用於橡皮擦連續繪製
+    let tempMaskCanvas = null; 
+    let dragSrcIndex = null; 
+    let livePreviewTimer = null; 
+    let cachedProcessedImg = null; 
 
     const els = {
         imgIn: document.getElementById('imgInput'),
@@ -692,7 +878,10 @@
         editModal: document.getElementById('editModal'),
         editCanvas: document.getElementById('editCanvas'),
         eraserBtn: document.getElementById('eraserBtn'),
-        eraserSize: document.getElementById('eraserSize')
+        eraserSize: document.getElementById('eraserSize'),
+        livePreviewCanvas: document.getElementById('livePreviewCanvas'),
+        editPreviewBox: document.getElementById('editPreviewBox'),
+        eraserCursor: document.getElementById('eraserCursor')
     };
 
     const HELP_TEXTS = {
@@ -710,7 +899,7 @@
         'autoCenter': '【開啟】自動偵測內容並置中放大。\n【關閉】保留原始裁切位置。'
     };
 
-    els.footer.innerHTML = `© ${new Date().getFullYear()} RiverART  |  LINE Sticker Tool V25-19 | ${new Date().toISOString().slice(0, 10)}`;
+    els.footer.innerHTML = `© 2026 RiverART Studio | Compact Ver | ${new Date().toISOString().slice(0, 10)}`;
 
     window.changeStep = (delta) => {
         const newStep = currentStep + delta;
@@ -725,6 +914,11 @@
         }
         currentStep = newStep;
         els.prevBtn.disabled = (currentStep === 1);
+        
+        if (newStep === 3) {
+            updateLivePreview();
+        }
+
         if(currentStep === 3) {
             els.nextBtn.style.display = 'none';
             els.runBtn.style.display = 'block';
@@ -735,8 +929,12 @@
     };
 
     window.toggleRefAccordion = () => {
-        els.refContainer.classList.toggle('collapsed');
-        if(!els.refContainer.classList.contains('collapsed')) setTimeout(drawRefAndGrid, 100);
+        if(els.refContainer.classList.contains('collapsed')) {
+             els.refContainer.classList.remove('collapsed');
+             setTimeout(drawRefAndGrid, 100);
+        } else {
+             els.refContainer.classList.add('collapsed');
+        }
     };
 
     window.moveImg = (axis, dir) => {
@@ -754,6 +952,7 @@
             imgTrans.y -= (step * dir);
         }
         drawRefAndGrid();
+        if (currentStep === 3) updateLivePreview();
     };
 
     window.resetMove = () => {
@@ -762,8 +961,9 @@
     };
 
     document.addEventListener('keydown', (e) => {
-        if (!currentRawImg || els.refContainer.classList.contains('collapsed')) return;
-        if (e.target.tagName === 'INPUT') return;
+        if (!currentRawImg) return;
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
         let axis = null; let dir = 0;
         const isShift = e.shiftKey; const isCtrl = e.ctrlKey || e.metaKey;
         const originalMicro = els.microMode.checked;
@@ -839,9 +1039,10 @@
         const p = ctx.getImageData(canvasX, canvasY, 1, 1).data;
         const hex = "#" + ((1 << 24) + (p[0] << 16) + (p[1] << 8) + p[2]).toString(16).slice(1);
         els.targetColor.value = hex;
+        updateLivePreview();
         const hint = document.getElementById('eyedropperHint');
-        hint.textContent = `已吸取顏色: ${hex}`;
-        setTimeout(() => hint.textContent = "💡 點擊圖片可吸取顏色", 2000);
+        hint.innerHTML = `<span style="width:10px;height:10px;display:inline-block;background:${hex};border:1px solid #fff;margin-right:5px;"></span>${hex}`;
+        setTimeout(() => hint.textContent = "💡 點圖吸色", 2000);
     });
 
     window.toggleOrigSize = () => {
@@ -850,14 +1051,8 @@
         setTimeout(drawRefAndGrid, 100);
     };
 
-    els.rows.addEventListener('input', () => {
-        if (els.rows.value < 1) els.rows.value = 1;
-        drawRefAndGrid();
-    });
-    els.cols.addEventListener('input', () => {
-        if (els.cols.value < 1) els.cols.value = 1;
-        drawRefAndGrid();
-    });
+    els.rows.addEventListener('input', drawRefAndGrid);
+    els.cols.addEventListener('input', drawRefAndGrid);
     els.showGrid.addEventListener('change', drawRefAndGrid);
     window.addEventListener('resize', drawRefAndGrid);
 
@@ -879,24 +1074,27 @@
     }
 
     ['e_tolerance', 'e_smoothness', 'e_shrink', 'e_defringe'].forEach(id => {
-        const el = document.getElementById(id);
-        if(el) el.addEventListener('input', () => {
+        document.getElementById(id).addEventListener('input', () => {
             updateLabels();
-            updateEditPreview();
+            if (currentEditIdx !== -1) {
+                prepareEditSession(currentEditIdx).then(() => {
+                    updateEditPreviewCanvas();
+                });
+            }
         });
     });
 
     function loadSettings() {
         const s = JSON.parse(localStorage.getItem('stickerToolSettings'));
         if (s) {
-            ['rows','cols','contour','tolerance','padding','shadowBlur', 'shadowDist', 'shadowOpacity', 'shrink', 'defringe', 'targetColor', 'contourColor', 'shadowColor'].forEach(k => { if(s[k]) els[k].value = s[k]; });
+            ['rows','cols','contour','tolerance','padding','shadowBlur', 'shadowDist', 'shadowOpacity', 'shrink', 'defringe'].forEach(k => { if(s[k]) els[k].value = s[k]; });
             if(s.autoCenter !== undefined) els.autoCenter.checked = s.autoCenter;
             updateLabels();
         }
     }
     function saveSettings() {
         const s = { autoCenter: els.autoCenter.checked };
-        ['rows','cols','contour','tolerance','padding','shadowBlur', 'shadowDist', 'shadowOpacity', 'shrink', 'defringe', 'targetColor', 'contourColor', 'shadowColor'].forEach(k => s[k] = els[k].value);
+        ['rows','cols','contour','tolerance','padding','shadowBlur', 'shadowDist', 'shadowOpacity', 'shrink', 'defringe'].forEach(k => s[k] = els[k].value);
         localStorage.setItem('stickerToolSettings', JSON.stringify(s));
     }
 
@@ -928,13 +1126,27 @@
     };
 
     ['tolerance', 'smoothness', 'shrink', 'defringe', 'contour', 'shadowBlur', 'shadowDist', 'shadowOpacity', 'padding'].forEach(id => {
-        document.getElementById(id).addEventListener('input', () => { updateLabels(); saveSettings(); });
+        document.getElementById(id).addEventListener('input', () => { 
+            updateLabels(); 
+            saveSettings();
+            if (livePreviewTimer) clearTimeout(livePreviewTimer);
+            livePreviewTimer = setTimeout(updateLivePreview, 20); 
+        });
     });
-    ['rows', 'cols', 'autoCenter', 'targetColor', 'contourColor', 'shadowColor'].forEach(id => document.getElementById(id).addEventListener('change', saveSettings));
+    
+    ['targetColor', 'contourColor', 'shadowColor'].forEach(id => {
+        document.getElementById(id).addEventListener('input', () => {
+             if (livePreviewTimer) clearTimeout(livePreviewTimer);
+             livePreviewTimer = setTimeout(updateLivePreview, 20);
+        });
+    });
+
+    ['rows', 'cols', 'autoCenter'].forEach(id => document.getElementById(id).addEventListener('change', () => {
+        saveSettings();
+        updateLivePreview();
+    }));
 
     els.startNum.addEventListener('input', () => {
-        let val = parseInt(els.startNum.value) || 1;
-        els.startNum.value = String(val).padStart(els.startNum.value.length, '0');
         rawStickers.forEach((_, i) => {
             const nameEl = document.getElementById(`name-${i}`);
             if(nameEl) nameEl.textContent = getFilename(i);
@@ -942,11 +1154,20 @@
     });
 
     els.sizePreset.addEventListener('change', () => { 
-        if (els.sizePreset.value === 'sticker') { els.outW.value = 370; els.outH.value = 320; }
-        else if (els.sizePreset.value === 'emoji') { 
+        const mode = els.sizePreset.value;
+        if (mode === 'sticker') { 
             els.outW.value = 270; els.outH.value = 270; 
-            selectedMainIdx = -1; updateTagClasses();
+            els.outW.disabled = true; els.outH.disabled = true;
+            els.startNum.value = '01';
+        } else if (mode === 'emoji') { 
+            els.outW.value = 180; els.outH.value = 180; 
+            els.outW.disabled = true; els.outH.disabled = true;
+            els.startNum.value = '001';
+            selectedMainIdx = -1;
+        } else {
+            els.outW.disabled = false; els.outH.disabled = false;
         }
+        updateTagClasses();
         renderPreview(parseInt(els.rows.value), parseInt(els.cols.value));
     });
 
@@ -954,43 +1175,16 @@
         const file = e.target.files[0];
         if(file) {
             document.getElementById('fileName').textContent = file.name;
-            try {
-                currentRawImg = await loadImage(URL.createObjectURL(file));
-                resetMove(); 
-                els.refContainer.style.display = 'block';
-                els.refContainer.classList.remove('collapsed');
-                els.preview.innerHTML = "<div style='grid-column:1/-1;text-align:center;color:#666;padding:50px;'>請點擊第3步的「開始製作」</div>";
-                rawStickers = [];
-                stickerOverrides = {};
-                els.runBtn.disabled = false;
-                detectBgColor(currentRawImg); // 自動偵測背景顏色
-            } catch (err) {
-                alert('圖片載入失敗: ' + err.message);
-            }
+            currentRawImg = await loadImage(URL.createObjectURL(file));
+            resetMove(); 
+            els.refContainer.style.display = 'block';
+            els.refContainer.classList.remove('collapsed');
+            els.preview.innerHTML = "<div style='grid-column:1/-1;text-align:center;color:#666;padding:50px;'>請點擊第3步的「製作」</div>";
+            rawStickers = [];
+            stickerOverrides = {};
+            els.runBtn.disabled = false;
         }
     });
-
-    function detectBgColor(img) {
-        const cvs = document.createElement('canvas');
-        cvs.width = img.width; cvs.height = img.height;
-        const ctx = cvs.getContext('2d');
-        ctx.drawImage(img, 0, 0);
-        const corners = [
-            ctx.getImageData(0, 0, 1, 1).data,
-            ctx.getImageData(img.width-1, 0, 1, 1).data,
-            ctx.getImageData(0, img.height-1, 1, 1).data,
-            ctx.getImageData(img.width-1, img.height-1, 1, 1).data
-        ];
-        let avgR = 0, avgG = 0, avgB = 0;
-        corners.forEach(p => { avgR += p[0]; avgG += p[1]; avgB += p[2]; });
-        avgR /= 4; avgG /= 4; avgB /= 4;
-        const hex = rgbToHex(Math.round(avgR), Math.round(avgG), Math.round(avgB));
-        els.targetColor.value = hex;
-    }
-
-    function rgbToHex(r, g, b) {
-        return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
-    }
 
     async function getSourceImage() {
         const virtualCvs = document.createElement('canvas');
@@ -1007,12 +1201,63 @@
         return await loadImage(virtualCvs.toDataURL());
     }
 
+    async function updateLivePreview() {
+        if (!currentRawImg || currentStep !== 3) return;
+        
+        const sourceImg = await getSourceImage();
+        const rows = parseInt(els.rows.value);
+        const cols = parseInt(els.cols.value);
+        const tileW = Math.floor(sourceImg.width / cols);
+        const tileH = Math.floor(sourceImg.height / rows);
+
+        let r = 0, c = 0;
+        if (currentEditIdx !== -1) {
+             const realIdx = stickerSourceIndices[currentEditIdx] || 0;
+             r = Math.floor(realIdx / cols);
+             c = realIdx % cols;
+        }
+
+        const globalSettings = {
+            contour: parseInt(els.contour.value),
+            contourColor: els.contourColor.value,
+            padding: parseInt(els.padding.value),
+            shadowBlur: parseInt(els.shadowBlur.value),
+            shadowDist: parseInt(els.shadowDist.value),
+            shadowOpacity: parseInt(els.shadowOpacity.value) / 100,
+            shadowColor: els.shadowColor.value,
+            autoCenter: els.autoCenter.checked,
+            tolerance: parseInt(els.tolerance.value),
+            shrink: parseFloat(els.shrink.value),
+            smoothness: parseFloat(els.smoothness.value),
+            defringe: parseFloat(els.defringe.value),
+            targetColor: els.targetColor.value
+        };
+
+        const resultCvs = await processStickerTile(sourceImg, r, c, tileW, tileH, globalSettings);
+        
+        const pCvs = els.livePreviewCanvas;
+        pCvs.width = 300; pCvs.height = 300; 
+        
+        const ctx = pCvs.getContext('2d');
+        const scale = Math.min(300/resultCvs.width, 300/resultCvs.height);
+        const w = resultCvs.width * scale;
+        const h = resultCvs.height * scale;
+        
+        ctx.clearRect(0,0,300,300);
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(resultCvs, (300-w)/2, (300-h)/2, w, h);
+    }
+
     els.runBtn.addEventListener('click', async () => {
         if(!currentRawImg) { alert("請先在第一步上傳圖片！"); window.changeStep(1-currentStep); return; }
         els.runBtn.disabled = true; els.runBtn.textContent = "🚀 處理中...";
-        els.preview.innerHTML = "<div style='grid-column:1/-1;text-align:center;color:#ccc;'>製作中... 0%</div>";
+        els.preview.innerHTML = "<div style='grid-column:1/-1;text-align:center;color:#ccc;'>製作中...</div>";
         stickerOverrides = {};
         
+        const total = parseInt(els.rows.value) * parseInt(els.cols.value);
+        stickerSourceIndices = Array.from({length: total}, (_, k) => k);
+
         setTimeout(async () => {
             try {
                 const sourceImg = await getSourceImage();
@@ -1031,12 +1276,16 @@
                     defringe: parseFloat(els.defringe.value),
                     targetColor: els.targetColor.value
                 };
-                const rows = parseInt(els.rows.value);
-                const cols = parseInt(els.cols.value);
-                rawStickers = await cutAndContour(sourceImg, rows, cols, globalSettings);
-                renderPreview(rows, cols);
+
+                rawStickers = await cutAndContour(
+                    sourceImg, 
+                    parseInt(els.rows.value), 
+                    parseInt(els.cols.value), 
+                    globalSettings
+                );
+                renderPreview(parseInt(els.rows.value), parseInt(els.cols.value));
             } catch(e) { console.error(e); alert("錯誤: " + e.message); }
-            finally { els.runBtn.disabled = false; els.runBtn.textContent = "🚀 開始製作"; }
+            finally { els.runBtn.disabled = false; els.runBtn.textContent = "🚀 重新製作"; }
         }, 50);
     });
 
@@ -1053,7 +1302,6 @@
         if (settings.smoothness > 0) mask = applySmooth(mask, settings.smoothness);
         let noBgImg = applyMaskToImage(tileImg, mask);
         
-        // 橡皮擦 (Mask Data 應用)
         if (settings.maskData) {
             const eraserImg = await loadImage(settings.maskData);
             const mCtx = noBgImg.getContext('2d');
@@ -1119,157 +1367,30 @@
     async function cutAndContour(img, rows, cols, globalSettings) {
         const w = img.width; const h = img.height;
         const tileW = Math.floor(w/cols); const tileH = Math.floor(h/rows);
-        const total = rows * cols;
-        const promises = [];
+        const res = [];
         for(let r=0; r<rows; r++) {
             for(let c=0; c<cols; c++) {
                 const idx = r * cols + c;
                 const localSettings = stickerOverrides[idx] ? { ...globalSettings, ...stickerOverrides[idx] } : globalSettings;
-                promises.push(processStickerTile(img, r, c, tileW, tileH, localSettings).then(res => {
-                    updateProgress((idx + 1) / total * 100);
-                    return res;
-                }));
+                const sCvs = await processStickerTile(img, r, c, tileW, tileH, localSettings);
+                res.push(sCvs);
             }
         }
-        return Promise.all(promises);
+        return res;
     }
 
-    function updateProgress(pct) {
-        els.preview.innerHTML = `<div style='grid-column:1/-1;text-align:center;color:#ccc;'>製作中... ${Math.round(pct)}%</div>`;
-    }
-
-    // --- 單張編輯 + 橡皮擦邏輯 ---
-    window.openEditModal = (idx) => {
-        currentEditIdx = idx;
-        const globalSettings = {
-            tolerance: parseInt(els.tolerance.value),
-            smoothness: parseFloat(els.smoothness.value),
-            shrink: parseFloat(els.shrink.value),
-            defringe: parseFloat(els.defringe.value)
-        };
-        const settings = stickerOverrides[idx] ? { ...globalSettings, ...stickerOverrides[idx] } : globalSettings;
-        
-        document.getElementById('editIdx').textContent = idx + 1;
-        document.getElementById('e_tolerance').value = settings.tolerance;
-        document.getElementById('e_smoothness').value = settings.smoothness;
-        document.getElementById('e_shrink').value = settings.shrink;
-        document.getElementById('e_defringe').value = settings.defringe;
-        
-        tempMaskCanvas = document.createElement('canvas');
-        
-        updateLabels();
-        els.editModal.style.display = 'block';
-        
-        isErasing = false;
-        els.eraserBtn.classList.remove('active');
-        els.editCanvas.classList.remove('cursor-eraser');
-        
-        updateEditPreview();
-    };
-
-    window.closeEditModal = () => { els.editModal.style.display = 'none'; };
-
-    window.toggleEraser = () => {
-        isErasing = !isErasing;
-        els.eraserBtn.classList.toggle('active', isErasing);
-        els.editCanvas.classList.toggle('cursor-eraser', isErasing);
-    };
-
-    window.clearEraser = () => {
-        if(tempMaskCanvas) {
-            const ctx = tempMaskCanvas.getContext('2d');
-            ctx.clearRect(0,0,tempMaskCanvas.width, tempMaskCanvas.height);
-            updateEditPreview();
-        }
-    };
-
-    els.editCanvas.addEventListener('mousedown', startDraw);
-    els.editCanvas.addEventListener('mousemove', draw);
-    els.editCanvas.addEventListener('mouseup', stopDraw);
-    els.editCanvas.addEventListener('mouseout', stopDraw);
-
-    // 觸控支援
-    els.editCanvas.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        const touch = e.touches[0];
-        const mouseEvent = new MouseEvent("mousedown", {
-            clientX: touch.clientX, clientY: touch.clientY
-        });
-        els.editCanvas.dispatchEvent(mouseEvent);
-    });
-    els.editCanvas.addEventListener('touchmove', (e) => {
-        e.preventDefault();
-        const touch = e.touches[0];
-        const mouseEvent = new MouseEvent("mousemove", {
-            clientX: touch.clientX, clientY: touch.clientY
-        });
-        els.editCanvas.dispatchEvent(mouseEvent);
-    });
-    els.editCanvas.addEventListener('touchend', (e) => {
-        const mouseEvent = new MouseEvent("mouseup", {});
-        els.editCanvas.dispatchEvent(mouseEvent);
-    });
-
-    function startDraw(e) {
-        if(!isErasing) return;
-        isDrawing = true;
-        const rect = els.editCanvas.getBoundingClientRect();
-        lastX = (e.clientX - rect.left) * (tempMaskCanvas.width / rect.width);
-        lastY = (e.clientY - rect.top) * (tempMaskCanvas.height / rect.height);
-        draw(e);
-    }
-
-    function draw(e) {
-        if(!isErasing || !isDrawing) return;
-        
-        const rect = els.editCanvas.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        
-        const scaleX = tempMaskCanvas.width / rect.width;
-        const scaleY = tempMaskCanvas.height / rect.height;
-        const newX = x * scaleX;
-        const newY = y * scaleY;
-        
-        const ctx = tempMaskCanvas.getContext('2d');
-        const size = parseInt(els.eraserSize.value);
-        
-        ctx.beginPath();
-        ctx.moveTo(lastX, lastY);
-        ctx.lineTo(newX, newY);
-        ctx.strokeStyle = 'rgba(0,0,0,1)';
-        ctx.lineWidth = size * scaleX * 2; // 雙倍寬度確保覆蓋
-        ctx.lineCap = 'round';
-        ctx.stroke();
-        
-        lastX = newX;
-        lastY = newY;
-        
-        updateEditPreview();
-    }
-
-    function stopDraw() { isDrawing = false; }
-
-    async function updateEditPreview() {
-        if(currentEditIdx === -1 || !currentRawImg) return;
+    async function prepareEditSession(idx) {
+        if (!currentRawImg) return;
         
         const sourceImg = await getSourceImage();
         const rows = parseInt(els.rows.value);
         const cols = parseInt(els.cols.value);
         const tileW = Math.floor(sourceImg.width / cols);
         const tileH = Math.floor(sourceImg.height / rows);
-        const r = Math.floor(currentEditIdx / cols);
-        const c = currentEditIdx % cols;
-
-        if(tempMaskCanvas.width !== tileW || tempMaskCanvas.height !== tileH) {
-            tempMaskCanvas.width = tileW;
-            tempMaskCanvas.height = tileH;
-            
-            if(stickerOverrides[currentEditIdx] && stickerOverrides[currentEditIdx].maskData) {
-                const img = await loadImage(stickerOverrides[currentEditIdx].maskData);
-                tempMaskCanvas.getContext('2d').drawImage(img, 0, 0, tileW, tileH);
-            }
-        }
+        
+        const realSourceIdx = stickerSourceIndices[idx];
+        const r = Math.floor(realSourceIdx / cols);
+        const c = realSourceIdx % cols;
 
         const tempSettings = {
             contour: parseInt(els.contour.value),
@@ -1285,19 +1406,166 @@
             smoothness: parseFloat(document.getElementById('e_smoothness').value),
             shrink: parseFloat(document.getElementById('e_shrink').value),
             defringe: parseFloat(document.getElementById('e_defringe').value),
-            maskData: tempMaskCanvas.toDataURL()
+            maskData: null 
         };
 
-        const resultCvs = await processStickerTile(sourceImg, r, c, tileW, tileH, tempSettings);
+        cachedProcessedImg = await processStickerTile(sourceImg, r, c, tileW, tileH, tempSettings);
+    }
+
+    window.openEditModal = async (idx) => {
+        currentEditIdx = idx;
+        const globalSettings = {
+            tolerance: parseInt(els.tolerance.value),
+            smoothness: parseFloat(els.smoothness.value),
+            shrink: parseFloat(els.shrink.value),
+            defringe: parseFloat(els.defringe.value)
+        };
+        const settings = stickerOverrides[idx] ? { ...globalSettings, ...stickerOverrides[idx] } : globalSettings;
         
+        document.getElementById('editIdx').textContent = idx + 1;
+        document.getElementById('e_tolerance').value = settings.tolerance;
+        document.getElementById('e_smoothness').value = settings.smoothness;
+        document.getElementById('e_shrink').value = settings.shrink;
+        document.getElementById('e_defringe').value = settings.defringe;
+        
+        updateLabels();
+        els.editModal.style.display = 'block';
+        
+        const sourceImg = await getSourceImage();
+        const tileW = Math.floor(sourceImg.width / parseInt(els.cols.value));
+        const tileH = Math.floor(sourceImg.height / parseInt(els.rows.value));
+        
+        tempMaskCanvas = document.createElement('canvas');
+        tempMaskCanvas.width = tileW;
+        tempMaskCanvas.height = tileH;
+        
+        if(stickerOverrides[currentEditIdx] && stickerOverrides[currentEditIdx].maskData) {
+            const img = await loadImage(stickerOverrides[currentEditIdx].maskData);
+            tempMaskCanvas.getContext('2d').drawImage(img, 0, 0, tileW, tileH);
+        }
+
+        isErasing = false;
+        els.eraserBtn.classList.remove('active');
+        els.editCanvas.classList.remove('cursor-eraser');
+        els.eraserCursor.style.display = 'none';
+        els.editPreviewBox.classList.remove('eraser-active');
+        
+        await prepareEditSession(idx);
+        updateEditPreviewCanvas();
+    };
+
+    window.closeEditModal = () => { els.editModal.style.display = 'none'; };
+
+    window.toggleEraser = () => {
+        isErasing = !isErasing;
+        els.eraserBtn.classList.toggle('active', isErasing);
+        els.editPreviewBox.classList.toggle('eraser-active', isErasing);
+        if(!isErasing) els.eraserCursor.style.display = 'none';
+    };
+
+    window.clearEraser = () => {
+        if(tempMaskCanvas) {
+            const ctx = tempMaskCanvas.getContext('2d');
+            ctx.clearRect(0,0,tempMaskCanvas.width, tempMaskCanvas.height);
+            updateEditPreviewCanvas();
+        }
+    };
+
+    els.editCanvas.addEventListener('mousedown', startDraw);
+    els.editCanvas.addEventListener('mousemove', (e) => {
+        updateCursorPos(e); 
+        draw(e);
+    });
+    els.editCanvas.addEventListener('mouseenter', () => {
+        if(isErasing) els.eraserCursor.style.display = 'block';
+    });
+    els.editCanvas.addEventListener('mouseleave', () => {
+        els.eraserCursor.style.display = 'none';
+        stopDraw();
+    });
+    els.editCanvas.addEventListener('mouseup', stopDraw);
+    els.eraserSize.addEventListener('input', updateCursorSize);
+
+    els.editCanvas.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        const touch = e.touches[0];
+        const mouseEvent = new MouseEvent("mousedown", { clientX: touch.clientX, clientY: touch.clientY });
+        els.editCanvas.dispatchEvent(mouseEvent);
+    });
+    els.editCanvas.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        const touch = e.touches[0];
+        const mouseEvent = new MouseEvent("mousemove", { clientX: touch.clientX, clientY: touch.clientY });
+        els.editCanvas.dispatchEvent(mouseEvent);
+    });
+    els.editCanvas.addEventListener('touchend', (e) => {
+        const mouseEvent = new MouseEvent("mouseup", {});
+        els.editCanvas.dispatchEvent(mouseEvent);
+    });
+
+    function updateCursorPos(e) {
+        if (!isErasing) return;
+        els.eraserCursor.style.display = 'block';
+        els.eraserCursor.style.left = e.clientX + 'px';
+        els.eraserCursor.style.top = e.clientY + 'px';
+        updateCursorSize();
+    }
+
+    function updateCursorSize() {
+        const size = parseInt(els.eraserSize.value);
+        const diameter = size * 2;
+        els.eraserCursor.style.width = diameter + 'px';
+        els.eraserCursor.style.height = diameter + 'px';
+    }
+
+    function startDraw(e) {
+        if(!isErasing) return;
+        isDrawing = true;
+        draw(e);
+    }
+
+    function draw(e) {
+        if(!isErasing || !isDrawing) return;
+        
+        const rect = els.editCanvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        const scaleX = tempMaskCanvas.width / rect.width;
+        const scaleY = tempMaskCanvas.height / rect.height;
+        
+        const ctx = tempMaskCanvas.getContext('2d');
+        const size = parseInt(els.eraserSize.value);
+        
+        ctx.beginPath();
+        ctx.arc(x * scaleX, y * scaleY, size * scaleX, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(0,0,0,1)';
+        ctx.fill();
+        
+        updateEditPreviewCanvas(); 
+    }
+
+    function stopDraw() { isDrawing = false; }
+
+    function updateEditPreviewCanvas() {
+        if (!cachedProcessedImg) return;
+
         const editCvs = els.editCanvas;
-        editCvs.width = 300; editCvs.height = 300;
+        editCvs.width = 300; editCvs.height = 300; 
         const ctx = editCvs.getContext('2d');
-        const scale = Math.min(300/resultCvs.width, 300/resultCvs.height);
-        const w = resultCvs.width * scale;
-        const h = resultCvs.height * scale;
+        
+        const scale = Math.min(300/cachedProcessedImg.width, 300/cachedProcessedImg.height);
+        const w = cachedProcessedImg.width * scale;
+        const h = cachedProcessedImg.height * scale;
+        
         ctx.clearRect(0,0,300,300);
-        ctx.drawImage(resultCvs, (300-w)/2, (300-h)/2, w, h);
+        
+        ctx.drawImage(cachedProcessedImg, (300-w)/2, (300-h)/2, w, h);
+        
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.drawImage(tempMaskCanvas, (300-w)/2, (300-h)/2, w, h);
+        
+        ctx.globalCompositeOperation = 'source-over';
     }
 
     window.saveEdit = async () => {
@@ -1306,7 +1574,7 @@
             smoothness: parseFloat(document.getElementById('e_smoothness').value),
             shrink: parseFloat(document.getElementById('e_shrink').value),
             defringe: parseFloat(document.getElementById('e_defringe').value),
-            maskData: tempMaskCanvas.toDataURL()
+            maskData: tempMaskCanvas.toDataURL() 
         };
         
         const sourceImg = await getSourceImage();
@@ -1314,8 +1582,10 @@
         const cols = parseInt(els.cols.value);
         const tileW = Math.floor(sourceImg.width / cols);
         const tileH = Math.floor(sourceImg.height / rows);
-        const r = Math.floor(currentEditIdx / cols);
-        const c = currentEditIdx % cols;
+        
+        const realSourceIdx = stickerSourceIndices[currentEditIdx];
+        const r = Math.floor(realSourceIdx / cols);
+        const c = realSourceIdx % cols;
         
         const globalSettings = {
             contour: parseInt(els.contour.value),
@@ -1334,23 +1604,6 @@
         
         closeEditModal();
         renderPreview(rows, cols);
-    };
-
-    window.applyToAll = () => {
-        if (confirm('確定將此設定應用到所有貼圖？（會覆蓋原有單張設定）')) {
-            const allSettings = {
-                tolerance: parseInt(document.getElementById('e_tolerance').value),
-                smoothness: parseFloat(document.getElementById('e_smoothness').value),
-                shrink: parseFloat(document.getElementById('e_shrink').value),
-                defringe: parseFloat(document.getElementById('e_defringe').value),
-                maskData: tempMaskCanvas.toDataURL() // 注意: 遮罩會複製到所有，可能不適合
-            };
-            const total = parseInt(els.rows.value) * parseInt(els.cols.value);
-            for (let i = 0; i < total; i++) {
-                stickerOverrides[i] = { ...allSettings };
-            }
-            els.runBtn.click(); // 重新製作
-        }
     };
 
     function generateColorMask(img, targetHex, toleranceVal) {
@@ -1411,14 +1664,22 @@
         const ctx = imgCvs.getContext('2d'); const w = imgCvs.width; const h = imgCvs.height;
         const imgData = ctx.getImageData(0, 0, w, h); const d = imgData.data;
         const tr = parseInt(targetHex.slice(1, 3), 16); const tg = parseInt(targetHex.slice(3, 5), 16); const tb = parseInt(targetHex.slice(5, 7), 16);
-        const power = strength / 5;
+        const range = 130; 
         for (let i = 0; i < d.length; i += 4) {
             const alpha = d[i + 3];
             if (alpha > 0) { 
                 const r = d[i], g = d[i + 1], b = d[i + 2];
                 const dist = Math.sqrt((r - tr) ** 2 + (g - tg) ** 2 + (b - tb) ** 2);
-                if (dist < 150) { 
-                    const factor = (1 - dist / 150) * power; d[i + 3] = Math.max(0, alpha - (alpha * factor * 2));
+                if (dist < range && (alpha < 252 || dist < 60)) { 
+                    const factor = (1 - dist / range) * (strength / 10); 
+                    d[i + 3] = Math.max(0, alpha - (alpha * factor * 2.5));
+                    if (d[i+3] > 0) {
+                        const gray = (r * 0.299 + g * 0.587 + b * 0.114);
+                        const mix = Math.min(1, factor * 2.5); 
+                        d[i] = r * (1 - mix) + gray * mix;
+                        d[i+1] = g * (1 - mix) + gray * mix;
+                        d[i+2] = b * (1 - mix) + gray * mix;
+                    }
                 }
             }
         }
@@ -1449,12 +1710,22 @@
     function renderPreview(rows, cols) {
         els.preview.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
         els.preview.innerHTML = '';
+        
         const isEmojiMode = els.sizePreset.value === 'emoji';
 
         rawStickers.forEach((cvs, i) => {
-            const url = resizeToOutput(cvs, 150, 150);
+            const url = resizeToOutput(cvs, 300, 300);
             const div = document.createElement('div');
             div.className = 'sticker-card';
+            div.draggable = true; 
+
+            div.addEventListener('dragstart', (e) => handleDragStart(e, i));
+            div.addEventListener('dragover', handleDragOver);
+            div.addEventListener('dragenter', handleDragEnter);
+            div.addEventListener('dragleave', handleDragLeave);
+            div.addEventListener('drop', (e) => handleDrop(e, i));
+            div.addEventListener('dragend', handleDragEnd);
+
             const mainClass = isEmojiMode ? 'tag-btn disabled' : 'tag-btn';
             
             const isEdited = stickerOverrides[i] !== undefined;
@@ -1464,18 +1735,88 @@
             div.innerHTML = `
                 <div class="sticker-img-box ${previewBgClass}" onclick="viewImage('${url}')">
                     <img src="${url}">
-                    <div class="edit-icon-btn" title="編輯此張貼圖" onclick="openEditModal(${i}); event.stopPropagation();">✏️</div>
-                    <div class="dl-icon-btn" onclick="downloadSingle(${i}, event); event.stopPropagation();">⬇</div>
+                    <div class="edit-icon-btn" title="編輯" onclick="openEditModal(${i}); event.stopPropagation();">✏️</div>
+                    <div class="dl-icon-btn" onclick="downloadSingle(${i}, event)">⬇</div>
                 </div>
                 <div class="sticker-name" id="name-${i}" style="${nameColor}">${getFilename(i)}${nameSuffix}</div>
-                <div class="tags-row">
-                    <span class="${mainClass}" id="btn-main-${i}" onclick="setTag('main', ${i})">main</span>
-                    <span class="tag-btn" id="btn-tab-${i}" onclick="setTag('tab', ${i})">tab</span>
+                <div class="tags-row" style="display:flex; justify-content:center; gap:5px;">
+                    <span class="${mainClass}" id="btn-main-${i}" onclick="setTag('main', ${i}); event.stopPropagation();">main</span>
+                    <span class="tag-btn" id="btn-tab-${i}" onclick="setTag('tab', ${i}); event.stopPropagation();">tab</span>
                 </div>
             `;
             els.preview.appendChild(div);
         });
         updateTagClasses();
+    }
+
+    function handleDragStart(e, index) {
+        dragSrcIndex = index;
+        e.target.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+    }
+
+    function handleDragOver(e) {
+        if (e.preventDefault) e.preventDefault(); 
+        e.dataTransfer.dropEffect = 'move';
+        return false;
+    }
+
+    function handleDragEnter(e) {
+        const card = e.target.closest('.sticker-card');
+        if (card && !card.classList.contains('dragging')) {
+            card.classList.add('drag-over');
+        }
+    }
+
+    function handleDragLeave(e) {
+        const card = e.target.closest('.sticker-card');
+        if (card) {
+            card.classList.remove('drag-over');
+        }
+    }
+
+    function handleDrop(e, targetIndex) {
+        if (e.stopPropagation) e.stopPropagation();
+        
+        document.querySelectorAll('.sticker-card').forEach(col => col.classList.remove('drag-over'));
+        
+        if (dragSrcIndex !== null && dragSrcIndex !== targetIndex) {
+            swapStickers(dragSrcIndex, targetIndex);
+        }
+        return false;
+    }
+
+    function handleDragEnd(e) {
+        document.querySelectorAll('.sticker-card').forEach(col => {
+            col.classList.remove('drag-over');
+            col.classList.remove('dragging');
+        });
+        dragSrcIndex = null;
+    }
+
+    function swapStickers(fromIdx, toIdx) {
+        const tempSticker = rawStickers[fromIdx];
+        rawStickers[fromIdx] = rawStickers[toIdx];
+        rawStickers[toIdx] = tempSticker;
+
+        const tempOverride = stickerOverrides[fromIdx];
+        stickerOverrides[fromIdx] = stickerOverrides[toIdx];
+        stickerOverrides[toIdx] = tempOverride;
+
+        const tempSourceIdx = stickerSourceIndices[fromIdx];
+        stickerSourceIndices[fromIdx] = stickerSourceIndices[toIdx];
+        stickerSourceIndices[toIdx] = tempSourceIdx;
+
+        if(stickerOverrides[fromIdx] === undefined) delete stickerOverrides[fromIdx];
+        if(stickerOverrides[toIdx] === undefined) delete stickerOverrides[toIdx];
+
+        if (selectedMainIdx === fromIdx) selectedMainIdx = toIdx;
+        else if (selectedMainIdx === toIdx) selectedMainIdx = fromIdx;
+
+        if (selectedTabIdx === fromIdx) selectedTabIdx = toIdx;
+        else if (selectedTabIdx === toIdx) selectedTabIdx = fromIdx;
+
+        renderPreview(parseInt(els.rows.value), parseInt(els.cols.value));
     }
 
     window.setPreviewBg = (btn, mode) => { 
@@ -1499,6 +1840,8 @@
         const scale = Math.min(w/canvas.width, h/canvas.height);
         const dw = canvas.width*scale;
         const dh = canvas.height*scale;
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(canvas, (w-dw)/2, (h-dh)/2, dw, dh);
         return c.toDataURL();
     }
@@ -1548,12 +1891,7 @@
         return new Blob([a],{type:m});
     }
     function loadImage(s){
-        return new Promise((resolve, reject) => {
-            const i = new Image();
-            i.onload = () => resolve(i);
-            i.onerror = () => reject(new Error('圖片載入失敗'));
-            i.src = s;
-        });
+        return new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.src=s;});
     }
     
     window.showHelp = (key) => {
@@ -1565,11 +1903,10 @@
     window.toggleTheme = () => {
         isDark = !isDark;
         document.body.classList.toggle('light-mode', !isDark);
-        document.getElementById('themeBtn').textContent = isDark ? '☀️ 切換明亮' : '🌙 切換暗黑';
     };
     
-    if (els.sizePreset.value === 'sticker') { els.outW.value = 370; els.outH.value = 320; }
-    else if (els.sizePreset.value === 'emoji') { els.outW.value = 270; els.outH.value = 270; }
+    if (els.sizePreset.value === 'sticker') { els.outW.value = 270; els.outH.value = 270; }
+    else if (els.sizePreset.value === 'emoji') { els.outW.value = 180; els.outH.value = 180; }
 
     loadSettings();
     updateLabels();

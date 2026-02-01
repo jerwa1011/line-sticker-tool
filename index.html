@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LINE 貼圖製作大師 Pro (Compact)</title>
+    <title>LINE 貼圖製作大師 Pro (Compact & Big Preview)</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -31,12 +31,12 @@
             --text-sub: #94949C;
             --text-muted: #555560;
             
-            --radius-lg: 16px; /* 緊縮圓角 */
+            --radius-lg: 16px; 
             --radius-md: 10px;
             
             --shadow-card: 0 10px 30px -10px rgba(0,0,0,0.5);
             
-            --transition: all 0.2s ease-out; /* 加快動畫速度 */
+            --transition: all 0.2s ease-out;
         }
 
         body.light-mode {
@@ -60,10 +60,10 @@
             background: var(--bg-dark);
             background-image: var(--bg-gradient);
             background-attachment: fixed;
-            margin: 0; padding: 10px; /* 縮小邊距 */
+            margin: 0; padding: 10px;
             color: var(--text-main);
             min-height: 100vh;
-            line-height: 1.4; /* 緊縮行高 */
+            line-height: 1.4;
             padding-bottom: 60px;
         }
 
@@ -75,12 +75,12 @@
 
         .header { 
             display: flex; justify-content: space-between; align-items: center; 
-            max-width: 1400px; margin: 0 auto 10px auto; /* 緊縮 header */
+            max-width: 1400px; margin: 0 auto 10px auto; 
             padding: 0 5px;
         }
         
         h1 { 
-            font-weight: 800; letter-spacing: -0.03em; font-size: 1.4rem; margin: 0; /* 縮小標題字體 */
+            font-weight: 800; letter-spacing: -0.03em; font-size: 1.4rem; margin: 0;
             background: linear-gradient(90deg, #fff 0%, #aaa 100%);
             -webkit-background-clip: text; -webkit-text-fill-color: transparent;
             display: flex; align-items: baseline; gap: 8px;
@@ -97,7 +97,7 @@
 
         .container { 
             max-width: 1400px; margin: 0 auto; 
-            display: grid; grid-template-columns: 320px 1fr; gap: 15px; /* 縮小左欄寬度與間距 */
+            display: grid; grid-template-columns: 320px 1fr; gap: 15px; 
             align-items: start;
         }
         @media (max-width: 900px) { .container { grid-template-columns: 1fr; } }
@@ -108,7 +108,7 @@
             border: 1px solid var(--glass-border);
             box-shadow: var(--shadow-card);
             border-radius: var(--radius-lg);
-            padding: 15px; /* 緊縮卡片內距 */
+            padding: 15px;
             display: flex; flex-direction: column; gap: 12px; 
             position: relative; overflow: hidden;
         }
@@ -135,7 +135,7 @@
             transform: translateY(-50%);
         }
         .step-dot {
-            width: 28px; height: 28px; border-radius: 50%; /* 縮小步驟點 */
+            width: 28px; height: 28px; border-radius: 50%; 
             background: var(--bg-dark); border: 2px solid var(--text-muted); 
             color: var(--text-muted);
             display: flex; justify-content: center; align-items: center;
@@ -160,7 +160,7 @@
             border-radius: var(--radius-md); 
             background: var(--panel-bg); 
             border: 1px solid var(--glass-border);
-            margin-bottom: 10px; padding: 12px; /* 緊縮 Section */
+            margin-bottom: 10px; padding: 12px;
         }
         .section-title {
             font-size: 0.75rem; font-weight: 700; color: var(--text-main); 
@@ -180,8 +180,9 @@
         }
         body.light-mode .live-preview-container { background: rgba(255,255,255,0.8); }
 
+        /* 這裡修改了尺寸，從 100px 變為 220px */
         .live-preview-box {
-            width: 100px; height: 100px; /* 縮小即時預覽圖 */
+            width: 220px; height: 220px; 
             background-image: linear-gradient(45deg, #2a2a2a 25%, transparent 25%), linear-gradient(-45deg, #2a2a2a 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #2a2a2a 75%), linear-gradient(-45deg, transparent 75%, #2a2a2a 75%);
             background-size: 16px 16px; background-color: #1a1a1a;
             border-radius: 8px; overflow: hidden;
@@ -207,7 +208,7 @@
         .upload-icon { font-size: 2rem; margin-bottom: 5px; opacity: 0.8; filter: grayscale(100%); transition: var(--transition); }
         .upload-box:hover .upload-icon { filter: grayscale(0%); transform: scale(1.1); }
 
-        .row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; } /* 緊縮 row */
+        .row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
         
         .label-group { display: flex; align-items: center; width: 75px; flex-shrink: 0; }
         .label-text { font-weight: 500; font-size: 0.8rem; color: var(--text-sub); }
@@ -252,7 +253,6 @@
             border-radius: 6px; overflow: hidden;
         }
         
-        /* Checkbox 樣式 */
         input[type="checkbox"] {
             appearance: none; width: 36px; height: 20px;
             background: rgba(255,255,255,0.1); border-radius: 20px;
@@ -302,14 +302,13 @@
 
         .orig-header { 
             display: flex; justify-content: space-between; align-items: center; 
-            padding: 8px 12px; /* 緊縮 Header padding */
+            padding: 8px 12px;
             cursor: pointer; user-select: none;
             background: rgba(255,255,255,0.03);
         }
         .orig-header:hover { background: rgba(255,255,255,0.06); }
         .orig-label { font-size: 0.85rem; font-weight: 600; color: var(--text-main); display: flex; align-items: center; gap: 6px; }
         
-        /* 關鍵修正：讓控制項在同一列 */
         .orig-controls-top {
             display: flex; align-items: center; gap: 12px; flex-wrap: nowrap;
         }
@@ -1236,17 +1235,17 @@
         const resultCvs = await processStickerTile(sourceImg, r, c, tileW, tileH, globalSettings);
         
         const pCvs = els.livePreviewCanvas;
-        pCvs.width = 300; pCvs.height = 300; 
+        pCvs.width = 440; pCvs.height = 440; // 解析度提高以適應 220px 顯示
         
         const ctx = pCvs.getContext('2d');
-        const scale = Math.min(300/resultCvs.width, 300/resultCvs.height);
+        const scale = Math.min(440/resultCvs.width, 440/resultCvs.height);
         const w = resultCvs.width * scale;
         const h = resultCvs.height * scale;
         
-        ctx.clearRect(0,0,300,300);
+        ctx.clearRect(0,0,440,440);
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
-        ctx.drawImage(resultCvs, (300-w)/2, (300-h)/2, w, h);
+        ctx.drawImage(resultCvs, (440-w)/2, (440-h)/2, w, h);
     }
 
     els.runBtn.addEventListener('click', async () => {

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LINE Sticker Master V11 - 完美透明版</title>
+    <title>LINE Sticker Master V12 - 透明原生版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;900&family=Mochiy+Pop+One&display=swap" rel="stylesheet">
@@ -16,9 +16,7 @@
         .dark-input { @apply bg-gray-900 border border-gray-600 rounded px-2 py-1 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none; }
         input[type="range"] { @apply accent-blue-500 cursor-pointer; }
 
-        /* V11 關鍵修正：將網頁背景設為「透明棋盤格」
-           這樣當橡皮擦挖空 Canvas 時，使用者會看到這個背景，
-           直觀地理解「這裡是透明的」，而不是看到黑底。 */
+        /* V12: 這是我們永遠看得到的透明棋盤格底 */
         #workspace-bg {
             position: absolute; inset: 0; z-index: 0;
             background-color: #252525;
@@ -29,7 +27,7 @@
                 linear-gradient(-45deg, transparent 75%, #333 75%);
             background-size: 20px 20px;
             background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
-            pointer-events: none; /* 讓滑鼠事件穿透 */
+            pointer-events: none;
         }
 
         #floating-menu {
@@ -50,10 +48,10 @@
 
     <header class="h-16 bg-gray-800 border-b border-gray-700 flex items-center justify-between px-4 shadow-lg z-20 shrink-0 relative">
         <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-amber-500 rounded-full flex items-center justify-center text-xl font-bold text-white shadow-lg">V11</div>
+            <div class="w-10 h-10 bg-cyan-600 rounded-full flex items-center justify-center text-xl font-bold text-white shadow-lg">V12</div>
             <div>
-                <h1 class="font-bold text-lg tracking-wide text-white leading-tight">貼圖大師 V11</h1>
-                <p class="text-[10px] text-gray-400">透明背景修正版</p>
+                <h1 class="font-bold text-lg tracking-wide text-white leading-tight">貼圖大師 V12</h1>
+                <p class="text-[10px] text-gray-400">透明原生 • 虛線框標示</p>
             </div>
         </div>
 
@@ -242,13 +240,14 @@
 
         // 建立 Canvas (全透明背景)
         const canvas = new fabric.Canvas('c', {
-            backgroundColor: null, // V11: 設為 null，確保透明
+            backgroundColor: null, // V12: 確保是 null，這樣就是透明的
             preserveObjectStacking: true,
             stopContextMenu: true,
             fireRightClick: true
         });
 
-        let artboardW = 370, artboardH = 320, artboardRect = null;
+        let artboardW = 370, artboardH = 320;
+        let guideFrame = null; // V12: 改用「框」而非「底圖」
         let currentMode = 'select', cropRect = null;
         let isDragging = false, lastPosX, lastPosY;
         let undoStack = [], redoStack = [], isRedoing = false;
@@ -257,7 +256,7 @@
         window.onload = function() {
             renderFontOptions();
             resizeCanvasToContainer();
-            createArtboard();
+            createGuideFrame(); // 建立邊框
             window.addEventListener('resize', resizeCanvasToContainer);
         };
 
@@ -265,32 +264,31 @@
             const container = document.getElementById('workspace');
             canvas.setWidth(container.offsetWidth);
             canvas.setHeight(container.offsetHeight);
-            if(artboardRect) centerArtboard();
+            if(guideFrame) centerArtboard();
         }
 
-        // V11: Artboard (白底)
-        function createArtboard() {
-            if(artboardRect) canvas.remove(artboardRect);
+        // V12: 建立虛線框導引 (Guide Frame)
+        function createGuideFrame() {
+            if(guideFrame) canvas.remove(guideFrame);
             
-            // 這是一張「白紙」，放在最底層。
-            // 編輯時：您看到白紙，擦除時挖空白紙->看到網頁背景的棋盤格。
-            // 輸出時：我們隱藏這張白紙。
-            artboardRect = new fabric.Rect({
+            guideFrame = new fabric.Rect({
                 width: artboardW, height: artboardH, 
-                fill: 'white', 
+                fill: 'transparent', // 關鍵：中間是空的，直接透視到網頁背景
+                stroke: '#666', // 灰色邊框
+                strokeWidth: 1,
+                strokeDashArray: [5, 5], // 虛線
                 selectable: false, evented: false, 
                 hoverCursor: 'default',
-                shadow: new fabric.Shadow({ color: 'rgba(0,0,0,0.5)', blur: 20 }),
                 originX: 'left', originY: 'top'
             });
             
-            canvas.add(artboardRect);
-            artboardRect.sendToBack();
+            canvas.add(guideFrame);
+            guideFrame.sendToBack();
             centerArtboard();
         }
 
         function centerArtboard() {
-            if(!artboardRect) return;
+            if(!guideFrame) return;
             const vpt = canvas.viewportTransform;
             vpt[0] = 1; vpt[3] = 1;
             vpt[4] = (canvas.width - artboardW) / 2;
@@ -302,7 +300,7 @@
         function resizeCanvasDimension() {
             artboardW = parseInt(document.getElementById('canvas-w').value);
             artboardH = parseInt(document.getElementById('canvas-h').value);
-            artboardRect.set({ width: artboardW, height: artboardH });
+            guideFrame.set({ width: artboardW, height: artboardH });
             centerArtboard();
         }
         function setStandardSize() {
@@ -416,7 +414,7 @@
                 }
                 imgInstance.set({ left: artboardW / 2, top: artboardH / 2, originX: 'center', originY: 'center' });
                 canvas.add(imgInstance);
-                if (artboardRect) artboardRect.sendToBack();
+                // V12: 只要確保比虛線框高就好，不需要放到特別哪裡，因為沒有白底了
                 imgInstance.bringToFront();
                 canvas.setActiveObject(imgInstance);
                 canvas.requestRenderAll();
@@ -455,7 +453,6 @@
             for (let item of items) { if (item.kind === 'file') { const reader = new FileReader(); reader.onload = (event) => loadToCanvas(event.target.result); reader.readAsDataURL(item.getAsFile()); }}
         });
 
-        // 快速鍵
         let spacePressed = false;
         window.addEventListener('keydown', (e) => {
             if (e.code === 'Space' && !spacePressed) { if(document.activeElement.tagName === 'INPUT') return; spacePressed = true; canvas.defaultCursor = 'grab'; }
@@ -468,7 +465,7 @@
 
         function deleteActiveObject() { const obj = canvas.getActiveObject(); if (obj && !obj.isEditing) { canvas.remove(obj); canvas.discardActiveObject(); updatePanel(); document.getElementById('floating-menu').style.display = 'none'; } }
 
-        // --- V11 核心：輸出 (隱藏白紙) ---
+        // --- V12 核心：輸出 ---
         function downloadImage() {
             canvas.discardActiveObject();
             document.getElementById('floating-menu').style.display = 'none';
@@ -476,15 +473,14 @@
             const originalVpt = canvas.viewportTransform.slice();
             canvas.viewportTransform = [1, 0, 0, 1, 0, 0];
             
-            // 關鍵：輸出前，隱藏白色的工作區底紙
-            if(artboardRect) artboardRect.visible = false;
+            // V12: 輸出前隱藏「虛線框」
+            if(guideFrame) guideFrame.visible = false;
             
             canvas.renderAll();
             
             setTimeout(() => {
                 const link = document.createElement('a'); 
                 link.download = `sticker-${Date.now()}.png`;
-                // 輸出時只抓 Artboard 範圍
                 link.href = canvas.toDataURL({ 
                     format: 'png', 
                     quality: 1, 
@@ -497,13 +493,13 @@
                 link.click();
                 
                 // 恢復
-                if(artboardRect) artboardRect.visible = true;
+                if(guideFrame) guideFrame.visible = true;
                 canvas.viewportTransform = originalVpt;
                 canvas.requestRenderAll();
             }, 50);
         }
 
-        // 其餘輔助 (與 V10 同)
+        // 其餘輔助 (保持不變)
         function setBrushColor(c) { document.getElementById('draw-color').value = c; updateBrush(); }
         function resetViewport() { centerArtboard(); }
         function updateZoomDisplay() { document.getElementById('zoom-val').innerText = Math.round(canvas.getZoom() * 100) + '%'; }
@@ -520,14 +516,15 @@
         document.getElementById('angle-control').addEventListener('change', saveState);
         function rotateObject(deg) { const obj = canvas.getActiveObject(); if(!obj) return; let currentAngle = obj.angle; obj.rotate(currentAngle + deg); canvas.requestRenderAll(); updatePanelFromSelection(); saveState(); }
         function duplicateObject() { const obj = canvas.getActiveObject(); if(!obj) return; obj.clone(function(cloned) { canvas.discardActiveObject(); cloned.set({ left: cloned.left + 20, top: cloned.top + 20, evented: true }); if (cloned.type === 'activeSelection') { cloned.canvas = canvas; cloned.forEachObject(function(obj) { canvas.add(obj); }); cloned.setCoords(); } else { canvas.add(cloned); } canvas.setActiveObject(cloned); canvas.requestRenderAll(); saveState(); }); }
+        function setBrushColor(c) { document.getElementById('draw-color').value = c; updateBrush(); }
         function startCrop() { setMode('crop'); document.getElementById('crop-controls').classList.remove('hidden'); resetViewport(); cropRect = new fabric.Rect({ fill: 'rgba(0,0,0,0.3)', stroke: '#3b82f6', strokeWidth: 2, strokeDashArray: [10, 5], left: 0, top: 0, width: artboardW, height: artboardH, selectable: true, hasRotatingPoint: false, lockRotation: true, cornerColor: 'white', cornerStrokeColor: '#3b82f6', transparentCorners: false }); canvas.add(cropRect); canvas.setActiveObject(cropRect); }
         function cancelCrop() { if (cropRect) canvas.remove(cropRect); document.getElementById('crop-controls').classList.add('hidden'); setMode('select'); }
-        function applyCrop() { if (!cropRect) return; const { left, top, width, height } = cropRect.getBoundingRect(); cropRect.visible = false; const url = canvas.toDataURL({ left, top, width, height, format: 'png', multiplier: 1 }); canvas.clear(); createArtboard(); loadToCanvas(url); cancelCrop(); }
+        function applyCrop() { if (!cropRect) return; const { left, top, width, height } = cropRect.getBoundingRect(); cropRect.visible = false; const url = canvas.toDataURL({ left, top, width, height, format: 'png', multiplier: 1 }); canvas.clear(); createGuideFrame(); loadToCanvas(url); cancelCrop(); }
         function saveState() { if (isRedoing) return; redoStack = []; if(undoStack.length > 20) undoStack.shift(); undoStack.push(canvas.toJSON()); document.getElementById('btn-undo').disabled = undoStack.length === 0; document.getElementById('btn-redo').disabled = redoStack.length === 0; }
         function undo() { if (undoStack.length > 0) { isRedoing = true; redoStack.push(canvas.toJSON()); const state = undoStack.pop(); canvas.loadFromJSON(state, () => { canvas.renderAll(); isRedoing = false; updatePanelFromSelection(); }); } document.getElementById('btn-undo').disabled = undoStack.length === 0; document.getElementById('btn-redo').disabled = redoStack.length === 0; }
         function redo() { if (redoStack.length > 0) { isRedoing = true; undoStack.push(canvas.toJSON()); const state = redoStack.pop(); canvas.loadFromJSON(state, () => { canvas.renderAll(); isRedoing = false; updatePanelFromSelection(); }); } document.getElementById('btn-undo').disabled = undoStack.length === 0; document.getElementById('btn-redo').disabled = redoStack.length === 0; }
         function bringToFront() { const obj = canvas.getActiveObject(); if(obj) { obj.bringToFront(); saveState(); } }
-        function sendToBack() { const obj = canvas.getActiveObject(); if(obj) { obj.sendToBack(); if(artboardRect) artboardRect.sendToBack(); saveState(); } }
+        function sendToBack() { const obj = canvas.getActiveObject(); if(obj) { obj.sendToBack(); if(guideFrame) guideFrame.sendToBack(); saveState(); } }
 
     </script>
 </body>

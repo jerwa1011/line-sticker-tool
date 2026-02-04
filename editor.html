@@ -3,181 +3,186 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LINE Sticker Studio V4 - 專業版</title>
+    <title>LINE Sticker Master V5 - 智慧字型版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;900&family=Mochiy+Pop+One&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body { font-family: 'Noto Sans TC', sans-serif; user-select: none; }
         .canvas-bg { 
-            /* 棋盤格背景 */
-            background-image: linear-gradient(45deg, #ddd 25%, transparent 25%), linear-gradient(-45deg, #ddd 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ddd 75%), linear-gradient(-45deg, transparent 75%, #ddd 75%);
+            background-image: linear-gradient(45deg, #e5e5e5 25%, transparent 25%), linear-gradient(-45deg, #e5e5e5 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e5e5e5 75%), linear-gradient(-45deg, transparent 75%, #e5e5e5 75%);
             background-size: 20px 20px;
             background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
             background-color: #ffffff; 
         }
-        .tool-btn { @apply p-2 rounded-lg border border-gray-600 hover:bg-gray-700 transition flex flex-col items-center justify-center text-xs gap-1; }
-        .tool-btn.active { @apply bg-blue-600 text-white border-blue-500 shadow-lg ring-2 ring-blue-400; }
+        .tool-btn { @apply p-2 rounded-lg border border-gray-600 hover:bg-gray-700 transition flex flex-col items-center justify-center text-xs gap-1 text-gray-300; }
+        .tool-btn.active { @apply bg-blue-600 text-white border-blue-500 shadow-lg ring-2 ring-blue-400 transform scale-105; }
         input[type="range"] { @apply accent-blue-500 cursor-pointer; }
-        /* 禁用狀態的按鈕樣式 */
-        button:disabled { @apply opacity-50 cursor-not-allowed hover:bg-transparent; }
+        /* 讓輸入框好看一點 */
+        .dark-input { @apply bg-gray-900 border border-gray-600 rounded px-2 py-1 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none; }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-200 h-screen flex flex-col overflow-hidden">
 
     <header class="h-16 bg-gray-800 border-b border-gray-700 flex items-center justify-between px-4 shadow-lg z-20 shrink-0">
         <div class="flex items-center gap-3">
-            <span class="text-2xl">🎨</span>
+            <div class="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center text-xl font-bold text-white shadow-lg">L</div>
             <div>
-                <h1 class="font-bold text-lg tracking-wide text-white leading-tight">貼圖工坊 V4</h1>
-                <p class="text-[10px] text-gray-400">復原/重做 & 縮放視圖</p>
+                <h1 class="font-bold text-lg tracking-wide text-white leading-tight">貼圖大師 V5</h1>
+                <p class="text-[10px] text-gray-400">底圖自由縮放 • 字型記憶</p>
             </div>
         </div>
 
-        <div class="flex items-center gap-2 bg-gray-700/50 p-1 rounded-lg border border-gray-600 mx-4">
-            <button onclick="undo()" id="btn-undo" disabled class="p-2 rounded hover:bg-gray-600 transition text-white" title="復原 (Ctrl+Z)">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
-            </button>
-            <button onclick="redo()" id="btn-redo" disabled class="p-2 rounded hover:bg-gray-600 transition text-white" title="重做 (Ctrl+Y)">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6"/></svg>
-            </button>
+        <div class="flex items-center gap-1 bg-gray-700/50 p-1 rounded-lg border border-gray-600 mx-2">
+            <button onclick="undo()" id="btn-undo" disabled class="w-8 h-8 rounded hover:bg-gray-600 disabled:opacity-30 transition"><i class="fas fa-undo"></i></button>
+            <button onclick="redo()" id="btn-redo" disabled class="w-8 h-8 rounded hover:bg-gray-600 disabled:opacity-30 transition"><i class="fas fa-redo"></i></button>
+        </div>
+
+        <div class="flex items-center gap-2 bg-gray-700/30 px-3 py-1 rounded border border-gray-600">
+            <span class="text-xs text-gray-400">畫布:</span>
+            <input type="number" id="canvas-w" value="370" class="w-14 dark-input text-center" onchange="resizeCanvasDimension()">
+            <span class="text-xs">x</span>
+            <input type="number" id="canvas-h" value="320" class="w-14 dark-input text-center" onchange="resizeCanvasDimension()">
+            <button onclick="setStandardSize()" class="text-xs bg-gray-600 hover:bg-gray-500 px-2 py-1 rounded" title="重設為貼圖標準大小">標準</button>
         </div>
 
         <div class="flex items-center gap-2">
-            <label class="cursor-pointer bg-blue-600 hover:bg-blue-500 px-3 py-2 rounded font-bold text-white transition shadow border border-blue-400 flex items-center gap-1 text-sm">
-                🖼️ 載圖
+            <label class="cursor-pointer bg-blue-600 hover:bg-blue-500 px-3 py-2 rounded font-bold text-white transition shadow border border-blue-400 flex items-center gap-2 text-sm">
+                <i class="fas fa-image"></i> 載入素材
                 <input type="file" id="imgLoader" accept="image/*" class="hidden">
             </label>
-            <button onclick="downloadImage()" class="bg-green-600 hover:bg-green-500 text-white px-3 py-2 rounded font-bold shadow transition flex items-center gap-1 border border-green-500 text-sm">
-                📥 輸出
+            <button onclick="downloadImage()" class="bg-green-600 hover:bg-green-500 text-white px-3 py-2 rounded font-bold shadow transition flex items-center gap-2 border border-green-500 text-sm">
+                <i class="fas fa-download"></i> 輸出
             </button>
         </div>
     </header>
 
     <div class="flex flex-1 overflow-hidden relative">
         
-        <div class="w-20 bg-gray-800 border-r border-gray-700 flex flex-col items-center py-4 space-y-3 z-10 overflow-y-auto shrink-0">
-            
-            <button onclick="setMode('select')" id="btn-select" class="tool-btn active w-16 h-16" title="選取物件 (V)">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"></path></svg>
-                <span>選取</span>
+        <div class="w-20 bg-gray-800 border-r border-gray-700 flex flex-col items-center py-4 space-y-3 z-10 overflow-y-auto shrink-0 shadow-xl">
+            <button onclick="setMode('select')" id="btn-select" class="tool-btn active w-14 h-14" title="選取 (V)">
+                <i class="fas fa-mouse-pointer text-lg"></i><span>選取</span>
             </button>
-
-            <button onclick="addText()" class="tool-btn w-16 h-16 text-yellow-300 border-yellow-700 hover:bg-yellow-900/30" title="新增文字 (T)">
-                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                <span class="font-bold">加文字</span>
+            <button onclick="addText()" class="tool-btn w-14 h-14 text-yellow-400 border-yellow-800/50 hover:bg-yellow-900/20" title="加文字 (T)">
+                <i class="fas fa-font text-lg"></i><span>文字</span>
             </button>
-
             <div class="w-10 h-[1px] bg-gray-600 my-1"></div>
-
-            <button onclick="setMode('draw')" id="btn-draw" class="tool-btn w-16 h-16" title="手繪筆刷 (B)">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
-                <span>畫筆</span>
+            <button onclick="setMode('draw')" id="btn-draw" class="tool-btn w-14 h-14" title="畫筆 (B)">
+                <i class="fas fa-pen text-lg"></i><span>手繪</span>
             </button>
-
-            <button onclick="setMode('eraser')" id="btn-eraser" class="tool-btn w-16 h-16 hover:text-red-300" title="橡皮擦 (E)">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                <span>橡皮擦</span>
+            <button onclick="setMode('eraser')" id="btn-eraser" class="tool-btn w-14 h-14 hover:text-red-300" title="橡皮擦 (E)">
+                <i class="fas fa-eraser text-lg"></i><span>擦除</span>
             </button>
-
             <div class="w-10 h-[1px] bg-gray-600 my-1"></div>
-
-            <button onclick="startCrop()" id="btn-crop" class="tool-btn w-16 h-16" title="裁切圖片 (C)">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                <span>裁切</span>
+            <button onclick="startCrop()" id="btn-crop" class="tool-btn w-14 h-14" title="裁切 (C)">
+                <i class="fas fa-crop-alt text-lg"></i><span>裁切</span>
             </button>
         </div>
 
-        <div class="flex-1 bg-gray-900/80 relative overflow-hidden backdrop-blur-md" id="canvas-container-div">
+        <div class="flex-1 bg-gray-900/80 relative overflow-hidden flex items-center justify-center" id="workspace">
             
-            <div id="welcome-msg" class="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-                <div class="text-center text-gray-500">
-                    <p class="text-6xl mb-4 animate-bounce">🖼️</p>
-                    <p class="text-lg font-bold">請點選上方「載入圖片」</p>
-                    <p class="text-sm">支援 Ctrl+V 貼上</p>
-                </div>
+            <div class="canvas-bg shadow-2xl border-4 border-gray-700 relative z-10 transition-all duration-300" id="canvas-container">
+                <canvas id="c"></canvas>
             </div>
 
-            <div class="absolute inset-0 flex items-center justify-center">
-                <div class="canvas-bg shadow-2xl border border-gray-600 relative z-10">
-                    <canvas id="c"></canvas>
-                </div>
+            <div class="absolute bottom-5 right-5 bg-gray-800 p-1.5 rounded-full shadow-xl border border-gray-600 flex items-center gap-1 z-30 opacity-90 hover:opacity-100 transition">
+                <button onclick="zoomView(0.9)" class="w-8 h-8 rounded-full hover:bg-gray-700 text-gray-300"><i class="fas fa-minus"></i></button>
+                <span id="zoom-val" class="text-xs font-mono w-10 text-center text-gray-300">100%</span>
+                <button onclick="zoomView(1.1)" class="w-8 h-8 rounded-full hover:bg-gray-700 text-gray-300"><i class="fas fa-plus"></i></button>
+                <button onclick="resetViewZoom()" class="w-8 h-8 rounded-full hover:bg-gray-700 text-blue-400 ml-1" title="重置視圖"><i class="fas fa-compress"></i></button>
             </div>
 
-            <div class="absolute bottom-4 right-4 bg-gray-800/80 backdrop-blur p-2 rounded-full shadow-xl border border-gray-600 flex items-center gap-1 z-30">
-                <button onclick="zoomCanvas(0.9)" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-700 transition">🔍-</button>
-                <button onclick="resetZoom()" class="px-2 text-xs font-bold hover:bg-gray-700 rounded transition" title="重置縮放" id="zoom-val">100%</button>
-                <button onclick="zoomCanvas(1.1)" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-700 transition">🔍+</button>
-            </div>
-            <p class="absolute bottom-4 left-4 text-xs text-gray-500 z-30">💡 提示：按住 Alt 鍵 + 拖曳可平移畫布</p>
-
-            <div id="crop-controls" class="absolute bottom-20 left-1/2 -translate-x-1/2 bg-gray-800 p-3 rounded-xl shadow-2xl border border-gray-600 flex gap-3 hidden z-30">
-                <div class="text-white font-bold flex items-center px-2">✂️ 調整裁切範圍</div>
-                <button onclick="applyCrop()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-1 rounded">確認</button>
+            <div id="crop-controls" class="absolute bottom-20 bg-gray-800 p-3 rounded-xl shadow-2xl border border-gray-500 flex gap-3 hidden z-30 animate-bounce">
+                <button onclick="applyCrop()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-1 rounded shadow">確認裁切</button>
                 <button onclick="cancelCrop()" class="bg-gray-600 hover:bg-gray-500 text-white px-4 py-1 rounded">取消</button>
             </div>
         </div>
 
-        <div class="w-72 bg-gray-800 border-l border-gray-700 flex flex-col z-20 shadow-xl shrink-0">
-            <div class="p-4 border-b border-gray-700 font-bold text-gray-300 flex items-center gap-2 shrink-0">
-                <span>⚙️ 屬性設定</span>
+        <div class="w-80 bg-gray-800 border-l border-gray-700 flex flex-col z-20 shadow-xl shrink-0">
+            <div class="p-3 border-b border-gray-700 font-bold text-gray-300 bg-gray-800/50">
+                <i class="fas fa-sliders-h mr-2"></i>屬性面板
             </div>
-            <div class="p-5 flex-1 overflow-y-auto space-y-6">
+
+            <div class="p-4 flex-1 overflow-y-auto space-y-6">
+                
                 <div id="panel-none" class="text-center text-gray-500 py-10">
-                    <p>請點選畫布上的物件</p>
-                    <p>或是選擇左側工具</p>
+                    <i class="fas fa-mouse-pointer text-4xl mb-3 opacity-50"></i>
+                    <p class="text-sm">點選物件以編輯</p>
+                    <p class="text-xs mt-2 text-gray-600">小撇步：按住 Alt 拖曳可平移畫面</p>
                 </div>
-                <div id="panel-brush" class="hidden space-y-5">
-                    <h3 class="text-sm font-bold text-blue-400 uppercase tracking-wider">筆刷/橡皮擦</h3>
-                    <div id="brush-color-wrap" class="space-y-2">
-                        <label class="text-xs text-gray-400">筆刷顏色</label>
-                        <div class="flex gap-2">
-                            <input type="color" id="draw-color" value="#000000" class="w-10 h-10 rounded border border-gray-500 cursor-pointer bg-transparent" onchange="updateBrush()">
-                            <button onclick="setBrushColor('#000000')" class="w-10 h-10 bg-black rounded border border-gray-600 hover:scale-110 transition"></button>
-                            <button onclick="setBrushColor('#ffffff')" class="w-10 h-10 bg-white rounded border border-gray-600 hover:scale-110 transition"></button>
-                            <button onclick="setBrushColor('#ff0000')" class="w-10 h-10 bg-red-600 rounded border border-gray-600 hover:scale-110 transition"></button>
+
+                <div id="panel-brush" class="hidden space-y-4">
+                    <h3 class="text-xs font-bold text-blue-400 uppercase tracking-wider border-b border-gray-700 pb-1">筆刷工具</h3>
+                    <div id="brush-color-wrap">
+                        <label class="text-xs text-gray-400 mb-1 block">顏色</label>
+                        <div class="flex gap-2 mb-2">
+                             <input type="color" id="draw-color" value="#000000" class="w-8 h-8 rounded cursor-pointer border-0 p-0" onchange="updateBrush()">
+                             <div class="flex gap-1">
+                                 <button onclick="setBrushColor('#000000')" class="w-8 h-8 bg-black rounded border border-gray-600"></button>
+                                 <button onclick="setBrushColor('#ffffff')" class="w-8 h-8 bg-white rounded border border-gray-600"></button>
+                                 <button onclick="setBrushColor('#ef4444')" class="w-8 h-8 bg-red-500 rounded border border-gray-600"></button>
+                                 <button onclick="setBrushColor('#3b82f6')" class="w-8 h-8 bg-blue-500 rounded border border-gray-600"></button>
+                             </div>
                         </div>
                     </div>
-                    <div class="space-y-2">
-                        <label class="text-xs text-gray-400 flex justify-between">粗細 <span id="brush-size-val">5</span></label>
-                        <input type="range" id="draw-width" min="1" max="50" value="5" class="w-full" oninput="updateBrush()">
+                    <div>
+                        <label class="text-xs text-gray-400 flex justify-between mb-1">筆畫粗細 <span id="brush-size-val">5</span></label>
+                        <input type="range" id="draw-width" min="1" max="50" value="5" class="w-full h-2 bg-gray-600 rounded-lg appearance-none" oninput="updateBrush()">
                     </div>
                 </div>
+
                 <div id="panel-object" class="hidden space-y-6">
-                    <div class="space-y-2">
-                        <h3 class="text-sm font-bold text-green-400 uppercase tracking-wider">🎨 填色</h3>
-                        <label class="text-xs text-gray-400">主體顏色</label>
-                        <input type="color" id="obj-color" class="w-full h-10 rounded cursor-pointer border border-gray-600 bg-transparent p-1" onchange="updateObject()">
+                    
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="bringToFront()" class="text-xs bg-gray-700 hover:bg-gray-600 py-2 rounded text-gray-300"><i class="fas fa-arrow-up mr-1"></i>移至最上層</button>
+                        <button onclick="sendToBack()" class="text-xs bg-gray-700 hover:bg-gray-600 py-2 rounded text-gray-300"><i class="fas fa-arrow-down mr-1"></i>移至最下層</button>
                     </div>
-                    <div id="text-controls" class="hidden space-y-6 pt-4 border-t border-gray-700">
-                        <h3 class="text-sm font-bold text-yellow-400 uppercase tracking-wider">T 文字設定</h3>
-                        <div class="space-y-2">
-                            <label class="text-xs text-gray-400">選擇字型</label>
-                            <select id="font-family" class="w-full bg-gray-700 border border-gray-600 rounded p-2 text-sm" onchange="updateObject()">
-                                <option value="Noto Sans TC">思源黑體 (Web)</option>
-                                <option value="Mochiy Pop One">可愛圓體 (Web)</option>
-                                <option value="Microsoft JhengHei">微軟正黑體 (Win)</option>
-                                <option value="PMingLiU">新細明體 (Win)</option>
-                                <option value="DFKai-SB">標楷體 (Win)</option>
-                                <option value="PingFang TC">蘋方黑體 (Mac)</option>
-                                <option value="LiHei Pro">儷黑 Pro (Mac)</option>
-                                <option value="custom">👉 手動輸入...</option>
+
+                    <div class="space-y-2">
+                        <h3 class="text-xs font-bold text-green-400 uppercase tracking-wider border-b border-gray-700 pb-1">填充顏色</h3>
+                        <input type="color" id="obj-color" class="w-full h-8 rounded cursor-pointer border border-gray-600 bg-transparent p-0" onchange="updateObject()">
+                    </div>
+
+                    <div id="text-controls" class="hidden space-y-5 pt-4 border-t border-gray-700">
+                        <h3 class="text-xs font-bold text-yellow-400 uppercase tracking-wider border-b border-gray-700 pb-1">文字大師</h3>
+
+                        <div class="space-y-2 bg-gray-700/30 p-2 rounded border border-gray-600">
+                            <label class="text-xs text-gray-300 font-bold block mb-1">選擇字型</label>
+                            <select id="font-family" class="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-sm mb-2" onchange="handleFontChange()">
+                                <optgroup label="⭐ 我的最愛 (本地記憶)" id="saved-fonts-group">
+                                    </optgroup>
+                                <optgroup label="常用系統字型">
+                                    <option value="Noto Sans TC">思源黑體 (Web)</option>
+                                    <option value="Mochiy Pop One">可愛圓體 (Web)</option>
+                                    <option value="Microsoft JhengHei">微軟正黑體</option>
+                                    <option value="PMingLiU">新細明體</option>
+                                    <option value="DFKai-SB">標楷體</option>
+                                    <option value="Arial">Arial</option>
+                                </optgroup>
+                                <option value="custom_input">➕ 新增電腦字型...</option>
                             </select>
-                            <input type="text" id="custom-font" placeholder="輸入電腦內的字型名稱..." class="hidden w-full bg-gray-900 border border-gray-600 rounded p-2 text-sm text-white placeholder-gray-500 mt-1" onchange="applyCustomFont()">
+
+                            <div id="custom-font-area" class="hidden flex gap-2">
+                                <input type="text" id="custom-font-input" placeholder="例如: 華康少女文字W5" class="dark-input flex-1">
+                                <button onclick="saveCustomFont()" class="bg-blue-600 hover:bg-blue-500 text-white px-2 rounded text-xs" title="儲存並套用"><i class="fas fa-save"></i></button>
+                            </div>
+                            <button onclick="clearSavedFonts()" class="text-[10px] text-red-400 hover:text-red-300 underline w-full text-right mt-1">清除記憶字型</button>
                         </div>
-                        <div class="space-y-3 bg-gray-700/50 p-3 rounded-lg border border-gray-600">
-                            <label class="text-xs text-white font-bold flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-white"></span>白描邊 (Stroke)</label>
-                            <div class="flex gap-2">
-                                <input type="color" id="text-stroke-color" value="#ffffff" class="w-10 h-10 rounded border border-gray-500 cursor-pointer bg-transparent" onchange="updateObject()">
-                                <div class="flex-1">
-                                    <label class="text-[10px] text-gray-400 flex justify-between">粗細 <span id="stroke-width-val">8</span></label>
-                                    <input type="range" id="text-stroke-width" min="0" max="20" value="8" step="0.5" class="w-full" oninput="updateObject()">
-                                </div>
+
+                        <div class="space-y-2 bg-gray-700/30 p-2 rounded border border-gray-600">
+                            <label class="text-xs text-white font-bold flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-white"></span> 白描邊 (Stroke)
+                            </label>
+                            <div class="flex gap-2 items-center">
+                                <input type="color" id="text-stroke-color" value="#ffffff" class="w-8 h-8 rounded border border-gray-500 cursor-pointer p-0" onchange="updateObject()">
+                                <input type="range" id="text-stroke-width" min="0" max="20" value="8" step="0.5" class="flex-1 h-2 bg-gray-600 rounded-lg appearance-none" oninput="updateObject()">
                             </div>
                         </div>
                     </div>
-                    <button onclick="deleteActiveObject()" class="w-full bg-red-900/50 hover:bg-red-800 text-red-200 py-2 rounded border border-red-800 transition">
-                        刪除物件 (Del)
+
+                    <button onclick="deleteActiveObject()" class="w-full bg-red-900/40 hover:bg-red-900/60 text-red-300 py-2 rounded border border-red-800/50 transition text-sm">
+                        <i class="fas fa-trash-alt mr-2"></i>刪除物件 (Del)
                     </button>
                 </div>
             </div>
@@ -185,184 +190,86 @@
     </div>
 
     <script>
-        // --- 設定 Fabric ---
+        // --- 0. 基礎設定 ---
         fabric.Object.prototype.set({
-            transparentCorners: false, cornerColor: '#3b82f6', cornerStyle: 'circle', borderColor: '#3b82f6', cornerSize: 10, padding: 5,
-            // 重要：讓物件的控制項不會隨著視圖縮放而變形太大
-            borderScaleFactor: 1, cornerStrokeColor: '#3b82f6' 
+            transparentCorners: false, cornerColor: '#3b82f6', cornerStyle: 'circle', borderColor: '#3b82f6', cornerSize: 10, padding: 5, borderScaleFactor: 1
         });
 
+        // 預設尺寸：Line 貼圖最大值
+        const DEFAULT_W = 370;
+        const DEFAULT_H = 320;
+
         const canvas = new fabric.Canvas('c', {
-            width: 500, height: 500, backgroundColor: null,
-            preserveObjectStacking: true // 保持圖層順序
+            width: DEFAULT_W, height: DEFAULT_H, backgroundColor: null, preserveObjectStacking: true
         });
 
         let currentMode = 'select';
         let cropRect = null;
+        let viewZoom = 1; // 視圖縮放比例 (非圖片縮放)
 
-        // --- V4 新增：歷史紀錄狀態變數 ---
+        // 歷史紀錄
         let undoStack = [];
         let redoStack = [];
-        let isRedoing = false; // 防止在重做時觸發保存事件
-        let initialState = null; // 儲存初始空白或剛載入圖片時的狀態
+        let isRedoing = false;
 
-        // --- V4 新增：縮放與平移變數 ---
-        let canvasScale = 1;
-        let isDragging = false;
-        let lastPosX, lastPosY;
+        // 字型記憶
+        let myFonts = JSON.parse(localStorage.getItem('sticker_my_fonts')) || [];
 
-        // =========================================
-        //  V4 核心功能：歷史紀錄 (Undo/Redo)
-        // =========================================
+        // --- 1. 初始化與事件監聽 ---
+        window.onload = function() {
+            renderFontOptions();
+            resizeCanvasDimension(); // 確保畫布置中
+        };
+
+        // 監聽畫布點擊 (處理點空白處取消選取)
+        canvas.on('selection:cleared', updatePanel);
+        canvas.on('selection:created', updatePanelFromSelection);
+        canvas.on('selection:updated', updatePanelFromSelection);
         
-        // 儲存當前狀態到堆疊
-        function saveState() {
-            if (isRedoing) return;
-            redoStack = []; // 有新動作時，清空重做堆疊
-            
-            // 將畫布序列化為 JSON 字串存起來
-            // 重要：不儲存背景圖，因為背景圖通常很大且不會變，我們只存操作
-            const json = canvas.toJSON(['selectable', 'evented', 'id']); 
-            undoStack.push(json);
-            updateHistoryButtons();
-            console.log("State Saved. Stack size:", undoStack.length);
-        }
-
-        // 更新按鈕狀態
-        function updateHistoryButtons() {
-            document.getElementById('btn-undo').disabled = undoStack.length === 0;
-            document.getElementById('btn-redo').disabled = redoStack.length === 0;
-        }
-
-        function undo() {
-            if (undoStack.length > 0) {
-                isRedoing = true;
-                // 將當前狀態移到重做堆疊
-                const currentState = canvas.toJSON(['selectable', 'evented', 'id']);
-                redoStack.push(currentState);
-                
-                // 取出上一個狀態
-                const state = undoStack.pop();
-                loadState(state);
-            }
-        }
-
-        function redo() {
-            if (redoStack.length > 0) {
-                isRedoing = true;
-                // 將當前狀態移到復原堆疊
-                const currentState = canvas.toJSON(['selectable', 'evented', 'id']);
-                undoStack.push(currentState);
-
-                // 取出下一個狀態
-                const state = redoStack.pop();
-                loadState(state);
-            }
-        }
-
-        // 載入狀態到畫布
-        function loadState(state) {
-            canvas.loadFromJSON(state, function() {
-                canvas.renderAll();
-                isRedoing = false;
-                updateHistoryButtons();
-                updatePanel(); // 更新屬性面板
-            });
-        }
-
-        // 監聽會改變畫布的事件來觸發存檔
+        // 歷史紀錄監聽
         canvas.on('object:added', saveState);
         canvas.on('object:modified', saveState);
         canvas.on('object:removed', saveState);
-        // 畫筆路徑建立完成也要存
-        canvas.on('path:created', function(opt) {
-            if (currentMode === 'eraser') {
+        canvas.on('path:created', (opt) => {
+            if(currentMode === 'eraser') {
                 opt.path.globalCompositeOperation = 'destination-out';
                 opt.path.selectable = false; opt.path.evented = false;
             }
-            // 注意：path:created 也會觸發 object:added，所以這裡不用重複 saveState
         });
 
+        // --- 2. 畫布尺寸與視圖控制 (解決問題 1) ---
+        function resizeCanvasDimension() {
+            const w = parseInt(document.getElementById('canvas-w').value);
+            const h = parseInt(document.getElementById('canvas-h').value);
+            canvas.setWidth(w);
+            canvas.setHeight(h);
+            canvas.requestRenderAll();
+        }
 
-        // =========================================
-        //  V4 核心功能：縮放與平移 (Zoom & Pan)
-        // =========================================
+        function setStandardSize() {
+            document.getElementById('canvas-w').value = DEFAULT_W;
+            document.getElementById('canvas-h').value = DEFAULT_H;
+            resizeCanvasDimension();
+        }
 
-        // 縮放畫布視圖
-        function zoomCanvas(factor) {
-            let newScale = canvasScale * factor;
-            // 限制縮放範圍 (例如 0.5x 到 5x)
-            newScale = Math.min(Math.max(newScale, 0.5), 5);
+        // 視圖縮放 (View Zoom) - 純粹放大給眼睛看，不改變輸出尺寸
+        function zoomView(factor) {
+            viewZoom *= factor;
+            viewZoom = Math.min(Math.max(viewZoom, 0.5), 5); // 限制 0.5x ~ 5x
+            document.getElementById('zoom-val').innerText = Math.round(viewZoom * 100) + '%';
             
-            canvas.setZoom(newScale);
-            canvasScale = newScale;
-            document.getElementById('zoom-val').innerText = Math.round(newScale * 100) + '%';
-            canvas.requestRenderAll();
+            // 使用 CSS Transform 進行視覺縮放，比 canvas.setZoom 更單純，不會影響裁切邏輯
+            const container = document.getElementById('canvas-container');
+            container.style.transform = `scale(${viewZoom})`;
         }
 
-        // 重置縮放
-        function resetZoom() {
-            canvas.setViewportTransform([1, 0, 0, 1, 0, 0]); // 回到初始矩陣
-            canvasScale = 1;
+        function resetViewZoom() {
+            viewZoom = 1;
             document.getElementById('zoom-val').innerText = '100%';
-            canvas.requestRenderAll();
+            document.getElementById('canvas-container').style.transform = `scale(1)`;
         }
 
-        // 平移功能實作 (Alt + 拖曳)
-        canvas.on('mouse:down', function(opt) {
-            const evt = opt.e;
-            if (evt.altKey === true) {
-                this.isDragging = true;
-                this.selection = false; // 暫時關閉框選
-                this.lastPosX = evt.clientX;
-                this.lastPosY = evt.clientY;
-                this.defaultCursor = 'grab';
-            }
-        });
-
-        canvas.on('mouse:move', function(opt) {
-            if (this.isDragging) {
-                const evt = opt.e;
-                const vpt = this.viewportTransform;
-                vpt[4] += evt.clientX - this.lastPosX;
-                vpt[5] += evt.clientY - this.lastPosY;
-                this.requestRenderAll();
-                this.lastPosX = evt.clientX;
-                this.lastPosY = evt.clientY;
-            }
-        });
-
-        canvas.on('mouse:up', function(opt) {
-            if (this.isDragging) {
-                this.setViewportTransform(this.viewportTransform);
-                this.isDragging = false;
-                this.selection = true; // 恢復框選
-                this.defaultCursor = 'default';
-            }
-        });
-        
-        // 支援滑鼠滾輪縮放 (可選，這裡先註解掉，避免與頁面滾動衝突，目前用按鈕比較安全)
-        /*
-        canvas.on('mouse:wheel', function(opt) {
-            const delta = opt.e.deltaY;
-            let zoom = canvas.getZoom();
-            zoom *= 0.999 ** delta;
-            if (zoom > 5) zoom = 5;
-            if (zoom < 0.5) zoom = 0.5;
-            canvas.zoomToPoint({ x: opt.e.offsetX, y: opt.e.offsetY }, zoom);
-            opt.e.preventDefault();
-            opt.e.stopPropagation();
-            canvasScale = zoom;
-            document.getElementById('zoom-val').innerText = Math.round(zoom * 100) + '%';
-        });
-        */
-
-
-        // =========================================
-        //  以下為 V3 即有的功能 (部分微調以配合 V4)
-        // =========================================
-
-        // --- 1. 圖片載入 ---
+        // --- 3. 圖片載入 (改為物件模式，解決底圖縮放問題) ---
         document.getElementById('imgLoader').addEventListener('change', loadFile);
         window.addEventListener('paste', (e) => {
             const items = (e.clipboardData || e.originalEvent.clipboardData).items;
@@ -384,42 +291,181 @@
         }
 
         function loadToCanvas(dataURL) {
-            const imgObj = new Image();
-            imgObj.src = dataURL;
-            imgObj.onload = function() {
-                // 載入新圖時，重置所有狀態
-                canvas.clear();
-                undoStack = [];
-                redoStack = [];
-                updateHistoryButtons();
-                resetZoom(); // 重置縮放視圖
-                document.getElementById('welcome-msg').style.display = 'none';
+            fabric.Image.fromURL(dataURL, function(img) {
+                // 這裡不再改變 Canvas 大小，而是調整圖片大小
+                const canvasW = canvas.width;
+                const canvasH = canvas.height;
+                
+                // 如果圖片比畫布大，縮放到適合畫布
+                if (img.width > canvasW || img.height > canvasH) {
+                    const scale = Math.min(canvasW / img.width, canvasH / img.height) * 0.9; // 留一點邊
+                    img.scale(scale);
+                }
 
-                // V4 修改：限制 Canvas 的顯示大小，而不是縮放圖片本身
-                // 這樣大圖載入時，畫布會變大，但視窗會出現捲軸(被我們隱藏了)，
-                // 使用者可以透過縮放和平移來檢視。
-                const maxDisplayDimension = 1200; // 設定一個合理的畫布最大邊界
-                let width = imgObj.width;
-                let height = imgObj.height;
+                // 置中
+                img.set({
+                    left: canvasW / 2,
+                    top: canvasH / 2,
+                    originX: 'center',
+                    originY: 'center'
+                });
 
-                canvas.setWidth(width);
-                canvas.setHeight(height);
+                canvas.add(img);
+                img.sendToBack(); // 預設放到最下層
+                canvas.setActiveObject(img); // 選中它，讓使用者知道可以調整
+                saveState();
+            });
+            // 載入新圖時清空歡迎訊息
+            document.getElementById('panel-none').style.display = 'none'; 
+        }
 
-                const fImg = new fabric.Image(imgObj);
-                canvas.setBackgroundImage(fImg, () => {
-                    canvas.renderAll();
-                    // V4 重要：載入底圖後，儲存初始狀態，這樣才能 Undo 回到剛載入的樣子
-                    initialState = canvas.toJSON(['selectable', 'evented', 'id']);
-                    // 如果圖片太大，自動縮小視圖以便觀看全貌
-                    if (width > 800 || height > 800) {
-                         const fitScale = Math.min(800/width, 800/height);
-                         zoomCanvas(fitScale / canvasScale); // 調整到適合的大小
-                    }
-                }, { scaleX: 1, scaleY: 1 });
+        // --- 4. 字型記憶系統 (解決問題 2) ---
+        function renderFontOptions() {
+            const group = document.getElementById('saved-fonts-group');
+            group.innerHTML = ''; // 清空
+            if (myFonts.length === 0) {
+                const opt = document.createElement('option');
+                opt.text = "(尚無紀錄)";
+                opt.disabled = true;
+                group.appendChild(opt);
+            } else {
+                myFonts.forEach(fontName => {
+                    const opt = document.createElement('option');
+                    opt.value = fontName;
+                    opt.text = fontName;
+                    group.appendChild(opt);
+                });
             }
         }
 
-        // --- 2. 模式切換 ---
+        function handleFontChange() {
+            const select = document.getElementById('font-family');
+            const customArea = document.getElementById('custom-font-area');
+            
+            if (select.value === 'custom_input') {
+                customArea.classList.remove('hidden');
+                document.getElementById('custom-font-input').focus();
+            } else {
+                customArea.classList.add('hidden');
+                updateObject(); // 直接套用選單字型
+            }
+        }
+
+        function saveCustomFont() {
+            const name = document.getElementById('custom-font-input').value.trim();
+            if (!name) return;
+
+            // 儲存到 LocalStorage
+            if (!myFonts.includes(name)) {
+                myFonts.unshift(name); // 加到最前面
+                localStorage.setItem('sticker_my_fonts', JSON.stringify(myFonts));
+                
+                // 重新渲染選單並選中它
+                renderFontOptions();
+                document.getElementById('font-family').value = name;
+                document.getElementById('custom-font-area').classList.add('hidden');
+                
+                // 套用字型
+                updateObject();
+                alert(`已記憶字型：「${name}」`);
+            } else {
+                // 已存在，直接套用
+                document.getElementById('font-family').value = name;
+                updateObject();
+            }
+        }
+
+        function clearSavedFonts() {
+            if(confirm('確定要清除所有記憶的字型嗎？')) {
+                myFonts = [];
+                localStorage.removeItem('sticker_my_fonts');
+                renderFontOptions();
+                document.getElementById('font-family').value = 'Noto Sans TC';
+            }
+        }
+
+        // --- 5. 物件操作與面板 ---
+        function addText() {
+            setMode('select');
+            const text = new fabric.IText('輸入文字', {
+                left: canvas.width / 2, top: canvas.height / 2, originX: 'center', originY: 'center',
+                fontFamily: 'Noto Sans TC', fontSize: 60, fill: '#000000', stroke: '#ffffff', strokeWidth: 8, paintFirst: 'stroke', fontWeight: '900'
+            });
+            canvas.add(text);
+            canvas.setActiveObject(text);
+        }
+
+        function updateObject() {
+            const obj = canvas.getActiveObject();
+            if (!obj) return;
+            
+            obj.set('fill', document.getElementById('obj-color').value);
+            
+            if (obj.type === 'i-text') {
+                let fontVal = document.getElementById('font-family').value;
+                if (fontVal === 'custom_input') {
+                    // 如果還在輸入狀態，暫時不更新，或者使用輸入框的值
+                    fontVal = document.getElementById('custom-font-input').value || 'sans-serif';
+                }
+
+                obj.set({
+                    fontFamily: fontVal,
+                    stroke: document.getElementById('text-stroke-color').value,
+                    strokeWidth: parseFloat(document.getElementById('text-stroke-width').value)
+                });
+            }
+            canvas.requestRenderAll();
+            // saveState 透過 object:modified 觸發
+        }
+
+        function updatePanelFromSelection() {
+            updatePanel();
+            const obj = canvas.getActiveObject();
+            if (!obj) return;
+            
+            if(typeof obj.fill === 'string') document.getElementById('obj-color').value = obj.fill;
+            
+            if (obj.type === 'i-text') {
+                document.getElementById('text-stroke-color').value = obj.stroke || '#ffffff';
+                document.getElementById('text-stroke-width').value = obj.strokeWidth || 0;
+                
+                // 同步字型選單
+                const options = Array.from(document.getElementById('font-family').options).map(o => o.value);
+                if (options.includes(obj.fontFamily)) {
+                    document.getElementById('font-family').value = obj.fontFamily;
+                    document.getElementById('custom-font-area').classList.add('hidden');
+                } else {
+                    // 如果是之前輸入過但沒存的，或是系統預設外的
+                    document.getElementById('font-family').value = 'custom_input';
+                    document.getElementById('custom-font-area').classList.remove('hidden');
+                    document.getElementById('custom-font-input').value = obj.fontFamily;
+                }
+            }
+        }
+
+        function updatePanel() {
+            const obj = canvas.getActiveObject();
+            document.getElementById('panel-none').classList.toggle('hidden', !!obj || canvas.isDrawingMode);
+            document.getElementById('panel-brush').classList.toggle('hidden', !canvas.isDrawingMode);
+            document.getElementById('panel-object').classList.toggle('hidden', !obj);
+            const isText = obj && obj.type === 'i-text';
+            document.getElementById('text-controls').classList.toggle('hidden', !isText);
+        }
+
+        // 圖層順序
+        function bringToFront() { const obj = canvas.getActiveObject(); if(obj) { obj.bringToFront(); saveState(); } }
+        function sendToBack() { const obj = canvas.getActiveObject(); if(obj) { obj.sendToBack(); saveState(); } }
+
+        function deleteActiveObject() {
+            const obj = canvas.getActiveObject();
+            if (obj && !obj.isEditing) {
+                canvas.remove(obj);
+                canvas.discardActiveObject();
+                updatePanel();
+            }
+        }
+
+        // --- 6. 工具模式 ---
         function setMode(mode) {
             if(currentMode === 'crop' && mode !== 'crop') cancelCrop();
             currentMode = mode;
@@ -438,7 +484,6 @@
             updatePanel();
         }
 
-        // --- 3. 畫筆邏輯 ---
         function setBrushColor(c) {
             document.getElementById('draw-color').value = c;
             updateBrush();
@@ -450,6 +495,7 @@
             document.getElementById('brush-size-val').innerText = size;
             canvas.freeDrawingBrush.width = size;
             canvas.freeDrawingBrush.strokeLineCap = 'round';
+            
             if (currentMode === 'eraser') {
                 canvas.freeDrawingBrush.color = 'rgba(0,0,0,1)'; 
                 canvas.defaultCursor = 'crosshair';
@@ -461,95 +507,13 @@
             }
         }
 
-        // --- 4. 文字與物件邏輯 ---
-        function addText() {
-            setMode('select');
-            const text = new fabric.IText('請輸入文字', {
-                left: canvas.width / 2, top: canvas.height / 2, originX: 'center', originY: 'center',
-                fontFamily: 'Noto Sans TC', fontSize: 50, fill: '#000000', stroke: '#ffffff', strokeWidth: 8, paintFirst: 'stroke', fontWeight: '900'
-            });
-            canvas.add(text);
-            canvas.setActiveObject(text);
-            // saveState 會被 object:added 觸發，這裡不用寫
-        }
-
-        document.getElementById('font-family').addEventListener('change', function(e) {
-            const customInput = document.getElementById('custom-font');
-            if(e.target.value === 'custom') {
-                customInput.classList.remove('hidden'); customInput.focus();
-            } else {
-                customInput.classList.add('hidden'); updateObject();
-            }
-        });
-        function applyCustomFont() { updateObject(); }
-
-        function updateObject() {
-            const obj = canvas.getActiveObject();
-            if (!obj) return;
-            obj.set('fill', document.getElementById('obj-color').value);
-            if (obj.type === 'i-text') {
-                let fontVal = document.getElementById('font-family').value;
-                if(fontVal === 'custom') fontVal = document.getElementById('custom-font').value || 'sans-serif';
-                obj.set({
-                    fontFamily: fontVal,
-                    stroke: document.getElementById('text-stroke-color').value,
-                    strokeWidth: parseFloat(document.getElementById('text-stroke-width').value)
-                });
-            }
-            canvas.requestRenderAll();
-            // saveState 會被 object:modified 觸發
-        }
-
-        canvas.on('selection:created', updatePanelFromSelection);
-        canvas.on('selection:updated', updatePanelFromSelection);
-        canvas.on('selection:cleared', updatePanel);
-
-        function updatePanelFromSelection() {
-            updatePanel();
-            const obj = canvas.getActiveObject();
-            if (!obj) return;
-            if(typeof obj.fill === 'string') document.getElementById('obj-color').value = obj.fill;
-            if (obj.type === 'i-text') {
-                document.getElementById('text-stroke-color').value = obj.stroke || '#ffffff';
-                document.getElementById('text-stroke-width').value = obj.strokeWidth || 0;
-                document.getElementById('stroke-width-val').innerText = obj.strokeWidth || 0;
-                const fonts = Array.from(document.getElementById('font-family').options).map(o => o.value);
-                if(fonts.includes(obj.fontFamily)) {
-                    document.getElementById('font-family').value = obj.fontFamily;
-                    document.getElementById('custom-font').classList.add('hidden');
-                } else {
-                    document.getElementById('font-family').value = 'custom';
-                    document.getElementById('custom-font').classList.remove('hidden');
-                    document.getElementById('custom-font').value = obj.fontFamily;
-                }
-            }
-        }
-
-        function updatePanel() {
-            const obj = canvas.getActiveObject();
-            document.getElementById('panel-none').classList.toggle('hidden', !!obj || canvas.isDrawingMode);
-            document.getElementById('panel-brush').classList.toggle('hidden', !canvas.isDrawingMode);
-            document.getElementById('panel-object').classList.toggle('hidden', !obj);
-            const isText = obj && obj.type === 'i-text';
-            document.getElementById('text-controls').classList.toggle('hidden', !isText);
-        }
-
-        function deleteActiveObject() {
-            const obj = canvas.getActiveObject();
-            if (obj && !obj.isEditing) {
-                canvas.remove(obj);
-                canvas.discardActiveObject();
-                updatePanel();
-                // saveState 會被 object:removed 觸發
-            }
-        }
-
-        // --- 5. 裁切與下載 ---
+        // --- 7. 裁切 (配合 View Zoom 修正) ---
         function startCrop() {
             setMode('crop');
             document.getElementById('crop-controls').classList.remove('hidden');
-            // V4: 裁切時先重置縮放，避免計算錯誤
-            resetZoom();
+            // 裁切時暫時恢復視圖縮放，以免計算錯誤
+            resetViewZoom();
+            
             cropRect = new fabric.Rect({
                 fill: 'rgba(0,0,0,0.3)', stroke: '#3b82f6', strokeWidth: 2, strokeDashArray: [10, 5],
                 left: 0, top: 0, width: canvas.width, height: canvas.height,
@@ -570,36 +534,84 @@
             if (!cropRect) return;
             const { left, top, width, height } = cropRect.getBoundingRect();
             cropRect.visible = false;
-            // V4: 裁切時忽略視圖變換
-            const url = canvas.toDataURL({ left, top, width, height, format: 'png', enableRetinaScaling: false });
-            loadToCanvas(url); 
-            cancelCrop();
+            // 匯出當前範圍的圖片
+            const url = canvas.toDataURL({ left, top, width, height, format: 'png', multiplier: 1 });
+            
+            // 清空並重設畫布大小
+            canvas.clear();
+            canvas.setWidth(width);
+            canvas.setHeight(height);
+            document.getElementById('canvas-w').value = Math.round(width);
+            document.getElementById('canvas-h').value = Math.round(height);
+
+            fabric.Image.fromURL(url, (img) => {
+                canvas.add(img);
+                img.set({ selectable: true });
+                saveState();
+                cancelCrop();
+            });
         }
 
+        // --- 8. 歷史紀錄實作 ---
+        function saveState() {
+            if (isRedoing) return;
+            redoStack = [];
+            if(undoStack.length > 20) undoStack.shift(); // 限制紀錄 20 步
+            undoStack.push(canvas.toJSON());
+            updateHistoryButtons();
+        }
+
+        function updateHistoryButtons() {
+            document.getElementById('btn-undo').disabled = undoStack.length === 0;
+            document.getElementById('btn-redo').disabled = redoStack.length === 0;
+        }
+
+        function undo() {
+            if (undoStack.length > 0) {
+                isRedoing = true;
+                redoStack.push(canvas.toJSON());
+                const state = undoStack.pop();
+                canvas.loadFromJSON(state, () => {
+                    canvas.renderAll();
+                    isRedoing = false;
+                    updateHistoryButtons();
+                });
+            }
+        }
+
+        function redo() {
+            if (redoStack.length > 0) {
+                isRedoing = true;
+                undoStack.push(canvas.toJSON());
+                const state = redoStack.pop();
+                canvas.loadFromJSON(state, () => {
+                    canvas.renderAll();
+                    isRedoing = false;
+                    updateHistoryButtons();
+                });
+            }
+        }
+
+        // --- 9. 下載 ---
         function downloadImage() {
             canvas.discardActiveObject();
-            resetZoom(); // 下載前重置縮放，確保輸出原始尺寸
+            resetViewZoom(); // 確保輸出不受視圖影響
             canvas.requestRenderAll();
-            // 給瀏覽器一點時間渲染
             setTimeout(() => {
                 const link = document.createElement('a');
                 link.download = `sticker-${Date.now()}.png`;
-                // multiplier: 1 確保不按照視網膜螢幕加倍輸出，維持原尺寸
                 link.href = canvas.toDataURL({ format: 'png', quality: 1, multiplier: 1 });
                 link.click();
             }, 100);
         }
 
-        // 鍵盤監聽 (新增 Ctrl+Z / Ctrl+Y)
+        // 鍵盤監聽
         window.addEventListener('keydown', (e) => {
             if ((e.key === 'Delete' || e.key === 'Backspace')) deleteActiveObject();
-            // Undo/Redo 快捷鍵
-            if (e.ctrlKey || e.metaKey) {
-                if (e.key === 'z') { e.preventDefault(); undo(); }
-                if (e.key === 'y') { e.preventDefault(); redo(); }
-            }
+            if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); }
+            if (e.ctrlKey && e.key === 'y') { e.preventDefault(); redo(); }
+            // Alt 拖曳平移 (Fabric 內建邏輯)
         });
-
     </script>
 </body>
 </html>

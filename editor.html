@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LINE Sticker Master V7.1 - 穩定修復版</title>
+    <title>LINE Sticker Master V8 - 終極修復版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;900&family=Mochiy+Pop+One&display=swap" rel="stylesheet">
@@ -20,10 +20,10 @@
 
     <header class="h-16 bg-gray-800 border-b border-gray-700 flex items-center justify-between px-4 shadow-lg z-20 shrink-0">
         <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center text-xl font-bold text-white shadow-lg">V7.1</div>
+            <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-xl font-bold text-white shadow-lg">V8</div>
             <div>
-                <h1 class="font-bold text-lg tracking-wide text-white leading-tight">貼圖大師 V7.1</h1>
-                <p class="text-[10px] text-gray-400">圖層修復 • 穩定版</p>
+                <h1 class="font-bold text-lg tracking-wide text-white leading-tight">貼圖大師 V8</h1>
+                <p class="text-[10px] text-gray-400">載圖核心重寫 • 強制置頂</p>
             </div>
         </div>
 
@@ -76,13 +76,18 @@
         </div>
 
         <div class="flex-1 bg-gray-900 overflow-hidden relative" id="workspace">
+            
+            <div id="loading-toast" class="absolute top-5 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-4 py-2 rounded-full shadow-lg z-50 hidden flex items-center gap-2">
+                <i class="fas fa-spinner fa-spin"></i> 圖片處理中...
+            </div>
+
             <div class="absolute inset-0 flex items-center justify-center">
                 <canvas id="c"></canvas>
             </div>
 
             <div class="absolute top-4 left-4 z-30 pointer-events-none bg-black/40 p-2 rounded text-[10px] text-gray-300 backdrop-blur-sm">
-                <p>🖱️ 滾輪：縮放畫布</p>
-                <p>🖱️ 右鍵按住：移動畫布</p>
+                <p>🖱️ 滾輪：縮放視圖</p>
+                <p>🖱️ 右鍵按住：移動視圖</p>
             </div>
 
             <div class="absolute bottom-5 right-5 bg-gray-800 p-1.5 rounded-full shadow-xl border border-gray-600 flex items-center gap-1 z-30 opacity-90">
@@ -190,20 +195,25 @@
     </div>
 
     <script>
+        // --- Fabric Setup ---
         fabric.Object.prototype.set({
             transparentCorners: false, cornerColor: '#3b82f6', cornerStyle: 'circle', borderColor: '#3b82f6', cornerSize: 10, padding: 5, borderScaleFactor: 1, rotatingPointOffset: 20
         });
 
+        // 建立 Canvas (Infinite Background)
         const canvas = new fabric.Canvas('c', {
-            backgroundColor: '#111827', preserveObjectStacking: true
+            backgroundColor: '#111827', // 深色背景
+            preserveObjectStacking: true // 重要：手動管理圖層
         });
 
+        // 工作區變數
         let artboardW = 370, artboardH = 320, artboardRect = null;
         let currentMode = 'select', cropRect = null;
         let isDragging = false, lastPosX, lastPosY;
         let undoStack = [], redoStack = [], isRedoing = false;
         let myFonts = JSON.parse(localStorage.getItem('sticker_my_fonts')) || [];
 
+        // --- 初始化 ---
         window.onload = function() {
             renderFontOptions();
             resizeCanvasToContainer();
@@ -218,23 +228,30 @@
             if(artboardRect) centerArtboard();
         }
 
+        // 建立白色貼圖區 (Artboard)
         function createArtboard() {
             if(artboardRect) canvas.remove(artboardRect);
+            
             artboardRect = new fabric.Rect({
-                width: artboardW, height: artboardH, fill: 'white', selectable: false, evented: false, hoverCursor: 'default',
-                shadow: new fabric.Shadow({ color: 'rgba(0,0,0,0.5)', blur: 20 })
+                width: artboardW, height: artboardH, 
+                fill: 'white', // 白色工作區
+                selectable: false, evented: false, 
+                hoverCursor: 'default',
+                shadow: new fabric.Shadow({ color: 'rgba(0,0,0,0.5)', blur: 20 }),
+                originX: 'left', originY: 'top' // 確保座標系統單純
             });
+            
             canvas.add(artboardRect);
-            artboardRect.sendToBack();
+            artboardRect.sendToBack(); // 確保它在最底層
             centerArtboard();
         }
 
         function centerArtboard() {
             if(!artboardRect) return;
             const vpt = canvas.viewportTransform;
-            vpt[0] = 1; vpt[3] = 1;
-            vpt[4] = (canvas.width - artboardW) / 2;
-            vpt[5] = (canvas.height - artboardH) / 2;
+            vpt[0] = 1; vpt[3] = 1; // scale reset
+            vpt[4] = (canvas.width - artboardW) / 2; // pan x
+            vpt[5] = (canvas.height - artboardH) / 2; // pan y
             canvas.requestRenderAll();
             updateZoomDisplay();
         }
@@ -250,6 +267,85 @@
             resizeCanvasDimension();
         }
 
+        // --- 核心修復：圖片載入 (DOM Image 方式) ---
+        function loadToCanvas(dataURL) {
+            // 顯示載入提示
+            const toast = document.getElementById('loading-toast');
+            toast.classList.remove('hidden');
+
+            // 1. 使用原生 Image 物件載入 (最穩定)
+            const imgObj = new Image();
+            imgObj.src = dataURL;
+            
+            imgObj.onload = function() {
+                // 2. 轉換為 Fabric Image
+                const imgInstance = new fabric.Image(imgObj);
+
+                // 3. 計算縮放與位置
+                if (imgInstance.width > artboardW || imgInstance.height > artboardH) {
+                    const scale = Math.min(artboardW / imgInstance.width, artboardH / imgInstance.height) * 0.9;
+                    imgInstance.scale(scale);
+                }
+                
+                // 設定位置 (Artboard 是從 0,0 開始，我們直接放到 Artboard 中心)
+                imgInstance.set({
+                    left: artboardW / 2,
+                    top: artboardH / 2,
+                    originX: 'center',
+                    originY: 'center'
+                });
+
+                // 4. 加入畫布
+                canvas.add(imgInstance);
+                
+                // 5. 強制圖層順序修復 (關鍵)
+                if (artboardRect) {
+                    artboardRect.sendToBack(); // 確保白底在最後
+                }
+                imgInstance.bringToFront(); // 確保新圖在最前
+                
+                canvas.setActiveObject(imgInstance);
+                canvas.requestRenderAll(); // 強制重繪
+                saveState();
+                
+                // 隱藏載入提示
+                toast.classList.add('hidden');
+                document.getElementById('panel-none').style.display = 'none'; 
+            };
+            
+            imgObj.onerror = function() {
+                alert("圖片載入失敗，請確認檔案格式。");
+                toast.classList.add('hidden');
+            };
+        }
+
+        // --- 監聽檔案輸入 ---
+        const imgLoader = document.getElementById('imgLoader');
+        imgLoader.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if(!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = (f) => loadToCanvas(f.target.result);
+            reader.readAsDataURL(file);
+            
+            // 重要：清空 value，這樣選同一張圖也能觸發 change
+            imgLoader.value = '';
+        });
+
+        // 貼上功能
+        window.addEventListener('paste', (e) => {
+            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+            for (let item of items) {
+                if (item.kind === 'file') {
+                    const reader = new FileReader();
+                    reader.onload = (event) => loadToCanvas(event.target.result);
+                    reader.readAsDataURL(item.getAsFile());
+                }
+            }
+        });
+
+        // --- 導航控制 (Zoom & Pan) ---
         canvas.on('mouse:wheel', function(opt) {
             var delta = opt.e.deltaY;
             var zoom = canvas.getZoom();
@@ -302,26 +398,7 @@
         function resetViewport() { centerArtboard(); }
         function updateZoomDisplay() { document.getElementById('zoom-val').innerText = Math.round(canvas.getZoom() * 100) + '%'; }
 
-        // --- 修復載入圖片的關鍵部分 ---
-        function loadToCanvas(dataURL) {
-            fabric.Image.fromURL(dataURL, function(img) {
-                if (img.width > artboardW || img.height > artboardH) {
-                    const scale = Math.min(artboardW / img.width, artboardH / img.height) * 0.9;
-                    img.scale(scale);
-                }
-                img.set({ left: artboardW / 2, top: artboardH / 2, originX: 'center', originY: 'center' });
-
-                canvas.add(img);
-                img.bringToFront(); // 關鍵修復：強制置頂
-                canvas.setActiveObject(img);
-                
-                canvas.requestRenderAll(); // 關鍵修復：強制重繪
-                saveState();
-            });
-            document.getElementById('panel-none').style.display = 'none'; 
-        }
-
-        // --- 其他工具函式 (保持不變) ---
+        // --- 其他功能 (保持 V7 完整性) ---
         function setMode(mode) {
             if(currentMode === 'crop' && mode !== 'crop') cancelCrop();
             currentMode = mode;
@@ -343,9 +420,8 @@
             canvas.discardActiveObject();
             const originalVpt = canvas.viewportTransform.slice();
             canvas.viewportTransform = [1, 0, 0, 1, 0, 0];
-            // 下載時是否保留白底，保留 artboardRect.visible = true;
-            // 如果要透明背景，請改成 false
-            artboardRect.visible = true; 
+            artboardRect.visible = true; // 包含白底
+            // artboardRect.visible = false; // 若要透明底，取消註解此行
             canvas.renderAll();
             setTimeout(() => {
                 const link = document.createElement('a'); link.download = `sticker-${Date.now()}.png`;
@@ -356,11 +432,11 @@
             }, 50);
         }
 
-        // (其餘字型、筆刷等邏輯皆沿用，已整合在上方)
+        // 字型、畫筆、群組、歷史紀錄等 (與 V7 相同)
         function renderFontOptions() { const group = document.getElementById('saved-fonts-group'); group.innerHTML = ''; if (myFonts.length === 0) { const opt = document.createElement('option'); opt.text = "(尚無紀錄)"; opt.disabled = true; group.appendChild(opt); } else { myFonts.forEach(fontName => { const opt = document.createElement('option'); opt.value = fontName; opt.text = fontName; group.appendChild(opt); }); } }
         function handleFontChange() { const select = document.getElementById('font-family'); const customArea = document.getElementById('custom-font-area'); if (select.value === 'custom_input') { customArea.classList.remove('hidden'); document.getElementById('custom-font-input').focus(); } else { customArea.classList.add('hidden'); updateObject(); } }
         function saveCustomFont() { const name = document.getElementById('custom-font-input').value.trim(); if (!name) return; if (!myFonts.includes(name)) { myFonts.unshift(name); localStorage.setItem('sticker_my_fonts', JSON.stringify(myFonts)); renderFontOptions(); document.getElementById('font-family').value = name; document.getElementById('custom-font-area').classList.add('hidden'); updateObject(); alert(`已記憶字型：「${name}」`); } else { document.getElementById('font-family').value = name; updateObject(); } }
-        function addText() { setMode('select'); const text = new fabric.IText('輸入文字', { left: artboardW/2, top: artboardH/2, originX: 'center', originY: 'center', fontFamily: 'Noto Sans TC', fontSize: 60, fill: '#000000', stroke: '#ffffff', strokeWidth: 8, paintFirst: 'stroke', fontWeight: '900' }); canvas.add(text); canvas.setActiveObject(text); img.bringToFront(); }
+        function addText() { setMode('select'); const text = new fabric.IText('輸入文字', { left: artboardW/2, top: artboardH/2, originX: 'center', originY: 'center', fontFamily: 'Noto Sans TC', fontSize: 60, fill: '#000000', stroke: '#ffffff', strokeWidth: 8, paintFirst: 'stroke', fontWeight: '900' }); canvas.add(text); canvas.setActiveObject(text); text.bringToFront(); }
         function updateObject() { const obj = canvas.getActiveObject(); if (!obj) return; obj.set('fill', document.getElementById('obj-color').value); if (obj.type === 'i-text') { let fontVal = document.getElementById('font-family').value; if (fontVal === 'custom_input') fontVal = document.getElementById('custom-font-input').value || 'sans-serif'; obj.set({ fontFamily: fontVal, stroke: document.getElementById('text-stroke-color').value, strokeWidth: parseFloat(document.getElementById('text-stroke-width').value) }); } canvas.requestRenderAll(); }
         function updatePanelFromSelection() { updatePanel(); const obj = canvas.getActiveObject(); if (!obj) return; const angle = parseInt(obj.angle % 360); document.getElementById('angle-control').value = angle; document.getElementById('rotation-val').innerText = angle + "°"; const btnLock = document.getElementById('btn-lock'); if(obj.lockMovementX) { btnLock.innerHTML = '<i class="fas fa-lock mr-1"></i>已鎖定'; btnLock.classList.add('bg-red-900', 'text-red-200'); } else { btnLock.innerHTML = '<i class="fas fa-lock-open mr-1"></i>鎖定'; btnLock.classList.remove('bg-red-900', 'text-red-200'); } if (obj.type === 'activeSelection') { document.getElementById('btn-group').classList.remove('hidden'); } else { document.getElementById('btn-group').classList.add('hidden'); } if (obj.type === 'group') { document.getElementById('btn-ungroup').classList.remove('hidden'); } else { document.getElementById('btn-ungroup').classList.add('hidden'); } if(typeof obj.fill === 'string') document.getElementById('obj-color').value = obj.fill; if (obj.type === 'i-text') { document.getElementById('text-stroke-color').value = obj.stroke || '#ffffff'; document.getElementById('text-stroke-width').value = obj.strokeWidth || 0; } }
         function updatePanel() { const obj = canvas.getActiveObject(); document.getElementById('panel-none').classList.toggle('hidden', !!obj || canvas.isDrawingMode); document.getElementById('panel-brush').classList.toggle('hidden', !canvas.isDrawingMode); document.getElementById('panel-object').classList.toggle('hidden', !obj); const isText = obj && obj.type === 'i-text'; document.getElementById('text-controls').classList.toggle('hidden', !isText); }
@@ -375,14 +451,10 @@
         function updateBrush() { if (!canvas.freeDrawingBrush) return; const size = parseInt(document.getElementById('draw-width').value); document.getElementById('brush-size-val').innerText = size; canvas.freeDrawingBrush.width = size; canvas.freeDrawingBrush.strokeLineCap = 'round'; if (currentMode === 'eraser') { canvas.freeDrawingBrush.color = 'rgba(0,0,0,1)'; canvas.defaultCursor = 'crosshair'; document.getElementById('brush-color-wrap').classList.add('opacity-30', 'pointer-events-none'); } else { canvas.freeDrawingBrush.color = document.getElementById('draw-color').value; canvas.defaultCursor = 'crosshair'; document.getElementById('brush-color-wrap').classList.remove('opacity-30', 'pointer-events-none'); } }
         function startCrop() { setMode('crop'); document.getElementById('crop-controls').classList.remove('hidden'); resetViewport(); cropRect = new fabric.Rect({ fill: 'rgba(0,0,0,0.3)', stroke: '#3b82f6', strokeWidth: 2, strokeDashArray: [10, 5], left: 0, top: 0, width: artboardW, height: artboardH, selectable: true, hasRotatingPoint: false, lockRotation: true, cornerColor: 'white', cornerStrokeColor: '#3b82f6', transparentCorners: false }); canvas.add(cropRect); canvas.setActiveObject(cropRect); }
         function cancelCrop() { if (cropRect) canvas.remove(cropRect); document.getElementById('crop-controls').classList.add('hidden'); setMode('select'); }
-        function applyCrop() { if (!cropRect) return; const { left, top, width, height } = cropRect.getBoundingRect(); cropRect.visible = false; const url = canvas.toDataURL({ left, top, width, height, format: 'png', multiplier: 1 }); canvas.clear(); createArtboard(); fabric.Image.fromURL(url, (img) => { img.set({left: artboardW/2, top: artboardH/2, originX:'center', originY:'center'}); canvas.add(img); img.set({ selectable: true }); saveState(); cancelCrop(); }); }
+        function applyCrop() { if (!cropRect) return; const { left, top, width, height } = cropRect.getBoundingRect(); cropRect.visible = false; const url = canvas.toDataURL({ left, top, width, height, format: 'png', multiplier: 1 }); canvas.clear(); createArtboard(); loadToCanvas(url); cancelCrop(); }
         function saveState() { if (isRedoing) return; redoStack = []; if(undoStack.length > 20) undoStack.shift(); undoStack.push(canvas.toJSON()); document.getElementById('btn-undo').disabled = undoStack.length === 0; document.getElementById('btn-redo').disabled = redoStack.length === 0; }
         function undo() { if (undoStack.length > 0) { isRedoing = true; redoStack.push(canvas.toJSON()); const state = undoStack.pop(); canvas.loadFromJSON(state, () => { canvas.renderAll(); isRedoing = false; updatePanelFromSelection(); }); } document.getElementById('btn-undo').disabled = undoStack.length === 0; document.getElementById('btn-redo').disabled = redoStack.length === 0; }
         function redo() { if (redoStack.length > 0) { isRedoing = true; undoStack.push(canvas.toJSON()); const state = redoStack.pop(); canvas.loadFromJSON(state, () => { canvas.renderAll(); isRedoing = false; updatePanelFromSelection(); }); } document.getElementById('btn-undo').disabled = undoStack.length === 0; document.getElementById('btn-redo').disabled = redoStack.length === 0; }
-        
-        document.getElementById('imgLoader').addEventListener('change', loadFile);
-        window.addEventListener('paste', (e) => { const items = (e.clipboardData || e.originalEvent.clipboardData).items; for (let item of items) { if (item.kind === 'file') { const reader = new FileReader(); reader.onload = (event) => loadToCanvas(event.target.result); reader.readAsDataURL(item.getAsFile()); } } });
-
     </script>
 </body>
 </html>

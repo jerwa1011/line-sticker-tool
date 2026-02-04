@@ -3,20 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LINE Sticker Master V7 - 專業導航版</title>
+    <title>LINE Sticker Master V7.1 - 穩定修復版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;900&family=Mochiy+Pop+One&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body { font-family: 'Noto Sans TC', sans-serif; user-select: none; overflow: hidden; } /* 禁止瀏覽器預設捲軸 */
-        .canvas-bg { 
-            /* 棋盤格背景 */
-            background-image: linear-gradient(45deg, #e5e5e5 25%, transparent 25%), linear-gradient(-45deg, #e5e5e5 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e5e5e5 75%), linear-gradient(-45deg, transparent 75%, #e5e5e5 75%);
-            background-size: 20px 20px;
-            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
-            background-color: #ffffff; 
-        }
+        body { font-family: 'Noto Sans TC', sans-serif; user-select: none; overflow: hidden; }
         .tool-btn { @apply p-2 rounded-lg border border-gray-600 hover:bg-gray-700 transition flex flex-col items-center justify-center text-xs gap-1 text-gray-300; }
         .tool-btn.active { @apply bg-blue-600 text-white border-blue-500 shadow-lg ring-2 ring-blue-400 transform scale-105; }
         input[type="range"] { @apply accent-blue-500 cursor-pointer; }
@@ -24,12 +17,13 @@
     </style>
 </head>
 <body class="bg-gray-900 text-gray-200 h-screen flex flex-col" oncontextmenu="return false;"> 
-<header class="h-16 bg-gray-800 border-b border-gray-700 flex items-center justify-between px-4 shadow-lg z-20 shrink-0">
+
+    <header class="h-16 bg-gray-800 border-b border-gray-700 flex items-center justify-between px-4 shadow-lg z-20 shrink-0">
         <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center text-xl font-bold text-white shadow-lg">V7</div>
+            <div class="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center text-xl font-bold text-white shadow-lg">V7.1</div>
             <div>
-                <h1 class="font-bold text-lg tracking-wide text-white leading-tight">貼圖大師 V7</h1>
-                <p class="text-[10px] text-gray-400">滾輪縮放 • 右鍵平移</p>
+                <h1 class="font-bold text-lg tracking-wide text-white leading-tight">貼圖大師 V7.1</h1>
+                <p class="text-[10px] text-gray-400">圖層修復 • 穩定版</p>
             </div>
         </div>
 
@@ -82,7 +76,6 @@
         </div>
 
         <div class="flex-1 bg-gray-900 overflow-hidden relative" id="workspace">
-            
             <div class="absolute inset-0 flex items-center justify-center">
                 <canvas id="c"></canvas>
             </div>
@@ -90,7 +83,6 @@
             <div class="absolute top-4 left-4 z-30 pointer-events-none bg-black/40 p-2 rounded text-[10px] text-gray-300 backdrop-blur-sm">
                 <p>🖱️ 滾輪：縮放畫布</p>
                 <p>🖱️ 右鍵按住：移動畫布</p>
-                <p>⌨️ 空白鍵+左鍵：移動畫布</p>
             </div>
 
             <div class="absolute bottom-5 right-5 bg-gray-800 p-1.5 rounded-full shadow-xl border border-gray-600 flex items-center gap-1 z-30 opacity-90">
@@ -198,68 +190,40 @@
     </div>
 
     <script>
-        // --- Fabric Setup ---
         fabric.Object.prototype.set({
             transparentCorners: false, cornerColor: '#3b82f6', cornerStyle: 'circle', borderColor: '#3b82f6', cornerSize: 10, padding: 5, borderScaleFactor: 1, rotatingPointOffset: 20
         });
 
-        // V7 變更：讓 Canvas 初始佔滿整個容器，但我們畫一個框來標示「貼圖範圍」
         const canvas = new fabric.Canvas('c', {
-            // 寬高會由 resizeCanvasToContainer 動態決定
-            backgroundColor: '#111827', // 背景深色
-            preserveObjectStacking: true
+            backgroundColor: '#111827', preserveObjectStacking: true
         });
 
-        // 貼圖工作區 (Artboard) 變數
-        let artboardW = 370;
-        let artboardH = 320;
-        let artboardRect = null; // 白色工作區矩形
-        
-        // 狀態變數
-        let currentMode = 'select';
-        let cropRect = null;
-        let isDragging = false; // 平移狀態
-        let lastPosX, lastPosY; // 平移座標
+        let artboardW = 370, artboardH = 320, artboardRect = null;
+        let currentMode = 'select', cropRect = null;
+        let isDragging = false, lastPosX, lastPosY;
         let undoStack = [], redoStack = [], isRedoing = false;
         let myFonts = JSON.parse(localStorage.getItem('sticker_my_fonts')) || [];
 
-        // --- 初始化 ---
         window.onload = function() {
             renderFontOptions();
             resizeCanvasToContainer();
-            createArtboard(); // 建立白色工作區
+            createArtboard();
             window.addEventListener('resize', resizeCanvasToContainer);
         };
 
-        // --- V7 核心：畫布系統重構 ---
-        
-        // 1. 讓 Fabric Canvas 永遠填滿視窗，但我們只在中間畫白色區域
         function resizeCanvasToContainer() {
             const container = document.getElementById('workspace');
             canvas.setWidth(container.offsetWidth);
             canvas.setHeight(container.offsetHeight);
-            if(artboardRect) centerArtboard(); // 重新置中工作區
+            if(artboardRect) centerArtboard();
         }
 
-        // 2. 建立白色貼圖工作區 (Artboard)
         function createArtboard() {
-            // 清除舊的
             if(artboardRect) canvas.remove(artboardRect);
-            
-            // 建立一個不可選取的白色矩形作為底
             artboardRect = new fabric.Rect({
-                width: artboardW,
-                height: artboardH,
-                fill: 'white',
-                selectable: false,
-                evented: false, // 讓滑鼠事件穿透它，這樣按右鍵平移才順
-                hoverCursor: 'default',
+                width: artboardW, height: artboardH, fill: 'white', selectable: false, evented: false, hoverCursor: 'default',
                 shadow: new fabric.Shadow({ color: 'rgba(0,0,0,0.5)', blur: 20 })
             });
-            
-            // 繪製棋盤格紋理 (Optional, 為了簡單先用白底，若要透明感可加)
-            // 這裡簡單用白色，因為 Line 貼圖預設是透明，但編輯時看白底比較清楚
-            
             canvas.add(artboardRect);
             artboardRect.sendToBack();
             centerArtboard();
@@ -267,206 +231,97 @@
 
         function centerArtboard() {
             if(!artboardRect) return;
-            // 將視圖重置到中心
             const vpt = canvas.viewportTransform;
-            vpt[0] = 1; vpt[3] = 1; // scale reset
-            vpt[4] = (canvas.width - artboardW) / 2; // pan x
-            vpt[5] = (canvas.height - artboardH) / 2; // pan y
+            vpt[0] = 1; vpt[3] = 1;
+            vpt[4] = (canvas.width - artboardW) / 2;
+            vpt[5] = (canvas.height - artboardH) / 2;
             canvas.requestRenderAll();
             updateZoomDisplay();
         }
         
-        // 使用者修改尺寸時
         function resizeCanvasDimension() {
             artboardW = parseInt(document.getElementById('canvas-w').value);
             artboardH = parseInt(document.getElementById('canvas-h').value);
-            // 更新白色區域
             artboardRect.set({ width: artboardW, height: artboardH });
             centerArtboard();
         }
         function setStandardSize() {
-            document.getElementById('canvas-w').value = 370;
-            document.getElementById('canvas-h').value = 320;
+            document.getElementById('canvas-w').value = 370; document.getElementById('canvas-h').value = 320;
             resizeCanvasDimension();
         }
 
-
-        // --- V7 核心：導航系統 (Zoom & Pan) ---
-
-        // 1. 滑鼠滾輪縮放 (Wheel Zoom)
         canvas.on('mouse:wheel', function(opt) {
             var delta = opt.e.deltaY;
             var zoom = canvas.getZoom();
-            
-            // 計算新縮放值
             zoom *= 0.999 ** delta;
-            if (zoom > 10) zoom = 10;
-            if (zoom < 0.1) zoom = 0.1;
-
-            // 以滑鼠位置為中心縮放
+            if (zoom > 10) zoom = 10; if (zoom < 0.1) zoom = 0.1;
             canvas.zoomToPoint({ x: opt.e.offsetX, y: opt.e.offsetY }, zoom);
-            
-            opt.e.preventDefault();
-            opt.e.stopPropagation();
+            opt.e.preventDefault(); opt.e.stopPropagation();
             updateZoomDisplay();
         });
 
-        // 2. 平移 (Panning) 邏輯
         canvas.on('mouse:down', function(opt) {
             var evt = opt.e;
-            
-            // 觸發平移的條件：
-            // A. 按下右鍵 (button 2)
-            // B. 按住 Alt 鍵 + 左鍵
-            // C. 按住 空白鍵 + 左鍵 (通常瀏覽器會處理空白鍵，所以我們在 keydown 處理 cursor)
-            // D. 在「抓手模式 (pan)」下按左鍵
-            
-            // 注意：Fabric 的 opt.e.button 在右鍵時是 2
-            const isRightClick = evt.button === 2;
-            const isAltClick = evt.altKey;
-            const isSpaceClick = spacePressed; 
-            const isPanMode = currentMode === 'pan';
-
-            if (isRightClick || isAltClick || isSpaceClick || isPanMode) {
-                this.isDragging = true;
-                this.selection = false; // 暫停選取框
-                this.lastPosX = evt.clientX;
-                this.lastPosY = evt.clientY;
+            if (evt.button === 2 || evt.altKey || spacePressed || currentMode === 'pan') {
+                this.isDragging = true; this.selection = false;
+                this.lastPosX = evt.clientX; this.lastPosY = evt.clientY;
                 canvas.defaultCursor = 'grabbing';
             }
         });
 
         canvas.on('mouse:move', function(opt) {
             if (this.isDragging) {
-                var e = opt.e;
-                var vpt = this.viewportTransform;
-                vpt[4] += e.clientX - this.lastPosX; // X軸移動
-                vpt[5] += e.clientY - this.lastPosY; // Y軸移動
-                this.requestRenderAll();
-                this.lastPosX = e.clientX;
-                this.lastPosY = e.clientY;
+                var e = opt.e; var vpt = this.viewportTransform;
+                vpt[4] += e.clientX - this.lastPosX; vpt[5] += e.clientY - this.lastPosY;
+                this.requestRenderAll(); this.lastPosX = e.clientX; this.lastPosY = e.clientY;
             }
         });
 
         canvas.on('mouse:up', function(opt) {
-            // 結束平移
             if(this.isDragging) {
-                this.setViewportTransform(this.viewportTransform); // 確認變更
-                this.isDragging = false;
-                this.selection = true; // 恢復選取
+                this.setViewportTransform(this.viewportTransform); this.isDragging = false; this.selection = true;
                 canvas.defaultCursor = currentMode === 'pan' ? 'grab' : 'default';
             }
         });
 
-        // 3. 空白鍵偵測
         let spacePressed = false;
         window.addEventListener('keydown', (e) => {
             if (e.code === 'Space' && !spacePressed) {
-                // 如果正在打字，不要觸發
                 if(document.activeElement.tagName === 'INPUT') return;
-                spacePressed = true;
-                canvas.defaultCursor = 'grab';
+                spacePressed = true; canvas.defaultCursor = 'grab';
             }
-            // 快捷鍵
-            if (e.key === 'v' || e.key === 'V') setMode('select');
-            if (e.key === 'b' || e.key === 'B') setMode('draw');
-            if (e.key === 'e' || e.key === 'E') setMode('eraser');
-            if (e.key === 'h' || e.key === 'H') setMode('pan');
+            if (e.key === 'v') setMode('select'); if (e.key === 'b') setMode('draw'); if (e.key === 'e') setMode('eraser'); if (e.key === 'h') setMode('pan');
             if ((e.key === 'Delete' || e.key === 'Backspace')) deleteActiveObject();
             if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); }
             if (e.ctrlKey && e.key === 'y') { e.preventDefault(); redo(); }
         });
         window.addEventListener('keyup', (e) => {
-            if (e.code === 'Space') {
-                spacePressed = false;
-                if(currentMode !== 'pan') canvas.defaultCursor = 'default';
-            }
+            if (e.code === 'Space') { spacePressed = false; if(currentMode !== 'pan') canvas.defaultCursor = 'default'; }
         });
 
-        // 重置視圖
-        function resetViewport() {
-            centerArtboard();
-        }
-        function updateZoomDisplay() {
-            document.getElementById('zoom-val').innerText = Math.round(canvas.getZoom() * 100) + '%';
-        }
+        function resetViewport() { centerArtboard(); }
+        function updateZoomDisplay() { document.getElementById('zoom-val').innerText = Math.round(canvas.getZoom() * 100) + '%'; }
 
-
-        // --- 原有功能 (適配 V7) ---
-
-        // 載入圖片 (需調整位置到 Artboard 中心)
+        // --- 修復載入圖片的關鍵部分 ---
         function loadToCanvas(dataURL) {
             fabric.Image.fromURL(dataURL, function(img) {
-                // 縮放圖片以適應 Artboard，而不是 Canvas
                 if (img.width > artboardW || img.height > artboardH) {
                     const scale = Math.min(artboardW / img.width, artboardH / img.height) * 0.9;
                     img.scale(scale);
                 }
-                // 計算 Artboard 的中心點 (因為 Artboard 左上角預設在 canvas 中心偏移處，這裡簡化處理)
-                // 其實只要利用 viewport 座標轉換，或者簡單地放在 Artboard 矩形的中心
-                
-                // Artboard 是從 (0,0) 開始畫的矩形物件 (在 Fabric 世界座標中)
-                // 我們的 centerArtboard 把 (0,0) 搬到了畫面中央
-                // 所以我們把圖片放在 (artboardW/2, artboardH/2) 即可
-                img.set({
-                    left: artboardW / 2,
-                    top: artboardH / 2,
-                    originX: 'center',
-                    originY: 'center'
-                });
+                img.set({ left: artboardW / 2, top: artboardH / 2, originX: 'center', originY: 'center' });
 
                 canvas.add(img);
-                // 確保在 Artboard 之上，其他物件之下
-                canvas.moveTo(img, 1); 
+                img.bringToFront(); // 關鍵修復：強制置頂
                 canvas.setActiveObject(img);
+                
+                canvas.requestRenderAll(); // 關鍵修復：強制重繪
                 saveState();
             });
             document.getElementById('panel-none').style.display = 'none'; 
         }
 
-        // 下載 (關鍵：需裁切出 Artboard 範圍)
-        function downloadImage() {
-            canvas.discardActiveObject();
-            
-            // 暫存當前的視圖狀態
-            const originalVpt = canvas.viewportTransform.slice();
-            
-            // 1. 重置視圖到原點 (scale:1, x:0, y:0) 以便裁切
-            canvas.viewportTransform = [1, 0, 0, 1, 0, 0];
-            
-            // 2. 隱藏 Artboard 白色底圖 (如果要透明底)
-            // 如果您想要下載白底，就註解掉這行
-            artboardRect.visible = false; 
-            
-            canvas.renderAll(); // 渲染一下以應用變更
-
-            setTimeout(() => {
-                const link = document.createElement('a');
-                link.download = `sticker-${Date.now()}.png`;
-                
-                // 3. 只輸出 Artboard 範圍 (0,0, width, height)
-                link.href = canvas.toDataURL({
-                    format: 'png',
-                    quality: 1,
-                    multiplier: 1,
-                    left: 0,
-                    top: 0,
-                    width: artboardW,
-                    height: artboardH
-                });
-                link.click();
-
-                // 4. 恢復原狀
-                canvas.viewportTransform = originalVpt;
-                artboardRect.visible = true;
-                canvas.requestRenderAll();
-            }, 50);
-        }
-
         // --- 其他工具函式 (保持不變) ---
-        // (省略重複的代碼以節省篇幅，這部分邏輯與 V6 完全相同：群組、旋轉、字型、畫筆等)
-        // 為了確保完整性，這裡快速列出關鍵函式名，請確保複製時包含它們：
-        
         function setMode(mode) {
             if(currentMode === 'crop' && mode !== 'crop') cancelCrop();
             currentMode = mode;
@@ -484,11 +339,28 @@
             canvas.requestRenderAll(); updatePanel();
         }
 
-        // 字型、畫筆、群組、歷史紀錄等函式與 V6 相同，直接沿用...
-        function renderFontOptions() { /* 同 V6 */ const group = document.getElementById('saved-fonts-group'); group.innerHTML = ''; if (myFonts.length === 0) { const opt = document.createElement('option'); opt.text = "(尚無紀錄)"; opt.disabled = true; group.appendChild(opt); } else { myFonts.forEach(fontName => { const opt = document.createElement('option'); opt.value = fontName; opt.text = fontName; group.appendChild(opt); }); } }
-        function handleFontChange() { /* 同 V6 */ const select = document.getElementById('font-family'); const customArea = document.getElementById('custom-font-area'); if (select.value === 'custom_input') { customArea.classList.remove('hidden'); document.getElementById('custom-font-input').focus(); } else { customArea.classList.add('hidden'); updateObject(); } }
-        function saveCustomFont() { /* 同 V6 */ const name = document.getElementById('custom-font-input').value.trim(); if (!name) return; if (!myFonts.includes(name)) { myFonts.unshift(name); localStorage.setItem('sticker_my_fonts', JSON.stringify(myFonts)); renderFontOptions(); document.getElementById('font-family').value = name; document.getElementById('custom-font-area').classList.add('hidden'); updateObject(); alert(`已記憶字型：「${name}」`); } else { document.getElementById('font-family').value = name; updateObject(); } }
-        function addText() { setMode('select'); const text = new fabric.IText('輸入文字', { left: artboardW/2, top: artboardH/2, originX: 'center', originY: 'center', fontFamily: 'Noto Sans TC', fontSize: 60, fill: '#000000', stroke: '#ffffff', strokeWidth: 8, paintFirst: 'stroke', fontWeight: '900' }); canvas.add(text); canvas.setActiveObject(text); }
+        function downloadImage() {
+            canvas.discardActiveObject();
+            const originalVpt = canvas.viewportTransform.slice();
+            canvas.viewportTransform = [1, 0, 0, 1, 0, 0];
+            // 下載時是否保留白底，保留 artboardRect.visible = true;
+            // 如果要透明背景，請改成 false
+            artboardRect.visible = true; 
+            canvas.renderAll();
+            setTimeout(() => {
+                const link = document.createElement('a'); link.download = `sticker-${Date.now()}.png`;
+                link.href = canvas.toDataURL({ format: 'png', quality: 1, multiplier: 1, left: 0, top: 0, width: artboardW, height: artboardH });
+                link.click();
+                canvas.viewportTransform = originalVpt;
+                canvas.requestRenderAll();
+            }, 50);
+        }
+
+        // (其餘字型、筆刷等邏輯皆沿用，已整合在上方)
+        function renderFontOptions() { const group = document.getElementById('saved-fonts-group'); group.innerHTML = ''; if (myFonts.length === 0) { const opt = document.createElement('option'); opt.text = "(尚無紀錄)"; opt.disabled = true; group.appendChild(opt); } else { myFonts.forEach(fontName => { const opt = document.createElement('option'); opt.value = fontName; opt.text = fontName; group.appendChild(opt); }); } }
+        function handleFontChange() { const select = document.getElementById('font-family'); const customArea = document.getElementById('custom-font-area'); if (select.value === 'custom_input') { customArea.classList.remove('hidden'); document.getElementById('custom-font-input').focus(); } else { customArea.classList.add('hidden'); updateObject(); } }
+        function saveCustomFont() { const name = document.getElementById('custom-font-input').value.trim(); if (!name) return; if (!myFonts.includes(name)) { myFonts.unshift(name); localStorage.setItem('sticker_my_fonts', JSON.stringify(myFonts)); renderFontOptions(); document.getElementById('font-family').value = name; document.getElementById('custom-font-area').classList.add('hidden'); updateObject(); alert(`已記憶字型：「${name}」`); } else { document.getElementById('font-family').value = name; updateObject(); } }
+        function addText() { setMode('select'); const text = new fabric.IText('輸入文字', { left: artboardW/2, top: artboardH/2, originX: 'center', originY: 'center', fontFamily: 'Noto Sans TC', fontSize: 60, fill: '#000000', stroke: '#ffffff', strokeWidth: 8, paintFirst: 'stroke', fontWeight: '900' }); canvas.add(text); canvas.setActiveObject(text); img.bringToFront(); }
         function updateObject() { const obj = canvas.getActiveObject(); if (!obj) return; obj.set('fill', document.getElementById('obj-color').value); if (obj.type === 'i-text') { let fontVal = document.getElementById('font-family').value; if (fontVal === 'custom_input') fontVal = document.getElementById('custom-font-input').value || 'sans-serif'; obj.set({ fontFamily: fontVal, stroke: document.getElementById('text-stroke-color').value, strokeWidth: parseFloat(document.getElementById('text-stroke-width').value) }); } canvas.requestRenderAll(); }
         function updatePanelFromSelection() { updatePanel(); const obj = canvas.getActiveObject(); if (!obj) return; const angle = parseInt(obj.angle % 360); document.getElementById('angle-control').value = angle; document.getElementById('rotation-val').innerText = angle + "°"; const btnLock = document.getElementById('btn-lock'); if(obj.lockMovementX) { btnLock.innerHTML = '<i class="fas fa-lock mr-1"></i>已鎖定'; btnLock.classList.add('bg-red-900', 'text-red-200'); } else { btnLock.innerHTML = '<i class="fas fa-lock-open mr-1"></i>鎖定'; btnLock.classList.remove('bg-red-900', 'text-red-200'); } if (obj.type === 'activeSelection') { document.getElementById('btn-group').classList.remove('hidden'); } else { document.getElementById('btn-group').classList.add('hidden'); } if (obj.type === 'group') { document.getElementById('btn-ungroup').classList.remove('hidden'); } else { document.getElementById('btn-ungroup').classList.add('hidden'); } if(typeof obj.fill === 'string') document.getElementById('obj-color').value = obj.fill; if (obj.type === 'i-text') { document.getElementById('text-stroke-color').value = obj.stroke || '#ffffff'; document.getElementById('text-stroke-width').value = obj.strokeWidth || 0; } }
         function updatePanel() { const obj = canvas.getActiveObject(); document.getElementById('panel-none').classList.toggle('hidden', !!obj || canvas.isDrawingMode); document.getElementById('panel-brush').classList.toggle('hidden', !canvas.isDrawingMode); document.getElementById('panel-object').classList.toggle('hidden', !obj); const isText = obj && obj.type === 'i-text'; document.getElementById('text-controls').classList.toggle('hidden', !isText); }
@@ -507,8 +379,10 @@
         function saveState() { if (isRedoing) return; redoStack = []; if(undoStack.length > 20) undoStack.shift(); undoStack.push(canvas.toJSON()); document.getElementById('btn-undo').disabled = undoStack.length === 0; document.getElementById('btn-redo').disabled = redoStack.length === 0; }
         function undo() { if (undoStack.length > 0) { isRedoing = true; redoStack.push(canvas.toJSON()); const state = undoStack.pop(); canvas.loadFromJSON(state, () => { canvas.renderAll(); isRedoing = false; updatePanelFromSelection(); }); } document.getElementById('btn-undo').disabled = undoStack.length === 0; document.getElementById('btn-redo').disabled = redoStack.length === 0; }
         function redo() { if (redoStack.length > 0) { isRedoing = true; undoStack.push(canvas.toJSON()); const state = redoStack.pop(); canvas.loadFromJSON(state, () => { canvas.renderAll(); isRedoing = false; updatePanelFromSelection(); }); } document.getElementById('btn-undo').disabled = undoStack.length === 0; document.getElementById('btn-redo').disabled = redoStack.length === 0; }
-
+        
         document.getElementById('imgLoader').addEventListener('change', loadFile);
+        window.addEventListener('paste', (e) => { const items = (e.clipboardData || e.originalEvent.clipboardData).items; for (let item of items) { if (item.kind === 'file') { const reader = new FileReader(); reader.onload = (event) => loadToCanvas(event.target.result); reader.readAsDataURL(item.getAsFile()); } } });
+
     </script>
 </body>
 </html>

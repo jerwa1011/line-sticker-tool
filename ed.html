@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Line貼圖編修工具 (使用 Paper.js)</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/paper.js/0.12.15/paper-full.min.js"></script> <!-- 換成較穩定版本 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paper.js/0.12.18/paper-full.min.js"></script> <!-- 更新為有效版本 -->
     <style>
         body { margin: 0; font-family: Arial, sans-serif; background: #f0f0f0; }
         #toolbar { background: #333; padding: 10px; text-align: center; }
@@ -37,7 +37,11 @@
     <script>
         // 檢查 Paper.js 是否載入
         if (typeof paper === 'undefined') {
-            alert('Paper.js 載入失敗！請檢查網路或 CDN。建議下載本地檔案: http://paperjs.org/download/');
+            alert('Paper.js 載入失敗！請檢查網路或 CDN。建議下載本地檔案: http://paperjs.org/download/，並改 src 為 "paper-full.min.js"');
+        } else {
+            // 設定 Canvas 屬性以消除警告
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
         }
     </script>
     <script type="text/paperscript" canvas="canvas">

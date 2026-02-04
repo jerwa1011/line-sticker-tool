@@ -3,33 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LINE Sticker Master V8 - 終極修復版</title>
+    <title>LINE Sticker Master V9 - 直覺操控版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;900&family=Mochiy+Pop+One&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body { font-family: 'Noto Sans TC', sans-serif; user-select: none; overflow: hidden; }
+        body { font-family: 'Noto Sans TC', sans-serif; user-select: none; overflow: hidden; background-color: #111827; }
+        
+        /* 工具按鈕樣式 */
         .tool-btn { @apply p-2 rounded-lg border border-gray-600 hover:bg-gray-700 transition flex flex-col items-center justify-center text-xs gap-1 text-gray-300; }
         .tool-btn.active { @apply bg-blue-600 text-white border-blue-500 shadow-lg ring-2 ring-blue-400 transform scale-105; }
-        input[type="range"] { @apply accent-blue-500 cursor-pointer; }
+        
+        /* 輸入框樣式 */
         .dark-input { @apply bg-gray-900 border border-gray-600 rounded px-2 py-1 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none; }
+        input[type="range"] { @apply accent-blue-500 cursor-pointer; }
+
+        /* V9 新增：智慧浮動選單 (預設隱藏) */
+        #floating-menu {
+            position: absolute;
+            z-index: 100;
+            display: none;
+            gap: 8px;
+            padding: 8px;
+            background: rgba(31, 41, 55, 0.9);
+            backdrop-filter: blur(4px);
+            border-radius: 50px;
+            border: 1px solid rgba(75, 85, 99, 0.5);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+            transform: translate(-50%, -120%); /* 讓它出現在物件正上方 */
+            pointer-events: auto;
+        }
+        .float-btn {
+            width: 36px; height: 36px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            color: white; cursor: pointer; transition: all 0.2s;
+        }
+        .float-btn:hover { transform: scale(1.1); }
     </style>
 </head>
-<body class="bg-gray-900 text-gray-200 h-screen flex flex-col" oncontextmenu="return false;"> 
+<body oncontextmenu="return false;"> 
 
     <header class="h-16 bg-gray-800 border-b border-gray-700 flex items-center justify-between px-4 shadow-lg z-20 shrink-0">
         <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-xl font-bold text-white shadow-lg">V8</div>
+            <div class="w-10 h-10 bg-gradient-to-tr from-pink-500 to-yellow-500 rounded-full flex items-center justify-center text-xl font-bold text-white shadow-lg">V9</div>
             <div>
-                <h1 class="font-bold text-lg tracking-wide text-white leading-tight">貼圖大師 V8</h1>
-                <p class="text-[10px] text-gray-400">載圖核心重寫 • 強制置頂</p>
+                <h1 class="font-bold text-lg tracking-wide text-white leading-tight">貼圖大師 V9</h1>
+                <p class="text-[10px] text-gray-400">右鍵拖曳 • 浮動刪除 • 完美橡皮擦</p>
             </div>
         </div>
 
         <div class="flex items-center gap-1 bg-gray-700/50 p-1 rounded-lg border border-gray-600 mx-2">
-            <button onclick="undo()" id="btn-undo" disabled class="w-8 h-8 rounded hover:bg-gray-600 disabled:opacity-30 transition"><i class="fas fa-undo"></i></button>
-            <button onclick="redo()" id="btn-redo" disabled class="w-8 h-8 rounded hover:bg-gray-600 disabled:opacity-30 transition"><i class="fas fa-redo"></i></button>
+            <button onclick="undo()" id="btn-undo" disabled class="w-8 h-8 rounded hover:bg-gray-600 disabled:opacity-30 transition text-gray-300" title="復原 (Ctrl+Z)"><i class="fas fa-undo"></i></button>
+            <button onclick="redo()" id="btn-redo" disabled class="w-8 h-8 rounded hover:bg-gray-600 disabled:opacity-30 transition text-gray-300" title="重做 (Ctrl+Y)"><i class="fas fa-redo"></i></button>
         </div>
 
         <div class="flex items-center gap-2 bg-gray-700/30 px-3 py-1 rounded border border-gray-600">
@@ -67,7 +94,7 @@
                 <i class="fas fa-eraser text-lg"></i><span>擦除</span>
             </button>
             <div class="w-10 h-[1px] bg-gray-600 my-1"></div>
-            <button onclick="setMode('pan')" id="btn-pan" class="tool-btn w-14 h-14" title="抓手工具 (H)">
+            <button onclick="setMode('pan')" id="btn-pan" class="tool-btn w-14 h-14" title="抓手工具 (H/Space)">
                 <i class="fas fa-hand-paper text-lg"></i><span>移動</span>
             </button>
             <button onclick="startCrop()" id="btn-crop" class="tool-btn w-14 h-14" title="裁切 (C)">
@@ -77,17 +104,31 @@
 
         <div class="flex-1 bg-gray-900 overflow-hidden relative" id="workspace">
             
-            <div id="loading-toast" class="absolute top-5 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-4 py-2 rounded-full shadow-lg z-50 hidden flex items-center gap-2">
-                <i class="fas fa-spinner fa-spin"></i> 圖片處理中...
+            <div id="floating-menu">
+                <div class="float-btn bg-red-600 hover:bg-red-500" onclick="deleteActiveObject()" title="刪除 (Del)">
+                    <i class="fas fa-trash-alt"></i>
+                </div>
+                <div class="w-[1px] h-6 bg-gray-500 mx-1"></div>
+                <div class="float-btn bg-indigo-600 hover:bg-indigo-500" onclick="groupObjects()" title="群組" id="float-group">
+                    <i class="fas fa-object-group"></i>
+                </div>
+                <div class="float-btn bg-gray-600 hover:bg-gray-500" onclick="ungroupObjects()" title="解群組" id="float-ungroup">
+                    <i class="fas fa-object-ungroup"></i>
+                </div>
+                <div class="float-btn bg-gray-600 hover:bg-gray-500" onclick="bringToFront()" title="移至頂層">
+                    <i class="fas fa-arrow-up"></i>
+                </div>
+                <div class="float-btn bg-gray-600 hover:bg-gray-500" onclick="sendToBack()" title="移至底層">
+                    <i class="fas fa-arrow-down"></i>
+                </div>
             </div>
 
             <div class="absolute inset-0 flex items-center justify-center">
                 <canvas id="c"></canvas>
             </div>
 
-            <div class="absolute top-4 left-4 z-30 pointer-events-none bg-black/40 p-2 rounded text-[10px] text-gray-300 backdrop-blur-sm">
-                <p>🖱️ 滾輪：縮放視圖</p>
-                <p>🖱️ 右鍵按住：移動視圖</p>
+            <div id="loading-toast" class="absolute top-5 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-4 py-2 rounded-full shadow-lg z-50 hidden flex items-center gap-2">
+                <i class="fas fa-spinner fa-spin"></i> 載入中...
             </div>
 
             <div class="absolute bottom-5 right-5 bg-gray-800 p-1.5 rounded-full shadow-xl border border-gray-600 flex items-center gap-1 z-30 opacity-90">
@@ -112,10 +153,12 @@
                 <div id="panel-none" class="text-center text-gray-500 py-10">
                     <i class="fas fa-mouse-pointer text-4xl mb-3 opacity-50"></i>
                     <p class="text-sm">請選取物件</p>
+                    <p class="text-xs mt-2 text-gray-600">Tip: 右鍵拖曳可移動畫布</p>
                 </div>
 
                 <div id="panel-brush" class="hidden space-y-4">
-                    <h3 class="text-xs font-bold text-blue-400 uppercase tracking-wider border-b border-gray-700 pb-1">筆刷工具</h3>
+                    <h3 class="text-xs font-bold text-blue-400 uppercase tracking-wider border-b border-gray-700 pb-1" id="brush-title">筆刷工具</h3>
+                    
                     <div id="brush-color-wrap">
                         <label class="text-xs text-gray-400 mb-1 block">顏色</label>
                         <div class="flex gap-2 mb-2">
@@ -132,12 +175,9 @@
                 </div>
 
                 <div id="panel-object" class="hidden space-y-6">
-                    <div class="grid grid-cols-2 gap-2">
-                        <button id="btn-group" onclick="groupObjects()" class="hidden col-span-2 bg-indigo-600 hover:bg-indigo-500 text-white py-2 rounded text-sm font-bold shadow-lg transition"><i class="fas fa-object-group mr-2"></i>群組</button>
-                        <button id="btn-ungroup" onclick="ungroupObjects()" class="hidden col-span-2 bg-gray-600 hover:bg-gray-500 text-white py-2 rounded text-sm font-bold transition"><i class="fas fa-object-ungroup mr-2"></i>解群組</button>
-                        <button onclick="toggleLock()" id="btn-lock" class="text-xs bg-gray-700 hover:bg-gray-600 py-2 rounded text-gray-300 border border-gray-600"><i class="fas fa-lock-open mr-1"></i>鎖定</button>
-                        <button onclick="duplicateObject()" class="text-xs bg-gray-700 hover:bg-gray-600 py-2 rounded text-gray-300 border border-gray-600"><i class="fas fa-clone mr-1"></i>複製</button>
-                    </div>
+                    <button onclick="deleteActiveObject()" class="w-full bg-red-900/40 hover:bg-red-900/60 text-red-300 py-2 rounded border border-red-800/50 transition text-sm mb-4">
+                        <i class="fas fa-trash-alt mr-2"></i>刪除物件 (Del)
+                    </button>
 
                     <div class="space-y-2 bg-gray-700/30 p-2 rounded border border-gray-600">
                         <label class="text-xs text-gray-300 font-bold flex justify-between">
@@ -185,25 +225,23 @@
                             </div>
                         </div>
                     </div>
-
-                    <button onclick="deleteActiveObject()" class="w-full bg-red-900/40 hover:bg-red-900/60 text-red-300 py-2 rounded border border-red-800/50 transition text-sm">
-                        <i class="fas fa-trash-alt mr-2"></i>刪除 (Del)
-                    </button>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // --- Fabric Setup ---
+        // --- Fabric 初始化 ---
         fabric.Object.prototype.set({
             transparentCorners: false, cornerColor: '#3b82f6', cornerStyle: 'circle', borderColor: '#3b82f6', cornerSize: 10, padding: 5, borderScaleFactor: 1, rotatingPointOffset: 20
         });
 
-        // 建立 Canvas (Infinite Background)
+        // 建立 Canvas, 啟用 right click 支援
         const canvas = new fabric.Canvas('c', {
-            backgroundColor: '#111827', // 深色背景
-            preserveObjectStacking: true // 重要：手動管理圖層
+            backgroundColor: '#111827',
+            preserveObjectStacking: true,
+            stopContextMenu: true, // 阻止 Fabric 內建的右鍵選單
+            fireRightClick: true   // 允許發送右鍵事件
         });
 
         // 工作區變數
@@ -213,7 +251,7 @@
         let undoStack = [], redoStack = [], isRedoing = false;
         let myFonts = JSON.parse(localStorage.getItem('sticker_my_fonts')) || [];
 
-        // --- 初始化 ---
+        // --- 核心初始化 ---
         window.onload = function() {
             renderFontOptions();
             resizeCanvasToContainer();
@@ -228,124 +266,73 @@
             if(artboardRect) centerArtboard();
         }
 
-        // 建立白色貼圖區 (Artboard)
         function createArtboard() {
             if(artboardRect) canvas.remove(artboardRect);
-            
             artboardRect = new fabric.Rect({
                 width: artboardW, height: artboardH, 
-                fill: 'white', // 白色工作區
-                selectable: false, evented: false, 
-                hoverCursor: 'default',
+                fill: 'white', selectable: false, evented: false, hoverCursor: 'default',
                 shadow: new fabric.Shadow({ color: 'rgba(0,0,0,0.5)', blur: 20 }),
-                originX: 'left', originY: 'top' // 確保座標系統單純
+                originX: 'left', originY: 'top'
             });
-            
             canvas.add(artboardRect);
-            artboardRect.sendToBack(); // 確保它在最底層
+            artboardRect.sendToBack();
             centerArtboard();
         }
 
         function centerArtboard() {
             if(!artboardRect) return;
             const vpt = canvas.viewportTransform;
-            vpt[0] = 1; vpt[3] = 1; // scale reset
-            vpt[4] = (canvas.width - artboardW) / 2; // pan x
-            vpt[5] = (canvas.height - artboardH) / 2; // pan y
+            vpt[0] = 1; vpt[3] = 1;
+            vpt[4] = (canvas.width - artboardW) / 2;
+            vpt[5] = (canvas.height - artboardH) / 2;
             canvas.requestRenderAll();
             updateZoomDisplay();
         }
-        
-        function resizeCanvasDimension() {
-            artboardW = parseInt(document.getElementById('canvas-w').value);
-            artboardH = parseInt(document.getElementById('canvas-h').value);
-            artboardRect.set({ width: artboardW, height: artboardH });
-            centerArtboard();
-        }
-        function setStandardSize() {
-            document.getElementById('canvas-w').value = 370; document.getElementById('canvas-h').value = 320;
-            resizeCanvasDimension();
-        }
 
-        // --- 核心修復：圖片載入 (DOM Image 方式) ---
-        function loadToCanvas(dataURL) {
-            // 顯示載入提示
-            const toast = document.getElementById('loading-toast');
-            toast.classList.remove('hidden');
-
-            // 1. 使用原生 Image 物件載入 (最穩定)
-            const imgObj = new Image();
-            imgObj.src = dataURL;
+        // --- V9 核心修復：右鍵平移 ---
+        // Fabric.js 的 mouse:down 事件中，opt.e.button: 0(左), 1(中), 2(右)
+        canvas.on('mouse:down', function(opt) {
+            var evt = opt.e;
+            // 檢查是否為右鍵 (button 2) 或 按下空白鍵 或 處於平移模式
+            const isRightClick = opt.button === 2 || evt.button === 2;
+            const isAltClick = evt.altKey;
             
-            imgObj.onload = function() {
-                // 2. 轉換為 Fabric Image
-                const imgInstance = new fabric.Image(imgObj);
-
-                // 3. 計算縮放與位置
-                if (imgInstance.width > artboardW || imgInstance.height > artboardH) {
-                    const scale = Math.min(artboardW / imgInstance.width, artboardH / imgInstance.height) * 0.9;
-                    imgInstance.scale(scale);
-                }
-                
-                // 設定位置 (Artboard 是從 0,0 開始，我們直接放到 Artboard 中心)
-                imgInstance.set({
-                    left: artboardW / 2,
-                    top: artboardH / 2,
-                    originX: 'center',
-                    originY: 'center'
-                });
-
-                // 4. 加入畫布
-                canvas.add(imgInstance);
-                
-                // 5. 強制圖層順序修復 (關鍵)
-                if (artboardRect) {
-                    artboardRect.sendToBack(); // 確保白底在最後
-                }
-                imgInstance.bringToFront(); // 確保新圖在最前
-                
-                canvas.setActiveObject(imgInstance);
-                canvas.requestRenderAll(); // 強制重繪
-                saveState();
-                
-                // 隱藏載入提示
-                toast.classList.add('hidden');
-                document.getElementById('panel-none').style.display = 'none'; 
-            };
-            
-            imgObj.onerror = function() {
-                alert("圖片載入失敗，請確認檔案格式。");
-                toast.classList.add('hidden');
-            };
-        }
-
-        // --- 監聽檔案輸入 ---
-        const imgLoader = document.getElementById('imgLoader');
-        imgLoader.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if(!file) return;
-            
-            const reader = new FileReader();
-            reader.onload = (f) => loadToCanvas(f.target.result);
-            reader.readAsDataURL(file);
-            
-            // 重要：清空 value，這樣選同一張圖也能觸發 change
-            imgLoader.value = '';
-        });
-
-        // 貼上功能
-        window.addEventListener('paste', (e) => {
-            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
-            for (let item of items) {
-                if (item.kind === 'file') {
-                    const reader = new FileReader();
-                    reader.onload = (event) => loadToCanvas(event.target.result);
-                    reader.readAsDataURL(item.getAsFile());
-                }
+            if (isRightClick || isAltClick || spacePressed || currentMode === 'pan') {
+                this.isDragging = true;
+                this.selection = false; // 暫停框選
+                this.lastPosX = evt.clientX;
+                this.lastPosY = evt.clientY;
+                canvas.defaultCursor = 'grabbing';
             }
         });
 
-        // --- 導航控制 (Zoom & Pan) ---
+        canvas.on('mouse:move', function(opt) {
+            if (this.isDragging) {
+                var e = opt.e;
+                var vpt = this.viewportTransform;
+                vpt[4] += e.clientX - this.lastPosX;
+                vpt[5] += e.clientY - this.lastPosY;
+                this.requestRenderAll();
+                this.lastPosX = e.clientX;
+                this.lastPosY = e.clientY;
+                
+                // 移動時隱藏浮動選單，避免擋路
+                document.getElementById('floating-menu').style.display = 'none';
+            }
+        });
+
+        canvas.on('mouse:up', function(opt) {
+            if(this.isDragging) {
+                this.setViewportTransform(this.viewportTransform);
+                this.isDragging = false;
+                this.selection = true;
+                canvas.defaultCursor = currentMode === 'pan' ? 'grab' : 'default';
+                // 恢復浮動選單 (如果有選中物件)
+                if(canvas.getActiveObject()) updateFloatingMenu(canvas.getActiveObject());
+            }
+        });
+
+        // 滾輪縮放
         canvas.on('mouse:wheel', function(opt) {
             var delta = opt.e.deltaY;
             var zoom = canvas.getZoom();
@@ -354,51 +341,115 @@
             canvas.zoomToPoint({ x: opt.e.offsetX, y: opt.e.offsetY }, zoom);
             opt.e.preventDefault(); opt.e.stopPropagation();
             updateZoomDisplay();
+            if(canvas.getActiveObject()) updateFloatingMenu(canvas.getActiveObject());
         });
 
-        canvas.on('mouse:down', function(opt) {
-            var evt = opt.e;
-            if (evt.button === 2 || evt.altKey || spacePressed || currentMode === 'pan') {
-                this.isDragging = true; this.selection = false;
-                this.lastPosX = evt.clientX; this.lastPosY = evt.clientY;
-                canvas.defaultCursor = 'grabbing';
+        // --- V9 核心修復：橡皮擦 ---
+        function updateBrush() {
+            if (!canvas.freeDrawingBrush) return;
+            const size = parseInt(document.getElementById('draw-width').value);
+            document.getElementById('brush-size-val').innerText = size;
+            canvas.freeDrawingBrush.width = size;
+            // 讓筆觸更圓滑
+            canvas.freeDrawingBrush.strokeLineCap = 'round'; 
+            canvas.freeDrawingBrush.strokeLineJoin = 'round';
+
+            if (currentMode === 'eraser') {
+                // 1. 橡皮擦模式：先畫一條半透明白線，讓使用者知道擦哪裡
+                canvas.freeDrawingBrush.color = 'rgba(255,255,255,1)'; 
+                canvas.defaultCursor = 'crosshair';
+                document.getElementById('brush-color-wrap').classList.add('opacity-30', 'pointer-events-none');
+                document.getElementById('brush-title').innerText = "橡皮擦工具";
+            } else {
+                // 2. 畫筆模式
+                canvas.freeDrawingBrush.color = document.getElementById('draw-color').value;
+                canvas.defaultCursor = 'crosshair';
+                document.getElementById('brush-color-wrap').classList.remove('opacity-30', 'pointer-events-none');
+                document.getElementById('brush-title').innerText = "畫筆工具";
+            }
+        }
+
+        // 監聽路徑生成，如果是橡皮擦模式，強制轉為挖空
+        canvas.on('path:created', function(opt) {
+            if (currentMode === 'eraser') {
+                const path = opt.path;
+                // 關鍵：將此路徑的合成模式設為 'destination-out' (挖空)
+                path.globalCompositeOperation = 'destination-out';
+                // 讓它不可選取，變成背景的一部分
+                path.selectable = false;
+                path.evented = false;
+                // 強制重繪
+                canvas.requestRenderAll();
+                saveState();
             }
         });
 
-        canvas.on('mouse:move', function(opt) {
-            if (this.isDragging) {
-                var e = opt.e; var vpt = this.viewportTransform;
-                vpt[4] += e.clientX - this.lastPosX; vpt[5] += e.clientY - this.lastPosY;
-                this.requestRenderAll(); this.lastPosX = e.clientX; this.lastPosY = e.clientY;
+        // --- V9 核心修復：浮動選單與刪除 ---
+        
+        // 監聽物件選取
+        canvas.on('selection:created', (e) => { updatePanelFromSelection(); updateFloatingMenu(e.selected[0]); });
+        canvas.on('selection:updated', (e) => { updatePanelFromSelection(); updateFloatingMenu(e.selected[0]); });
+        
+        // 監聽物件取消選取
+        canvas.on('selection:cleared', () => { 
+            updatePanel(); 
+            document.getElementById('floating-menu').style.display = 'none'; 
+        });
+
+        // 移動物件時同步移動浮動選單
+        canvas.on('object:moving', (e) => updateFloatingMenu(e.target));
+        canvas.on('object:scaling', (e) => updateFloatingMenu(e.target));
+        canvas.on('object:rotating', (e) => updateFloatingMenu(e.target));
+
+        function updateFloatingMenu(obj) {
+            if (!obj) return;
+            const menu = document.getElementById('floating-menu');
+            
+            // 計算物件在螢幕上的座標
+            const bound = obj.getBoundingRect();
+            // 如果物件在可視範圍外，隱藏選單以免錯亂
+            if (bound.top < -100 || bound.left < -100) {
+                menu.style.display = 'none';
+                return;
             }
-        });
 
-        canvas.on('mouse:up', function(opt) {
-            if(this.isDragging) {
-                this.setViewportTransform(this.viewportTransform); this.isDragging = false; this.selection = true;
-                canvas.defaultCursor = currentMode === 'pan' ? 'grab' : 'default';
-            }
-        });
+            // 更新選單位置：位於物件正上方
+            // 注意：要加上 canvas wrapper 的 offset (如果有的話)
+            // 這裡因為 canvas 是全螢幕絕對定位，getBoundingRect 是相對 viewport 的
+            menu.style.left = (bound.left + bound.width / 2) + 'px';
+            menu.style.top = (bound.top - 10) + 'px'; // 向上偏移
+            menu.style.display = 'flex';
 
-        let spacePressed = false;
-        window.addEventListener('keydown', (e) => {
-            if (e.code === 'Space' && !spacePressed) {
-                if(document.activeElement.tagName === 'INPUT') return;
-                spacePressed = true; canvas.defaultCursor = 'grab';
-            }
-            if (e.key === 'v') setMode('select'); if (e.key === 'b') setMode('draw'); if (e.key === 'e') setMode('eraser'); if (e.key === 'h') setMode('pan');
-            if ((e.key === 'Delete' || e.key === 'Backspace')) deleteActiveObject();
-            if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); }
-            if (e.ctrlKey && e.key === 'y') { e.preventDefault(); redo(); }
-        });
-        window.addEventListener('keyup', (e) => {
-            if (e.code === 'Space') { spacePressed = false; if(currentMode !== 'pan') canvas.defaultCursor = 'default'; }
-        });
+            // 群組按鈕邏輯
+            const isGroup = obj.type === 'activeSelection' || obj.type === 'group';
+            document.getElementById('float-group').style.display = (obj.type === 'activeSelection') ? 'flex' : 'none';
+            document.getElementById('float-ungroup').style.display = (obj.type === 'group') ? 'flex' : 'none';
+        }
 
-        function resetViewport() { centerArtboard(); }
-        function updateZoomDisplay() { document.getElementById('zoom-val').innerText = Math.round(canvas.getZoom() * 100) + '%'; }
+        // --- 其他功能 (圖片載入) ---
+        function loadToCanvas(dataURL) {
+            document.getElementById('loading-toast').classList.remove('hidden');
+            const imgObj = new Image();
+            imgObj.src = dataURL;
+            imgObj.onload = function() {
+                const imgInstance = new fabric.Image(imgObj);
+                if (imgInstance.width > artboardW || imgInstance.height > artboardH) {
+                    const scale = Math.min(artboardW / imgInstance.width, artboardH / imgInstance.height) * 0.9;
+                    imgInstance.scale(scale);
+                }
+                imgInstance.set({ left: artboardW / 2, top: artboardH / 2, originX: 'center', originY: 'center' });
+                canvas.add(imgInstance);
+                if (artboardRect) artboardRect.sendToBack();
+                imgInstance.bringToFront();
+                canvas.setActiveObject(imgInstance);
+                canvas.requestRenderAll();
+                saveState();
+                document.getElementById('loading-toast').classList.add('hidden');
+                document.getElementById('panel-none').style.display = 'none'; 
+            };
+        }
 
-        // --- 其他功能 (保持 V7 完整性) ---
+        // --- 工具與面板 (保持一致) ---
         function setMode(mode) {
             if(currentMode === 'crop' && mode !== 'crop') cancelCrop();
             currentMode = mode;
@@ -416,12 +467,49 @@
             canvas.requestRenderAll(); updatePanel();
         }
 
+        // 檔案輸入
+        const imgLoader = document.getElementById('imgLoader');
+        imgLoader.addEventListener('change', (e) => {
+            const file = e.target.files[0]; if(!file) return;
+            const reader = new FileReader(); reader.onload = (f) => loadToCanvas(f.target.result); reader.readAsDataURL(file);
+            imgLoader.value = '';
+        });
+        window.addEventListener('paste', (e) => {
+            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+            for (let item of items) { if (item.kind === 'file') { const reader = new FileReader(); reader.onload = (event) => loadToCanvas(event.target.result); reader.readAsDataURL(item.getAsFile()); }}
+        });
+
+        // 快速鍵
+        let spacePressed = false;
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && !spacePressed) {
+                if(document.activeElement.tagName === 'INPUT') return;
+                spacePressed = true; canvas.defaultCursor = 'grab';
+            }
+            if (e.key === 'v') setMode('select'); if (e.key === 'b') setMode('draw'); if (e.key === 'e') setMode('eraser'); if (e.key === 'h') setMode('pan');
+            if ((e.key === 'Delete' || e.key === 'Backspace')) deleteActiveObject();
+            if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); }
+            if (e.ctrlKey && e.key === 'y') { e.preventDefault(); redo(); }
+        });
+        window.addEventListener('keyup', (e) => {
+            if (e.code === 'Space') { spacePressed = false; if(currentMode !== 'pan') canvas.defaultCursor = 'default'; }
+        });
+
+        function deleteActiveObject() {
+            const obj = canvas.getActiveObject();
+            if (obj && !obj.isEditing) {
+                canvas.remove(obj); canvas.discardActiveObject(); updatePanel();
+                document.getElementById('floating-menu').style.display = 'none'; // 隱藏浮動選單
+            }
+        }
+
+        // 下載
         function downloadImage() {
             canvas.discardActiveObject();
+            document.getElementById('floating-menu').style.display = 'none'; // 隱藏選單
             const originalVpt = canvas.viewportTransform.slice();
             canvas.viewportTransform = [1, 0, 0, 1, 0, 0];
-            artboardRect.visible = true; // 包含白底
-            // artboardRect.visible = false; // 若要透明底，取消註解此行
+            artboardRect.visible = true; // 包含白底，LINE貼圖建議透明底可改為 false
             canvas.renderAll();
             setTimeout(() => {
                 const link = document.createElement('a'); link.download = `sticker-${Date.now()}.png`;
@@ -432,29 +520,35 @@
             }, 50);
         }
 
-        // 字型、畫筆、群組、歷史紀錄等 (與 V7 相同)
+        // 其餘省略的重複函式 (功能不變)
+        function resizeCanvasDimension() { artboardW = parseInt(document.getElementById('canvas-w').value); artboardH = parseInt(document.getElementById('canvas-h').value); artboardRect.set({ width: artboardW, height: artboardH }); centerArtboard(); }
+        function setStandardSize() { document.getElementById('canvas-w').value = 370; document.getElementById('canvas-h').value = 320; resizeCanvasDimension(); }
+        function resetViewport() { centerArtboard(); }
+        function updateZoomDisplay() { document.getElementById('zoom-val').innerText = Math.round(canvas.getZoom() * 100) + '%'; }
         function renderFontOptions() { const group = document.getElementById('saved-fonts-group'); group.innerHTML = ''; if (myFonts.length === 0) { const opt = document.createElement('option'); opt.text = "(尚無紀錄)"; opt.disabled = true; group.appendChild(opt); } else { myFonts.forEach(fontName => { const opt = document.createElement('option'); opt.value = fontName; opt.text = fontName; group.appendChild(opt); }); } }
         function handleFontChange() { const select = document.getElementById('font-family'); const customArea = document.getElementById('custom-font-area'); if (select.value === 'custom_input') { customArea.classList.remove('hidden'); document.getElementById('custom-font-input').focus(); } else { customArea.classList.add('hidden'); updateObject(); } }
         function saveCustomFont() { const name = document.getElementById('custom-font-input').value.trim(); if (!name) return; if (!myFonts.includes(name)) { myFonts.unshift(name); localStorage.setItem('sticker_my_fonts', JSON.stringify(myFonts)); renderFontOptions(); document.getElementById('font-family').value = name; document.getElementById('custom-font-area').classList.add('hidden'); updateObject(); alert(`已記憶字型：「${name}」`); } else { document.getElementById('font-family').value = name; updateObject(); } }
         function addText() { setMode('select'); const text = new fabric.IText('輸入文字', { left: artboardW/2, top: artboardH/2, originX: 'center', originY: 'center', fontFamily: 'Noto Sans TC', fontSize: 60, fill: '#000000', stroke: '#ffffff', strokeWidth: 8, paintFirst: 'stroke', fontWeight: '900' }); canvas.add(text); canvas.setActiveObject(text); text.bringToFront(); }
         function updateObject() { const obj = canvas.getActiveObject(); if (!obj) return; obj.set('fill', document.getElementById('obj-color').value); if (obj.type === 'i-text') { let fontVal = document.getElementById('font-family').value; if (fontVal === 'custom_input') fontVal = document.getElementById('custom-font-input').value || 'sans-serif'; obj.set({ fontFamily: fontVal, stroke: document.getElementById('text-stroke-color').value, strokeWidth: parseFloat(document.getElementById('text-stroke-width').value) }); } canvas.requestRenderAll(); }
-        function updatePanelFromSelection() { updatePanel(); const obj = canvas.getActiveObject(); if (!obj) return; const angle = parseInt(obj.angle % 360); document.getElementById('angle-control').value = angle; document.getElementById('rotation-val').innerText = angle + "°"; const btnLock = document.getElementById('btn-lock'); if(obj.lockMovementX) { btnLock.innerHTML = '<i class="fas fa-lock mr-1"></i>已鎖定'; btnLock.classList.add('bg-red-900', 'text-red-200'); } else { btnLock.innerHTML = '<i class="fas fa-lock-open mr-1"></i>鎖定'; btnLock.classList.remove('bg-red-900', 'text-red-200'); } if (obj.type === 'activeSelection') { document.getElementById('btn-group').classList.remove('hidden'); } else { document.getElementById('btn-group').classList.add('hidden'); } if (obj.type === 'group') { document.getElementById('btn-ungroup').classList.remove('hidden'); } else { document.getElementById('btn-ungroup').classList.add('hidden'); } if(typeof obj.fill === 'string') document.getElementById('obj-color').value = obj.fill; if (obj.type === 'i-text') { document.getElementById('text-stroke-color').value = obj.stroke || '#ffffff'; document.getElementById('text-stroke-width').value = obj.strokeWidth || 0; } }
+        function updatePanelFromSelection() { updatePanel(); const obj = canvas.getActiveObject(); if (!obj) return; const angle = parseInt(obj.angle % 360); document.getElementById('angle-control').value = angle; document.getElementById('rotation-val').innerText = angle + "°"; if(typeof obj.fill === 'string') document.getElementById('obj-color').value = obj.fill; if (obj.type === 'i-text') { document.getElementById('text-stroke-color').value = obj.stroke || '#ffffff'; document.getElementById('text-stroke-width').value = obj.strokeWidth || 0; } }
         function updatePanel() { const obj = canvas.getActiveObject(); document.getElementById('panel-none').classList.toggle('hidden', !!obj || canvas.isDrawingMode); document.getElementById('panel-brush').classList.toggle('hidden', !canvas.isDrawingMode); document.getElementById('panel-object').classList.toggle('hidden', !obj); const isText = obj && obj.type === 'i-text'; document.getElementById('text-controls').classList.toggle('hidden', !isText); }
         function groupObjects() { if (!canvas.getActiveObject()) return; if (canvas.getActiveObject().type !== 'activeSelection') return; canvas.getActiveObject().toGroup(); canvas.requestRenderAll(); updatePanel(); saveState(); }
         function ungroupObjects() { if (!canvas.getActiveObject()) return; if (canvas.getActiveObject().type !== 'group') return; canvas.getActiveObject().toActiveSelection(); canvas.requestRenderAll(); updatePanel(); saveState(); }
         function setRotation(angle) { const obj = canvas.getActiveObject(); if(!obj) return; obj.set('angle', parseInt(angle)); document.getElementById('rotation-val').innerText = parseInt(angle) + "°"; canvas.requestRenderAll(); }
         document.getElementById('angle-control').addEventListener('change', saveState);
         function rotateObject(deg) { const obj = canvas.getActiveObject(); if(!obj) return; let currentAngle = obj.angle; obj.rotate(currentAngle + deg); canvas.requestRenderAll(); updatePanelFromSelection(); saveState(); }
-        function toggleLock() { const obj = canvas.getActiveObject(); if(!obj) return; const isLocked = !obj.lockMovementX; obj.set({ lockMovementX: isLocked, lockMovementY: isLocked, lockRotation: isLocked, lockScalingX: isLocked, lockScalingY: isLocked }); const btn = document.getElementById('btn-lock'); if(isLocked) { btn.innerHTML = '<i class="fas fa-lock mr-1"></i>已鎖定'; btn.classList.add('bg-red-900', 'text-red-200'); canvas.discardActiveObject(); canvas.requestRenderAll(); } else { btn.innerHTML = '<i class="fas fa-lock-open mr-1"></i>鎖定'; btn.classList.remove('bg-red-900', 'text-red-200'); } saveState(); }
+        function toggleLock() { const obj = canvas.getActiveObject(); if(!obj) return; const isLocked = !obj.lockMovementX; obj.set({ lockMovementX: isLocked, lockMovementY: isLocked, lockRotation: isLocked, lockScalingX: isLocked, lockScalingY: isLocked }); saveState(); }
         function duplicateObject() { const obj = canvas.getActiveObject(); if(!obj) return; obj.clone(function(cloned) { canvas.discardActiveObject(); cloned.set({ left: cloned.left + 20, top: cloned.top + 20, evented: true }); if (cloned.type === 'activeSelection') { cloned.canvas = canvas; cloned.forEachObject(function(obj) { canvas.add(obj); }); cloned.setCoords(); } else { canvas.add(cloned); } canvas.setActiveObject(cloned); canvas.requestRenderAll(); saveState(); }); }
         function setBrushColor(c) { document.getElementById('draw-color').value = c; updateBrush(); }
-        function updateBrush() { if (!canvas.freeDrawingBrush) return; const size = parseInt(document.getElementById('draw-width').value); document.getElementById('brush-size-val').innerText = size; canvas.freeDrawingBrush.width = size; canvas.freeDrawingBrush.strokeLineCap = 'round'; if (currentMode === 'eraser') { canvas.freeDrawingBrush.color = 'rgba(0,0,0,1)'; canvas.defaultCursor = 'crosshair'; document.getElementById('brush-color-wrap').classList.add('opacity-30', 'pointer-events-none'); } else { canvas.freeDrawingBrush.color = document.getElementById('draw-color').value; canvas.defaultCursor = 'crosshair'; document.getElementById('brush-color-wrap').classList.remove('opacity-30', 'pointer-events-none'); } }
         function startCrop() { setMode('crop'); document.getElementById('crop-controls').classList.remove('hidden'); resetViewport(); cropRect = new fabric.Rect({ fill: 'rgba(0,0,0,0.3)', stroke: '#3b82f6', strokeWidth: 2, strokeDashArray: [10, 5], left: 0, top: 0, width: artboardW, height: artboardH, selectable: true, hasRotatingPoint: false, lockRotation: true, cornerColor: 'white', cornerStrokeColor: '#3b82f6', transparentCorners: false }); canvas.add(cropRect); canvas.setActiveObject(cropRect); }
         function cancelCrop() { if (cropRect) canvas.remove(cropRect); document.getElementById('crop-controls').classList.add('hidden'); setMode('select'); }
         function applyCrop() { if (!cropRect) return; const { left, top, width, height } = cropRect.getBoundingRect(); cropRect.visible = false; const url = canvas.toDataURL({ left, top, width, height, format: 'png', multiplier: 1 }); canvas.clear(); createArtboard(); loadToCanvas(url); cancelCrop(); }
         function saveState() { if (isRedoing) return; redoStack = []; if(undoStack.length > 20) undoStack.shift(); undoStack.push(canvas.toJSON()); document.getElementById('btn-undo').disabled = undoStack.length === 0; document.getElementById('btn-redo').disabled = redoStack.length === 0; }
         function undo() { if (undoStack.length > 0) { isRedoing = true; redoStack.push(canvas.toJSON()); const state = undoStack.pop(); canvas.loadFromJSON(state, () => { canvas.renderAll(); isRedoing = false; updatePanelFromSelection(); }); } document.getElementById('btn-undo').disabled = undoStack.length === 0; document.getElementById('btn-redo').disabled = redoStack.length === 0; }
         function redo() { if (redoStack.length > 0) { isRedoing = true; undoStack.push(canvas.toJSON()); const state = redoStack.pop(); canvas.loadFromJSON(state, () => { canvas.renderAll(); isRedoing = false; updatePanelFromSelection(); }); } document.getElementById('btn-undo').disabled = undoStack.length === 0; document.getElementById('btn-redo').disabled = redoStack.length === 0; }
+        function bringToFront() { const obj = canvas.getActiveObject(); if(obj) { obj.bringToFront(); saveState(); } }
+        function sendToBack() { const obj = canvas.getActiveObject(); if(obj) { obj.sendToBack(); if(artboardRect) artboardRect.sendToBack(); saveState(); } }
+
     </script>
 </body>
 </html>

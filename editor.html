@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LINE Sticker Master V12 - 透明原生版</title>
+    <title>LINE Sticker Master V13 - 物件鎖定版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;900&family=Mochiy+Pop+One&display=swap" rel="stylesheet">
@@ -16,7 +16,7 @@
         .dark-input { @apply bg-gray-900 border border-gray-600 rounded px-2 py-1 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none; }
         input[type="range"] { @apply accent-blue-500 cursor-pointer; }
 
-        /* V12: 這是我們永遠看得到的透明棋盤格底 */
+        /* 背景棋盤格 */
         #workspace-bg {
             position: absolute; inset: 0; z-index: 0;
             background-color: #252525;
@@ -30,6 +30,7 @@
             pointer-events: none;
         }
 
+        /* 浮動選單 */
         #floating-menu {
             position: absolute; z-index: 100; display: none; gap: 8px; padding: 8px;
             background: rgba(31, 41, 55, 0.95); backdrop-filter: blur(4px);
@@ -41,17 +42,20 @@
             width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
             color: white; cursor: pointer; transition: all 0.2s;
         }
-        .float-btn:hover { transform: scale(1.1); }
+        .float-btn:hover { transform: scale(1.1); background-color: rgba(255,255,255,0.2); }
+        
+        /* 鎖定狀態的按鈕樣式 */
+        .float-btn.locked { background-color: #dc2626; color: white; }
     </style>
 </head>
 <body oncontextmenu="return false;"> 
 
     <header class="h-16 bg-gray-800 border-b border-gray-700 flex items-center justify-between px-4 shadow-lg z-20 shrink-0 relative">
         <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-cyan-600 rounded-full flex items-center justify-center text-xl font-bold text-white shadow-lg">V12</div>
+            <div class="w-10 h-10 bg-rose-600 rounded-full flex items-center justify-center text-xl font-bold text-white shadow-lg">V13</div>
             <div>
-                <h1 class="font-bold text-lg tracking-wide text-white leading-tight">貼圖大師 V12</h1>
-                <p class="text-[10px] text-gray-400">透明原生 • 虛線框標示</p>
+                <h1 class="font-bold text-lg tracking-wide text-white leading-tight">貼圖大師 V13</h1>
+                <p class="text-[10px] text-gray-400">物件鎖定功能 (Lock)</p>
             </div>
         </div>
 
@@ -111,13 +115,20 @@
                 <div class="float-btn bg-red-600 hover:bg-red-500" onclick="deleteActiveObject()" title="刪除">
                     <i class="fas fa-trash-alt"></i>
                 </div>
+                
+                <div class="float-btn bg-gray-600" onclick="toggleLock()" title="鎖定/解鎖" id="float-lock">
+                    <i class="fas fa-unlock"></i>
+                </div>
+
                 <div class="w-[1px] h-6 bg-gray-500 mx-1"></div>
+                
                 <div class="float-btn bg-indigo-600 hover:bg-indigo-500" onclick="groupObjects()" title="群組" id="float-group">
                     <i class="fas fa-object-group"></i>
                 </div>
                 <div class="float-btn bg-gray-600 hover:bg-gray-500" onclick="ungroupObjects()" title="解群組" id="float-ungroup">
                     <i class="fas fa-object-ungroup"></i>
                 </div>
+                
                 <div class="float-btn bg-gray-600 hover:bg-gray-500" onclick="bringToFront()" title="置頂">
                     <i class="fas fa-arrow-up"></i>
                 </div>
@@ -178,9 +189,15 @@
                 </div>
 
                 <div id="panel-object" class="hidden space-y-6">
-                    <button onclick="deleteActiveObject()" class="w-full bg-red-900/40 hover:bg-red-900/60 text-red-300 py-2 rounded border border-red-800/50 transition text-sm mb-4">
-                        <i class="fas fa-trash-alt mr-2"></i>刪除物件 (Del)
-                    </button>
+                    
+                    <div class="flex gap-2 mb-4">
+                        <button onclick="toggleLock()" id="btn-lock" class="flex-1 bg-gray-700 hover:bg-gray-600 py-2 rounded text-gray-300 border border-gray-600 text-sm transition">
+                            <i class="fas fa-lock-open mr-1"></i>鎖定位置
+                        </button>
+                        <button onclick="deleteActiveObject()" class="flex-1 bg-red-900/40 hover:bg-red-900/60 text-red-300 py-2 rounded border border-red-800/50 transition text-sm">
+                            <i class="fas fa-trash-alt mr-1"></i>刪除
+                        </button>
+                    </div>
 
                     <div class="space-y-2 bg-gray-700/30 p-2 rounded border border-gray-600">
                         <label class="text-xs text-gray-300 font-bold flex justify-between">
@@ -238,16 +255,15 @@
             transparentCorners: false, cornerColor: '#3b82f6', cornerStyle: 'circle', borderColor: '#3b82f6', cornerSize: 10, padding: 5, borderScaleFactor: 1, rotatingPointOffset: 20
         });
 
-        // 建立 Canvas (全透明背景)
         const canvas = new fabric.Canvas('c', {
-            backgroundColor: null, // V12: 確保是 null，這樣就是透明的
+            backgroundColor: null,
             preserveObjectStacking: true,
             stopContextMenu: true,
             fireRightClick: true
         });
 
         let artboardW = 370, artboardH = 320;
-        let guideFrame = null; // V12: 改用「框」而非「底圖」
+        let guideFrame = null;
         let currentMode = 'select', cropRect = null;
         let isDragging = false, lastPosX, lastPosY;
         let undoStack = [], redoStack = [], isRedoing = false;
@@ -256,7 +272,7 @@
         window.onload = function() {
             renderFontOptions();
             resizeCanvasToContainer();
-            createGuideFrame(); // 建立邊框
+            createGuideFrame();
             window.addEventListener('resize', resizeCanvasToContainer);
         };
 
@@ -267,21 +283,15 @@
             if(guideFrame) centerArtboard();
         }
 
-        // V12: 建立虛線框導引 (Guide Frame)
         function createGuideFrame() {
             if(guideFrame) canvas.remove(guideFrame);
-            
             guideFrame = new fabric.Rect({
                 width: artboardW, height: artboardH, 
-                fill: 'transparent', // 關鍵：中間是空的，直接透視到網頁背景
-                stroke: '#666', // 灰色邊框
-                strokeWidth: 1,
-                strokeDashArray: [5, 5], // 虛線
-                selectable: false, evented: false, 
-                hoverCursor: 'default',
+                fill: 'transparent', 
+                stroke: '#666', strokeWidth: 1, strokeDashArray: [5, 5],
+                selectable: false, evented: false, hoverCursor: 'default',
                 originX: 'left', originY: 'top'
             });
-            
             canvas.add(guideFrame);
             guideFrame.sendToBack();
             centerArtboard();
@@ -308,12 +318,34 @@
             resizeCanvasDimension();
         }
 
+        // --- 鎖定功能 (V13 新增) ---
+        function toggleLock() {
+            const obj = canvas.getActiveObject();
+            if(!obj) return;
+            
+            // 切換鎖定狀態
+            const isLocked = !obj.lockMovementX; 
+            
+            obj.set({
+                lockMovementX: isLocked, lockMovementY: isLocked,
+                lockRotation: isLocked, 
+                lockScalingX: isLocked, lockScalingY: isLocked,
+                // 視覺回饋：鎖定時邊框變紅，控制項隱藏
+                borderColor: isLocked ? '#ef4444' : '#3b82f6',
+                hasControls: !isLocked // 鎖定時不顯示控制點
+            });
+            
+            canvas.requestRenderAll();
+            updateFloatingMenu(obj); // 更新浮動選單圖示
+            updatePanelFromSelection(); // 更新面板按鈕
+            saveState();
+        }
+
         // --- 導航 ---
         canvas.on('mouse:down', function(opt) {
             var evt = opt.e;
             const isRightClick = opt.button === 2 || evt.button === 2;
             const isAltClick = evt.altKey;
-            
             if (isRightClick || isAltClick || spacePressed || currentMode === 'pan') {
                 this.isDragging = true; this.selection = false;
                 this.lastPosX = evt.clientX; this.lastPosY = evt.clientY;
@@ -353,8 +385,7 @@
                 canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
                 canvas.freeDrawingBrush.width = size;
                 canvas.freeDrawingBrush.color = 'rgba(255,255,255,1)'; 
-                canvas.freeDrawingBrush.strokeLineCap = 'round';
-                canvas.freeDrawingBrush.strokeLineJoin = 'round';
+                canvas.freeDrawingBrush.strokeLineCap = 'round'; canvas.freeDrawingBrush.strokeLineJoin = 'round';
                 canvas.defaultCursor = 'crosshair';
                 document.getElementById('brush-color-wrap').classList.add('opacity-30', 'pointer-events-none');
                 document.getElementById('brush-title').innerText = "橡皮擦";
@@ -362,8 +393,7 @@
                 canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
                 canvas.freeDrawingBrush.width = size;
                 canvas.freeDrawingBrush.color = document.getElementById('draw-color').value;
-                canvas.freeDrawingBrush.strokeLineCap = 'round';
-                canvas.freeDrawingBrush.strokeLineJoin = 'round';
+                canvas.freeDrawingBrush.strokeLineCap = 'round'; canvas.freeDrawingBrush.strokeLineJoin = 'round';
                 canvas.defaultCursor = 'crosshair';
                 document.getElementById('brush-color-wrap').classList.remove('opacity-30', 'pointer-events-none');
                 document.getElementById('brush-title').innerText = "畫筆";
@@ -373,15 +403,13 @@
         canvas.on('path:created', function(opt) {
             if (currentMode === 'eraser') {
                 const path = opt.path;
-                path.globalCompositeOperation = 'destination-out'; // 挖空
-                path.selectable = false;
-                path.evented = false;
-                canvas.requestRenderAll();
-                saveState();
+                path.globalCompositeOperation = 'destination-out';
+                path.selectable = false; path.evented = false;
+                canvas.requestRenderAll(); saveState();
             }
         });
 
-        // --- 浮動選單 ---
+        // --- 浮動選單 (含鎖定更新) ---
         canvas.on('selection:created', (e) => { updatePanelFromSelection(); updateFloatingMenu(e.selected[0]); });
         canvas.on('selection:updated', (e) => { updatePanelFromSelection(); updateFloatingMenu(e.selected[0]); });
         canvas.on('selection:cleared', () => { updatePanel(); document.getElementById('floating-menu').style.display = 'none'; });
@@ -397,6 +425,20 @@
             menu.style.left = (bound.left + bound.width / 2) + 'px';
             menu.style.top = (bound.top - 10) + 'px';
             menu.style.display = 'flex';
+            
+            // 更新鎖定按鈕樣式
+            const lockBtn = document.getElementById('float-lock');
+            const isLocked = obj.lockMovementX;
+            if(isLocked) {
+                lockBtn.innerHTML = '<i class="fas fa-lock"></i>';
+                lockBtn.classList.add('locked');
+                lockBtn.title = "點擊解鎖";
+            } else {
+                lockBtn.innerHTML = '<i class="fas fa-unlock"></i>';
+                lockBtn.classList.remove('locked');
+                lockBtn.title = "點擊鎖定";
+            }
+
             document.getElementById('float-group').style.display = (obj.type === 'activeSelection') ? 'flex' : 'none';
             document.getElementById('float-ungroup').style.display = (obj.type === 'group') ? 'flex' : 'none';
         }
@@ -414,7 +456,6 @@
                 }
                 imgInstance.set({ left: artboardW / 2, top: artboardH / 2, originX: 'center', originY: 'center' });
                 canvas.add(imgInstance);
-                // V12: 只要確保比虛線框高就好，不需要放到特別哪裡，因為沒有白底了
                 imgInstance.bringToFront();
                 canvas.setActiveObject(imgInstance);
                 canvas.requestRenderAll();
@@ -453,6 +494,7 @@
             for (let item of items) { if (item.kind === 'file') { const reader = new FileReader(); reader.onload = (event) => loadToCanvas(event.target.result); reader.readAsDataURL(item.getAsFile()); }}
         });
 
+        // 快速鍵
         let spacePressed = false;
         window.addEventListener('keydown', (e) => {
             if (e.code === 'Space' && !spacePressed) { if(document.activeElement.tagName === 'INPUT') return; spacePressed = true; canvas.defaultCursor = 'grab'; }
@@ -465,41 +507,24 @@
 
         function deleteActiveObject() { const obj = canvas.getActiveObject(); if (obj && !obj.isEditing) { canvas.remove(obj); canvas.discardActiveObject(); updatePanel(); document.getElementById('floating-menu').style.display = 'none'; } }
 
-        // --- V12 核心：輸出 ---
         function downloadImage() {
             canvas.discardActiveObject();
             document.getElementById('floating-menu').style.display = 'none';
-            
             const originalVpt = canvas.viewportTransform.slice();
             canvas.viewportTransform = [1, 0, 0, 1, 0, 0];
-            
-            // V12: 輸出前隱藏「虛線框」
             if(guideFrame) guideFrame.visible = false;
-            
             canvas.renderAll();
-            
             setTimeout(() => {
-                const link = document.createElement('a'); 
-                link.download = `sticker-${Date.now()}.png`;
-                link.href = canvas.toDataURL({ 
-                    format: 'png', 
-                    quality: 1, 
-                    multiplier: 1, 
-                    left: 0, 
-                    top: 0, 
-                    width: artboardW, 
-                    height: artboardH 
-                });
+                const link = document.createElement('a'); link.download = `sticker-${Date.now()}.png`;
+                link.href = canvas.toDataURL({ format: 'png', quality: 1, multiplier: 1, left: 0, top: 0, width: artboardW, height: artboardH });
                 link.click();
-                
-                // 恢復
                 if(guideFrame) guideFrame.visible = true;
                 canvas.viewportTransform = originalVpt;
                 canvas.requestRenderAll();
             }, 50);
         }
 
-        // 其餘輔助 (保持不變)
+        // 其餘輔助
         function setBrushColor(c) { document.getElementById('draw-color').value = c; updateBrush(); }
         function resetViewport() { centerArtboard(); }
         function updateZoomDisplay() { document.getElementById('zoom-val').innerText = Math.round(canvas.getZoom() * 100) + '%'; }
@@ -508,7 +533,27 @@
         function saveCustomFont() { const name = document.getElementById('custom-font-input').value.trim(); if (!name) return; if (!myFonts.includes(name)) { myFonts.unshift(name); localStorage.setItem('sticker_my_fonts', JSON.stringify(myFonts)); renderFontOptions(); document.getElementById('font-family').value = name; document.getElementById('custom-font-area').classList.add('hidden'); updateObject(); alert(`已記憶字型：「${name}」`); } else { document.getElementById('font-family').value = name; updateObject(); } }
         function addText() { setMode('select'); const text = new fabric.IText('輸入文字', { left: artboardW/2, top: artboardH/2, originX: 'center', originY: 'center', fontFamily: 'Noto Sans TC', fontSize: 60, fill: '#000000', stroke: '#ffffff', strokeWidth: 8, paintFirst: 'stroke', fontWeight: '900' }); canvas.add(text); canvas.setActiveObject(text); text.bringToFront(); }
         function updateObject() { const obj = canvas.getActiveObject(); if (!obj) return; obj.set('fill', document.getElementById('obj-color').value); if (obj.type === 'i-text') { let fontVal = document.getElementById('font-family').value; if (fontVal === 'custom_input') fontVal = document.getElementById('custom-font-input').value || 'sans-serif'; obj.set({ fontFamily: fontVal, stroke: document.getElementById('text-stroke-color').value, strokeWidth: parseFloat(document.getElementById('text-stroke-width').value) }); } canvas.requestRenderAll(); }
-        function updatePanelFromSelection() { updatePanel(); const obj = canvas.getActiveObject(); if (!obj) return; const angle = parseInt(obj.angle % 360); document.getElementById('angle-control').value = angle; document.getElementById('rotation-val').innerText = angle + "°"; if(typeof obj.fill === 'string') document.getElementById('obj-color').value = obj.fill; if (obj.type === 'i-text') { document.getElementById('text-stroke-color').value = obj.stroke || '#ffffff'; document.getElementById('text-stroke-width').value = obj.strokeWidth || 0; } }
+        function updatePanelFromSelection() { 
+            updatePanel(); 
+            const obj = canvas.getActiveObject(); 
+            if (!obj) return; 
+            const angle = parseInt(obj.angle % 360); 
+            document.getElementById('angle-control').value = angle; 
+            document.getElementById('rotation-val').innerText = angle + "°"; 
+            
+            // 更新鎖定按鈕文字
+            const btnLock = document.getElementById('btn-lock');
+            if(obj.lockMovementX) {
+                btnLock.innerHTML = '<i class="fas fa-lock mr-1"></i>已鎖定';
+                btnLock.classList.add('bg-red-900', 'text-red-200');
+            } else {
+                btnLock.innerHTML = '<i class="fas fa-lock-open mr-1"></i>鎖定位置';
+                btnLock.classList.remove('bg-red-900', 'text-red-200');
+            }
+
+            if(typeof obj.fill === 'string') document.getElementById('obj-color').value = obj.fill; 
+            if (obj.type === 'i-text') { document.getElementById('text-stroke-color').value = obj.stroke || '#ffffff'; document.getElementById('text-stroke-width').value = obj.strokeWidth || 0; } 
+        }
         function updatePanel() { const obj = canvas.getActiveObject(); document.getElementById('panel-none').classList.toggle('hidden', !!obj || canvas.isDrawingMode); document.getElementById('panel-brush').classList.toggle('hidden', !canvas.isDrawingMode); document.getElementById('panel-object').classList.toggle('hidden', !obj); const isText = obj && obj.type === 'i-text'; document.getElementById('text-controls').classList.toggle('hidden', !isText); }
         function groupObjects() { if (!canvas.getActiveObject()) return; if (canvas.getActiveObject().type !== 'activeSelection') return; canvas.getActiveObject().toGroup(); canvas.requestRenderAll(); updatePanel(); saveState(); }
         function ungroupObjects() { if (!canvas.getActiveObject()) return; if (canvas.getActiveObject().type !== 'group') return; canvas.getActiveObject().toActiveSelection(); canvas.requestRenderAll(); updatePanel(); saveState(); }

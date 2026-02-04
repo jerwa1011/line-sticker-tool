@@ -624,8 +624,9 @@
                 <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                     <select id="sizePreset" style="flex:1; min-width:80px;">
                         <option value="custom">✍️ 自訂</option>
-                        <option value="sticker" selected>😃 貼圖</option>
-                        <option value="emoji">😘 表情</option>
+                        <option value="sticker" selected>😃 Line貼圖</option>
+                        <option value="big_sticker" selected>😃 Line大貼圖</option>
+                        <option value="emoji">😘 Line表情貼</option>
                     </select>
                     <div style="display:flex; gap:5px; align-items:center;">
                         <input type="number" id="outW" value="270" class="input-mini" disabled><span>x</span><input type="number" id="outH" value="270" class="input-mini" disabled>
@@ -1043,6 +1044,11 @@
         if (mode === 'sticker') { 
             // 貼圖: 270x270 鎖定, 檔名 01
             els.outW.value = 270; els.outH.value = 270; 
+            els.outW.disabled = true; els.outH.disabled = true;
+            els.startNum.value = '01';
+        } else if (mode === 'big_sticker') { 
+            // 大貼圖: 396x660 鎖定, 檔名 01
+            els.outW.value = 396; els.outH.value = 660; 
             els.outW.disabled = true; els.outH.disabled = true;
             els.startNum.value = '01';
         } else if (mode === 'emoji') { 
@@ -1825,3 +1831,4 @@
 </script>
 </body>
 </html>
+

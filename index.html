@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LINE 貼圖製作大師 Pro (Compact & Big Preview)</title>
+    <title>LINE 貼圖製作大師 Pro (Big Sticker Support)</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -180,7 +180,6 @@
         }
         body.light-mode .live-preview-container { background: rgba(255,255,255,0.8); }
 
-        /* 這裡修改了尺寸，從 100px 變為 220px */
         .live-preview-box {
             width: 220px; height: 220px; 
             background-image: linear-gradient(45deg, #2a2a2a 25%, transparent 25%), linear-gradient(-45deg, #2a2a2a 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #2a2a2a 75%), linear-gradient(-45deg, transparent 75%, #2a2a2a 75%);
@@ -732,6 +731,7 @@
                 <div style="display:flex; gap:8px; align-items:center;">
                     <select id="sizePreset" style="flex:1; min-width:80px;">
                         <option value="sticker" selected>😃 貼圖 (270px)</option>
+                        <option value="big_sticker">😲 LINE 大貼圖 (396px)</option>
                         <option value="emoji">😘 表情 (180px)</option>
                         <option value="custom">✍️ 自訂</option>
                     </select>
@@ -1156,6 +1156,10 @@
         const mode = els.sizePreset.value;
         if (mode === 'sticker') { 
             els.outW.value = 270; els.outH.value = 270; 
+            els.outW.disabled = true; els.outH.disabled = true;
+            els.startNum.value = '01';
+        } else if (mode === 'big_sticker') { 
+            els.outW.value = 396; els.outH.value = 660; 
             els.outW.disabled = true; els.outH.disabled = true;
             els.startNum.value = '01';
         } else if (mode === 'emoji') { 
@@ -1747,168 +1751,3 @@
         });
         updateTagClasses();
     }
-
-    function handleDragStart(e, index) {
-        dragSrcIndex = index;
-        e.target.classList.add('dragging');
-        e.dataTransfer.effectAllowed = 'move';
-    }
-
-    function handleDragOver(e) {
-        if (e.preventDefault) e.preventDefault(); 
-        e.dataTransfer.dropEffect = 'move';
-        return false;
-    }
-
-    function handleDragEnter(e) {
-        const card = e.target.closest('.sticker-card');
-        if (card && !card.classList.contains('dragging')) {
-            card.classList.add('drag-over');
-        }
-    }
-
-    function handleDragLeave(e) {
-        const card = e.target.closest('.sticker-card');
-        if (card) {
-            card.classList.remove('drag-over');
-        }
-    }
-
-    function handleDrop(e, targetIndex) {
-        if (e.stopPropagation) e.stopPropagation();
-        
-        document.querySelectorAll('.sticker-card').forEach(col => col.classList.remove('drag-over'));
-        
-        if (dragSrcIndex !== null && dragSrcIndex !== targetIndex) {
-            swapStickers(dragSrcIndex, targetIndex);
-        }
-        return false;
-    }
-
-    function handleDragEnd(e) {
-        document.querySelectorAll('.sticker-card').forEach(col => {
-            col.classList.remove('drag-over');
-            col.classList.remove('dragging');
-        });
-        dragSrcIndex = null;
-    }
-
-    function swapStickers(fromIdx, toIdx) {
-        const tempSticker = rawStickers[fromIdx];
-        rawStickers[fromIdx] = rawStickers[toIdx];
-        rawStickers[toIdx] = tempSticker;
-
-        const tempOverride = stickerOverrides[fromIdx];
-        stickerOverrides[fromIdx] = stickerOverrides[toIdx];
-        stickerOverrides[toIdx] = tempOverride;
-
-        const tempSourceIdx = stickerSourceIndices[fromIdx];
-        stickerSourceIndices[fromIdx] = stickerSourceIndices[toIdx];
-        stickerSourceIndices[toIdx] = tempSourceIdx;
-
-        if(stickerOverrides[fromIdx] === undefined) delete stickerOverrides[fromIdx];
-        if(stickerOverrides[toIdx] === undefined) delete stickerOverrides[toIdx];
-
-        if (selectedMainIdx === fromIdx) selectedMainIdx = toIdx;
-        else if (selectedMainIdx === toIdx) selectedMainIdx = fromIdx;
-
-        if (selectedTabIdx === fromIdx) selectedTabIdx = toIdx;
-        else if (selectedTabIdx === toIdx) selectedTabIdx = fromIdx;
-
-        renderPreview(parseInt(els.rows.value), parseInt(els.cols.value));
-    }
-
-    window.setPreviewBg = (btn, mode) => { 
-        document.querySelectorAll('.bg-toggle-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active'); 
-        const map = { 'light': 'bg-light', 'line': 'bg-line', 'pink': 'bg-pink', 'yellow': 'bg-yellow', 'dark': '' };
-        previewBgClass = map[mode] || '';
-        renderPreview(parseInt(els.rows.value), parseInt(els.cols.value)); 
-    };
-
-    function getFilename(idx) {
-        const str = els.startNum.value.trim();
-        return String((parseInt(str)||1) + idx).padStart(str.length, '0') + '.png';
-    }
-    
-    function resizeToOutput(canvas, w, h) {
-        const c = document.createElement('canvas');
-        c.width = w;
-        c.height = h;
-        const ctx = c.getContext('2d');
-        const scale = Math.min(w/canvas.width, h/canvas.height);
-        const dw = canvas.width*scale;
-        const dh = canvas.height*scale;
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-        ctx.drawImage(canvas, (w-dw)/2, (h-dh)/2, dw, dh);
-        return c.toDataURL();
-    }
-
-    els.dlBtn.onclick = () => {
-        const zip = new JSZip();
-        const w = parseInt(els.outW.value) || 370;
-        const h = parseInt(els.outH.value) || 320;
-        const dateStr = new Date().toISOString().slice(0,10).replace(/-/g,'');
-        
-        rawStickers.forEach((cvs, i) => {
-            const url = resizeToOutput(cvs, w, h);
-            zip.file(getFilename(i), url.split(',')[1], {base64:true});
-        });
-        
-        if (selectedMainIdx !== -1 && rawStickers[selectedMainIdx]) {
-            const mainUrl = resizeToOutput(rawStickers[selectedMainIdx], 240, 240);
-            zip.file("main.png", mainUrl.split(',')[1], {base64:true});
-        }
-        if (selectedTabIdx !== -1 && rawStickers[selectedTabIdx]) {
-            const tabUrl = resizeToOutput(rawStickers[selectedTabIdx], 96, 74);
-            zip.file("tab.png", tabUrl.split(',')[1], {base64:true});
-        }
-        zip.generateAsync({type:"blob"}).then(b => saveAs(b, `LineStickers_${dateStr}.zip`));
-    };
-
-    window.downloadSingle = (i, event) => {
-        if(event) event.stopPropagation();
-        const w = parseInt(els.outW.value) || 370;
-        const h = parseInt(els.outH.value) || 320;
-        const url = resizeToOutput(rawStickers[i], w, h);
-        saveAs(dataURLtoBlob(url), getFilename(i));
-    };
-    
-    window.viewImage = (url) => {
-        els.modalImg.src = url;
-        els.modalImg.classList.remove('zoomed');
-        document.getElementById('imageModal').style.display = "block";
-    };
-    els.modalImg.onclick = (e) => { e.stopPropagation(); els.modalImg.classList.toggle('zoomed'); };
-    window.closeModal = () => { document.getElementById('imageModal').style.display = "none"; };
-    document.addEventListener('keydown', (e) => { if (e.key === "Escape") closeModal(); });
-
-    function dataURLtoBlob(u) {
-        var arr=u.split(','),m=arr[0].match(/:(.*?);/)[1],b=atob(arr[1]),n=b.length,a=new Uint8Array(n);
-        while(n--)a[n]=b.charCodeAt(n);
-        return new Blob([a],{type:m});
-    }
-    function loadImage(s){
-        return new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.src=s;});
-    }
-    
-    window.showHelp = (key) => {
-        els.helpText.innerText = HELP_TEXTS[key];
-        els.helpModal.style.display = "block";
-    };
-    window.closeHelp = () => { els.helpModal.style.display = "none"; };
-    window.setColor = (hex) => els.targetColor.value = hex;
-    window.toggleTheme = () => {
-        isDark = !isDark;
-        document.body.classList.toggle('light-mode', !isDark);
-    };
-    
-    if (els.sizePreset.value === 'sticker') { els.outW.value = 270; els.outH.value = 270; }
-    else if (els.sizePreset.value === 'emoji') { els.outW.value = 180; els.outH.value = 180; }
-
-    loadSettings();
-    updateLabels();
-</script>
-</body>
-</html>

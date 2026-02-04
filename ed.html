@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Line貼圖編修工具 (使用 Paper.js)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paper.js/0.12.17/paper-full.min.js"></script>
+    <style>
+        body { margin: 0; font-family: Arial, sans-serif; background: #f0f0f0; }
+        #toolbar { background: #333; padding: 10px; text-align: center; }
+        #toolbar button, #toolbar input { margin: 5px; padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; color: white; }
+        #toolbar button { background: #555; }
+        #toolbar button:hover { background: #777; }
+        #canvas-container { display: flex; justify-content: center; padding: 20px; }
+        canvas { border: 1px solid #ccc; background: white; }
+        #text-input { display: none; width: 200px; }
+        #color-picker, #brush-size { background: #fff; color: #000; }
+    </style>
+</head>
+<body>
+    <div id="toolbar">
+        <input type="file" id="upload" accept="image/*">
+        <button onclick="enterDrawMode()">繪圖/手寫</button>
+        <button onclick="enterEraserMode()">橡皮擦</button>
+        <button onclick="addText()">新增文字</button>
+        <button onclick="cropImage()">裁切</button>
+        <button onclick="downloadImage()">下載</button>
+        <button onclick="clearCanvas()">清除</button>
+        <input type="color" id="color-picker" value="#000000">
+        <input type="number" id="brush-size" min="1" max="50" value="5">
+        <input type="text" id="text-input" placeholder="輸入文字...">
+    </div>
+    <div id="canvas-container">
+        <canvas id="canvas" width="800" height="600" resize></canvas>
+    </div>
+
+    <script type="text/paperscript" canvas="canvas">
+        // 初始化 Paper.js
+        paper.setup('canvas');
+        let currentTool = null;
+        let currentPath = null;
+        let selectedItem = null;
+        let rasterImage = null; // 儲存上傳的圖片
+
+        // 上傳圖片
+        document.getElementById('upload').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                rasterImage = new paper.Raster(event.target.result);
+                rasterImage.position = view.center;
+                rasterImage.onMouseDown = handleSelect;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // 選擇物件（用於移動、縮放、旋轉）
+        function handleSelect(event) {
+            selectedItem = this;
+        }
+
+        // 工具：移動、縮放、旋轉（自訂事件）
+        const selectTool = new Tool();
+        selectTool.onMouseDown = (event) => {
+            selectedItem = project.hitTest(event.point);
+            if (selectedItem) selectedItem.selected = true;
+        };
+        selectTool.onMouseDrag = (event) => {
+            if (selectedItem) {
+                selectedItem.position.x += event.delta.x;
+                selectedItem.position.y += event.delta.y;
+            }
+        };
+        selectTool.onKeyDown = (event) => {
+            if (selectedItem) {
+                if (event.key === '+') selectedItem.scale(1.1); // 放大
+                if (event.key === '-') selectedItem.scale(0.9); // 縮小
+                if (event.key === 'r') selectedItem.rotate(15); // 旋轉（每按r旋轉15度）
+            }
+        };
+
+        // 進入繪圖/手寫模式
+        function enterDrawMode() {
+            currentTool = new Tool();
+            currentTool.minDistance = 1;
+            currentTool.onMouseDown = (event) => {
+                currentPath = new Path({
+                    strokeColor: document.getElementById('color-picker').value,
+                    strokeWidth: document.getElementById('brush-size').value
+                });
+                currentPath.add(event.point);
+            };
+            currentTool.onMouseDrag = (event) => {
+                currentPath.add(event.point);
+            };
+            currentTool.onMouseUp = (event) => {
+                currentPath.simplify();
+            };
+        }
+
+        // 進入橡皮擦模式（使用白色路徑模擬擦除）
+        function enterEraserMode() {
+            currentTool = new Tool();
+            currentTool.minDistance = 1;
+            currentTool.onMouseDown = (event) => {
+                currentPath = new Path({
+                    strokeColor: 'white', // 白色擦除
+                    strokeWidth: document.getElementById('brush-size').value
+                });
+                currentPath.add(event.point);
+            };
+            currentTool.onMouseDrag = (event) => {
+                currentPath.add(event.point);
+            };
+            currentTool.onMouseUp = (event) => {
+                currentPath.simplify();
+                // 若需真正擦除，可使用 subtract 與背景圖層
+            };
+        }
+
+        // 新增文字（使用 Paper.js 的 PointText，向量處理）
+        function addText() {
+            const textInput = document.getElementById('text-input');
+            textInput.style.display = 'inline';
+            textInput.focus();
+            textInput.onchange = () => {
+                const text = new PointText({
+                    point: [100, 100],
+                    content: textInput.value,
+                    fillColor: document.getElementById('color-picker').value,
+                    fontSize: 20,
+                    justification: 'center'
+                });
+                text.onMouseDown = handleSelect; // 支援選擇
+                textInput.value = '';
+                textInput.style.display = 'none';
+            };
+        }
+
+        // 裁切圖片（使用 Rectangle 作為遮罩）
+        function cropImage() {
+            if (!rasterImage) return alert('請先上傳圖片');
+            const rect = new Rectangle([100, 100, 200, 200]);
+            const cropRect = new Path.Rectangle(rect);
+            cropRect.strokeColor = 'red';
+            cropRect.strokeWidth = 2;
+            cropRect.onMouseDown = handleSelect;
+            alert('拖動紅框選取區域，然後按Enter確認裁切');
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && selectedItem === cropRect) {
+                    const group = new Group([rasterImage, cropRect]);
+                    group.clipped = true;
+                    rasterImage = group; // 更新為裁切後的群組
+                    cropRect.remove();
+                }
+            }, { once: true });
+        }
+
+        // 下載圖片（匯出 PNG）
+        function downloadImage() {
+            const dataURL = view.element.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.download = 'edited-sticker.png';
+            link.href = dataURL;
+            link.click();
+        }
+
+        // 清除畫布
+        function clearCanvas() {
+            project.clear();
+            rasterImage = null;
+        }
+
+        // 監聽筆刷變化（但 Paper.js 無需更新，因為在模式中設定）
+    </script>
+</body>
+</html>

@@ -3,34 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LINE Sticker Master V10 - 完美擦除版</title>
+    <title>LINE Sticker Master V11 - 完美透明版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;900&family=Mochiy+Pop+One&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body { font-family: 'Noto Sans TC', sans-serif; user-select: none; overflow: hidden; background-color: #111827; }
+        body { font-family: 'Noto Sans TC', sans-serif; user-select: none; overflow: hidden; background-color: #1f2937; }
         
         .tool-btn { @apply p-2 rounded-lg border border-gray-600 hover:bg-gray-700 transition flex flex-col items-center justify-center text-xs gap-1 text-gray-300; }
         .tool-btn.active { @apply bg-blue-600 text-white border-blue-500 shadow-lg ring-2 ring-blue-400 transform scale-105; }
         .dark-input { @apply bg-gray-900 border border-gray-600 rounded px-2 py-1 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none; }
         input[type="range"] { @apply accent-blue-500 cursor-pointer; }
 
-        /* V10: 透明度棋盤格背景 (用來驗證橡皮擦是否成功) */
-        .checkerboard-bg {
-            background-color: #ffffff;
+        /* V11 關鍵修正：將網頁背景設為「透明棋盤格」
+           這樣當橡皮擦挖空 Canvas 時，使用者會看到這個背景，
+           直觀地理解「這裡是透明的」，而不是看到黑底。 */
+        #workspace-bg {
+            position: absolute; inset: 0; z-index: 0;
+            background-color: #252525;
             background-image: 
-                linear-gradient(45deg, #e5e5e5 25%, transparent 25%), 
-                linear-gradient(-45deg, #e5e5e5 25%, transparent 25%), 
-                linear-gradient(45deg, transparent 75%, #e5e5e5 75%), 
-                linear-gradient(-45deg, transparent 75%, #e5e5e5 75%);
+                linear-gradient(45deg, #333 25%, transparent 25%), 
+                linear-gradient(-45deg, #333 25%, transparent 25%), 
+                linear-gradient(45deg, transparent 75%, #333 75%), 
+                linear-gradient(-45deg, transparent 75%, #333 75%);
             background-size: 20px 20px;
             background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+            pointer-events: none; /* 讓滑鼠事件穿透 */
         }
 
         #floating-menu {
             position: absolute; z-index: 100; display: none; gap: 8px; padding: 8px;
-            background: rgba(31, 41, 55, 0.9); backdrop-filter: blur(4px);
+            background: rgba(31, 41, 55, 0.95); backdrop-filter: blur(4px);
             border-radius: 50px; border: 1px solid rgba(75, 85, 99, 0.5);
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
             transform: translate(-50%, -120%); pointer-events: auto;
@@ -44,12 +48,12 @@
 </head>
 <body oncontextmenu="return false;"> 
 
-    <header class="h-16 bg-gray-800 border-b border-gray-700 flex items-center justify-between px-4 shadow-lg z-20 shrink-0">
+    <header class="h-16 bg-gray-800 border-b border-gray-700 flex items-center justify-between px-4 shadow-lg z-20 shrink-0 relative">
         <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-teal-500 rounded-full flex items-center justify-center text-xl font-bold text-white shadow-lg">V10</div>
+            <div class="w-10 h-10 bg-amber-500 rounded-full flex items-center justify-center text-xl font-bold text-white shadow-lg">V11</div>
             <div>
-                <h1 class="font-bold text-lg tracking-wide text-white leading-tight">貼圖大師 V10</h1>
-                <p class="text-[10px] text-gray-400">橡皮擦修復 • 透明背景</p>
+                <h1 class="font-bold text-lg tracking-wide text-white leading-tight">貼圖大師 V11</h1>
+                <p class="text-[10px] text-gray-400">透明背景修正版</p>
             </div>
         </div>
 
@@ -71,7 +75,7 @@
                 <input type="file" id="imgLoader" accept="image/*" class="hidden">
             </label>
             <button onclick="downloadImage()" class="bg-green-600 hover:bg-green-500 text-white px-3 py-2 rounded font-bold shadow transition flex items-center gap-2 border border-green-500 text-sm">
-                <i class="fas fa-download"></i> 輸出
+                <i class="fas fa-download"></i> 輸出 PNG
             </button>
         </div>
     </header>
@@ -103,6 +107,8 @@
 
         <div class="flex-1 bg-gray-900 overflow-hidden relative" id="workspace">
             
+            <div id="workspace-bg"></div>
+
             <div id="floating-menu">
                 <div class="float-btn bg-red-600 hover:bg-red-500" onclick="deleteActiveObject()" title="刪除">
                     <i class="fas fa-trash-alt"></i>
@@ -122,7 +128,7 @@
                 </div>
             </div>
 
-            <div class="absolute inset-0 flex items-center justify-center">
+            <div class="absolute inset-0 flex items-center justify-center z-10">
                 <canvas id="c"></canvas>
             </div>
 
@@ -234,13 +240,12 @@
             transparentCorners: false, cornerColor: '#3b82f6', cornerStyle: 'circle', borderColor: '#3b82f6', cornerSize: 10, padding: 5, borderScaleFactor: 1, rotatingPointOffset: 20
         });
 
-        // 建立 Canvas (啟用右鍵事件支援)
+        // 建立 Canvas (全透明背景)
         const canvas = new fabric.Canvas('c', {
-            backgroundColor: '#111827',
+            backgroundColor: null, // V11: 設為 null，確保透明
             preserveObjectStacking: true,
             stopContextMenu: true,
-            fireRightClick: true,
-            isDrawingMode: false
+            fireRightClick: true
         });
 
         let artboardW = 370, artboardH = 320, artboardRect = null;
@@ -263,36 +268,16 @@
             if(artboardRect) centerArtboard();
         }
 
-        // V10: 棋盤格背景 (Checkerboard)
+        // V11: Artboard (白底)
         function createArtboard() {
             if(artboardRect) canvas.remove(artboardRect);
             
-            // 使用 Pattern 來製作棋盤格
-            // 這裡我們直接用 CSS class 'checkerboard-bg' 的樣式概念
-            // 但在 Fabric 中，我們需要建立一個 Rect 並填入 Pattern 或純色
-            // 為了簡化且確保橡皮擦能看到「底」，我們用白色 Rect，
-            // 但真正的「透明」是在輸出時移除這個 Rect。
-            // 為了讓使用者在編輯時能看到橡皮擦擦掉的效果，我們使用「棋盤格圖片」作為 Artboard 的背景
-            
-            // 製作一個微小的棋盤格 Canvas 作為 Pattern
-            const patternCanvas = document.createElement('canvas');
-            patternCanvas.width = 20;
-            patternCanvas.height = 20;
-            const ctx = patternCanvas.getContext('2d');
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, 20, 20);
-            ctx.fillStyle = '#e5e5e5';
-            ctx.fillRect(0, 0, 10, 10);
-            ctx.fillRect(10, 10, 10, 10);
-
-            const pattern = new fabric.Pattern({
-                source: patternCanvas,
-                repeat: 'repeat'
-            });
-
+            // 這是一張「白紙」，放在最底層。
+            // 編輯時：您看到白紙，擦除時挖空白紙->看到網頁背景的棋盤格。
+            // 輸出時：我們隱藏這張白紙。
             artboardRect = new fabric.Rect({
                 width: artboardW, height: artboardH, 
-                fill: pattern, // 使用棋盤格作為填充
+                fill: 'white', 
                 selectable: false, evented: false, 
                 hoverCursor: 'default',
                 shadow: new fabric.Shadow({ color: 'rgba(0,0,0,0.5)', blur: 20 }),
@@ -325,7 +310,7 @@
             resizeCanvasDimension();
         }
 
-        // --- 右鍵平移與縮放 ---
+        // --- 導航 ---
         canvas.on('mouse:down', function(opt) {
             var evt = opt.e;
             const isRightClick = opt.button === 2 || evt.button === 2;
@@ -360,35 +345,22 @@
             if(canvas.getActiveObject()) updateFloatingMenu(canvas.getActiveObject());
         });
 
-        // --- V10 核心修復：橡皮擦 ---
-        // 修正：使用 PencilBrush 並修改 createPath 邏輯來達到真正的擦除
-        function setEraser() {
-            canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
-            canvas.freeDrawingBrush.width = parseInt(document.getElementById('draw-width').value);
-            canvas.freeDrawingBrush.color = 'white'; // 顏色不重要，重點是下面的 globalCompositeOperation
-            canvas.isDrawingMode = true;
-            canvas.defaultCursor = 'crosshair';
-            
-            // 這是關鍵：我們不直接設定 brush.color 為透明，而是監聽 path:created
-            // 因為 Fabric 的 EraserBrush 在舊版支援度不佳，我們用 destination-out 手動處理
-        }
-
+        // --- 橡皮擦 ---
         function updateBrush() {
+            if (!canvas.freeDrawingBrush) return;
             const size = parseInt(document.getElementById('draw-width').value);
             document.getElementById('brush-size-val').innerText = size;
 
             if (currentMode === 'eraser') {
-                // V10: 橡皮擦模式
                 canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
                 canvas.freeDrawingBrush.width = size;
-                canvas.freeDrawingBrush.color = 'rgba(255,255,255,1)'; // 暫時用白色顯示筆跡
+                canvas.freeDrawingBrush.color = 'rgba(255,255,255,1)'; 
                 canvas.freeDrawingBrush.strokeLineCap = 'round';
                 canvas.freeDrawingBrush.strokeLineJoin = 'round';
                 canvas.defaultCursor = 'crosshair';
                 document.getElementById('brush-color-wrap').classList.add('opacity-30', 'pointer-events-none');
-                document.getElementById('brush-title').innerText = "橡皮擦工具 (擦除)";
+                document.getElementById('brush-title').innerText = "橡皮擦";
             } else {
-                // 畫筆模式
                 canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
                 canvas.freeDrawingBrush.width = size;
                 canvas.freeDrawingBrush.color = document.getElementById('draw-color').value;
@@ -396,33 +368,22 @@
                 canvas.freeDrawingBrush.strokeLineJoin = 'round';
                 canvas.defaultCursor = 'crosshair';
                 document.getElementById('brush-color-wrap').classList.remove('opacity-30', 'pointer-events-none');
-                document.getElementById('brush-title').innerText = "畫筆工具";
+                document.getElementById('brush-title').innerText = "畫筆";
             }
         }
 
-        // V10: 真正的擦除邏輯
         canvas.on('path:created', function(opt) {
             if (currentMode === 'eraser') {
                 const path = opt.path;
-                // 1. 設定合成模式為「目的地擦除 (destination-out)」
-                // 這會讓這條線經過的地方變成透明，露出底下的棋盤格
-                path.globalCompositeOperation = 'destination-out';
-                
-                // 2. 鎖定它，避免被選取
+                path.globalCompositeOperation = 'destination-out'; // 挖空
                 path.selectable = false;
                 path.evented = false;
-                
-                // 3. 重要：確保它不會被其他後來畫的東西蓋過去而失效，
-                // 或者我們可以把它留在最上層，這樣它就能「擦掉」下面的所有東西
-                // 但在 Fabric 中，destination-out 只會對「已經渲染在 Canvas 上」的像素產生作用
-                // 所以它必須保持在圖層堆疊中
-                
                 canvas.requestRenderAll();
                 saveState();
             }
         });
 
-        // --- 浮動選單與刪除 ---
+        // --- 浮動選單 ---
         canvas.on('selection:created', (e) => { updatePanelFromSelection(); updateFloatingMenu(e.selected[0]); });
         canvas.on('selection:updated', (e) => { updatePanelFromSelection(); updateFloatingMenu(e.selected[0]); });
         canvas.on('selection:cleared', () => { updatePanel(); document.getElementById('floating-menu').style.display = 'none'; });
@@ -434,16 +395,15 @@
             if (!obj) return;
             const menu = document.getElementById('floating-menu');
             const bound = obj.getBoundingRect();
-            if (bound.top < -500 || bound.left < -500) { menu.style.display = 'none'; return; }
+            if (bound.top < -1000 || bound.left < -1000) { menu.style.display = 'none'; return; }
             menu.style.left = (bound.left + bound.width / 2) + 'px';
             menu.style.top = (bound.top - 10) + 'px';
             menu.style.display = 'flex';
-            const isGroup = obj.type === 'activeSelection' || obj.type === 'group';
             document.getElementById('float-group').style.display = (obj.type === 'activeSelection') ? 'flex' : 'none';
             document.getElementById('float-ungroup').style.display = (obj.type === 'group') ? 'flex' : 'none';
         }
 
-        // 圖片載入
+        // --- 圖片載入 ---
         function loadToCanvas(dataURL) {
             document.getElementById('loading-toast').classList.remove('hidden');
             const imgObj = new Image();
@@ -466,7 +426,7 @@
             };
         }
 
-        // 工具模式切換
+        // --- 工具模式 ---
         function setMode(mode) {
             if(currentMode === 'crop' && mode !== 'crop') cancelCrop();
             currentMode = mode;
@@ -508,29 +468,42 @@
 
         function deleteActiveObject() { const obj = canvas.getActiveObject(); if (obj && !obj.isEditing) { canvas.remove(obj); canvas.discardActiveObject(); updatePanel(); document.getElementById('floating-menu').style.display = 'none'; } }
 
+        // --- V11 核心：輸出 (隱藏白紙) ---
         function downloadImage() {
             canvas.discardActiveObject();
             document.getElementById('floating-menu').style.display = 'none';
+            
             const originalVpt = canvas.viewportTransform.slice();
             canvas.viewportTransform = [1, 0, 0, 1, 0, 0];
             
-            // 下載時，隱藏棋盤格背景，確保是透明的
-            artboardRect.visible = false; 
+            // 關鍵：輸出前，隱藏白色的工作區底紙
+            if(artboardRect) artboardRect.visible = false;
             
             canvas.renderAll();
+            
             setTimeout(() => {
-                const link = document.createElement('a'); link.download = `sticker-${Date.now()}.png`;
-                link.href = canvas.toDataURL({ format: 'png', quality: 1, multiplier: 1, left: 0, top: 0, width: artboardW, height: artboardH });
+                const link = document.createElement('a'); 
+                link.download = `sticker-${Date.now()}.png`;
+                // 輸出時只抓 Artboard 範圍
+                link.href = canvas.toDataURL({ 
+                    format: 'png', 
+                    quality: 1, 
+                    multiplier: 1, 
+                    left: 0, 
+                    top: 0, 
+                    width: artboardW, 
+                    height: artboardH 
+                });
                 link.click();
                 
-                // 下載完恢復
-                artboardRect.visible = true;
+                // 恢復
+                if(artboardRect) artboardRect.visible = true;
                 canvas.viewportTransform = originalVpt;
                 canvas.requestRenderAll();
             }, 50);
         }
 
-        // 其餘輔助函式 (省略以節省篇幅，與 V9 相同)
+        // 其餘輔助 (與 V10 同)
         function setBrushColor(c) { document.getElementById('draw-color').value = c; updateBrush(); }
         function resetViewport() { centerArtboard(); }
         function updateZoomDisplay() { document.getElementById('zoom-val').innerText = Math.round(canvas.getZoom() * 100) + '%'; }
@@ -546,7 +519,6 @@
         function setRotation(angle) { const obj = canvas.getActiveObject(); if(!obj) return; obj.set('angle', parseInt(angle)); document.getElementById('rotation-val').innerText = parseInt(angle) + "°"; canvas.requestRenderAll(); }
         document.getElementById('angle-control').addEventListener('change', saveState);
         function rotateObject(deg) { const obj = canvas.getActiveObject(); if(!obj) return; let currentAngle = obj.angle; obj.rotate(currentAngle + deg); canvas.requestRenderAll(); updatePanelFromSelection(); saveState(); }
-        function toggleLock() { const obj = canvas.getActiveObject(); if(!obj) return; const isLocked = !obj.lockMovementX; obj.set({ lockMovementX: isLocked, lockMovementY: isLocked, lockRotation: isLocked, lockScalingX: isLocked, lockScalingY: isLocked }); saveState(); }
         function duplicateObject() { const obj = canvas.getActiveObject(); if(!obj) return; obj.clone(function(cloned) { canvas.discardActiveObject(); cloned.set({ left: cloned.left + 20, top: cloned.top + 20, evented: true }); if (cloned.type === 'activeSelection') { cloned.canvas = canvas; cloned.forEachObject(function(obj) { canvas.add(obj); }); cloned.setCoords(); } else { canvas.add(cloned); } canvas.setActiveObject(cloned); canvas.requestRenderAll(); saveState(); }); }
         function startCrop() { setMode('crop'); document.getElementById('crop-controls').classList.remove('hidden'); resetViewport(); cropRect = new fabric.Rect({ fill: 'rgba(0,0,0,0.3)', stroke: '#3b82f6', strokeWidth: 2, strokeDashArray: [10, 5], left: 0, top: 0, width: artboardW, height: artboardH, selectable: true, hasRotatingPoint: false, lockRotation: true, cornerColor: 'white', cornerStrokeColor: '#3b82f6', transparentCorners: false }); canvas.add(cropRect); canvas.setActiveObject(cropRect); }
         function cancelCrop() { if (cropRect) canvas.remove(cropRect); document.getElementById('crop-controls').classList.add('hidden'); setMode('select'); }

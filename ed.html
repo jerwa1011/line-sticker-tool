@@ -42,7 +42,7 @@
         let selectedItem = null;
         let rasterImage = null; // 儲存上傳的圖片
 
-        // 上傳圖片
+        // 上傳圖片（修正：添加 onLoad 觸發 draw）
         document.getElementById('upload').addEventListener('change', (e) => {
             const file = e.target.files[0];
             const reader = new FileReader();
@@ -50,6 +50,9 @@
                 rasterImage = new paper.Raster(event.target.result);
                 rasterImage.position = view.center;
                 rasterImage.onMouseDown = handleSelect;
+                rasterImage.onLoad = function() {
+                    view.draw(); // 強制渲染圖片
+                };
             };
             reader.readAsDataURL(file);
         });
@@ -134,6 +137,7 @@
                 text.onMouseDown = handleSelect; // 支援選擇
                 textInput.value = '';
                 textInput.style.display = 'none';
+                view.draw(); // 確保文字立即顯示
             };
         }
 
@@ -152,6 +156,7 @@
                     group.clipped = true;
                     rasterImage = group; // 更新為裁切後的群組
                     cropRect.remove();
+                    view.draw(); // 強制渲染裁切結果
                 }
             }, { once: true });
         }
@@ -169,6 +174,7 @@
         function clearCanvas() {
             project.clear();
             rasterImage = null;
+            view.draw(); // 更新畫布
         }
 
         // 監聽筆刷變化（但 Paper.js 無需更新，因為在模式中設定）

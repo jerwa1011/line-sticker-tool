@@ -3,282 +3,305 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LINE Sticker Craft - 視覺化編輯器</title>
+    <title>LINE Sticker Finisher - 最終修整</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@500;900&family=Mochiy+Pop+One&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Noto Sans TC', sans-serif; }
-        .canvas-container { 
-            background-image: linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%);
+        /* 透明背景棋盤格 */
+        .canvas-bg { 
+            background-image: linear-gradient(45deg, #e0e0e0 25%, transparent 25%), linear-gradient(-45deg, #e0e0e0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e0e0e0 75%), linear-gradient(-45deg, transparent 75%, #e0e0e0 75%);
             background-size: 20px 20px;
             background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
-            background-color: white; 
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+            background-color: #ffffff; 
         }
-        .tool-btn.active { background-color: #3b82f6; color: white; border-color: #3b82f6; }
+        .tool-btn.active { @apply bg-blue-600 text-white border-blue-600; }
+        /* Fabric 自定義樣式 - 讓控制項更明顯 */
+        .canvas-container { outline: none; }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-200 h-screen flex flex-col overflow-hidden">
 
-    <header class="h-14 bg-gray-800 border-b border-gray-700 flex items-center justify-between px-4 shrink-0">
-        <div class="flex items-center space-x-2">
-            <span class="text-xl">🎨</span>
-            <h1 class="font-bold text-lg tracking-wide">Sticker Craft</h1>
-        </div>
+    <header class="h-14 bg-gray-800 border-b border-gray-700 flex items-center justify-between px-4 shrink-0 z-20 shadow-md">
+        <h1 class="font-bold text-lg tracking-wide flex items-center"><span class="text-xl mr-2">✨</span>Sticker Finisher</h1>
         <div class="flex space-x-3">
-            <label class="cursor-pointer bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded text-sm transition flex items-center gap-2">
-                📂 開啟圖片
+            <label class="cursor-pointer bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded text-sm transition flex items-center gap-2 border border-gray-600">
+                🖼️ 載入圖片
                 <input type="file" id="imgLoader" accept="image/*" class="hidden">
             </label>
-            <button onclick="downloadImage()" class="bg-green-600 hover:bg-green-500 text-white px-4 py-1.5 rounded text-sm font-bold shadow transition">
-                下載 PNG
+            <button onclick="downloadImage()" class="bg-green-600 hover:bg-green-500 text-white px-5 py-1.5 rounded text-sm font-bold shadow transition flex items-center gap-2">
+                📥 下載 PNG
             </button>
         </div>
     </header>
 
-    <div class="flex flex-1 overflow-hidden">
+    <div class="flex flex-1 overflow-hidden relative">
         
-        <div class="w-20 bg-gray-800 border-r border-gray-700 flex flex-col items-center py-4 space-y-4 z-10">
-            <button onclick="setMode('select')" id="btn-select" class="tool-btn active w-12 h-12 rounded-lg border border-gray-600 flex flex-col items-center justify-center hover:bg-gray-700 transition" title="選取/移動">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"></path></svg>
-                <span class="text-[10px] mt-1">選取</span>
+        <div class="w-16 bg-gray-800 border-r border-gray-700 flex flex-col items-center py-4 space-y-3 z-10 shadow-lg">
+            <button onclick="setMode('select')" id="btn-select" class="tool-btn active w-10 h-10 rounded-lg border border-gray-600 flex items-center justify-center hover:bg-gray-700 transition" title="選取/移動 (V)">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"></path></svg>
             </button>
-
-            <button onclick="addText()" class="tool-btn w-12 h-12 rounded-lg border border-gray-600 flex flex-col items-center justify-center hover:bg-gray-700 transition" title="新增文字">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
-                <span class="text-[10px] mt-1">文字</span>
+            <button onclick="addText()" class="tool-btn w-10 h-10 rounded-lg border border-gray-600 flex items-center justify-center hover:bg-gray-700 transition" title="新增文字 (T)">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
             </button>
-
-            <button onclick="setMode('draw')" id="btn-draw" class="tool-btn w-12 h-12 rounded-lg border border-gray-600 flex flex-col items-center justify-center hover:bg-gray-700 transition" title="手繪/塗鴉">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
-                <span class="text-[10px] mt-1">手繪</span>
+            <button onclick="setMode('draw')" id="btn-draw" class="tool-btn w-10 h-10 rounded-lg border border-gray-600 flex items-center justify-center hover:bg-gray-700 transition" title="手繪筆刷 (B)">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
             </button>
-
-            <button onclick="startCrop()" id="btn-crop" class="tool-btn w-12 h-12 rounded-lg border border-gray-600 flex flex-col items-center justify-center hover:bg-gray-700 transition" title="裁切圖片">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                <span class="text-[10px] mt-1">裁切</span>
+            <button onclick="setMode('eraser')" id="btn-eraser" class="tool-btn w-10 h-10 rounded-lg border border-gray-600 flex items-center justify-center hover:bg-gray-700 transition group" title="橡皮擦 (E)">
+               <svg class="w-5 h-5 group-[.active]:text-red-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
             </button>
-
-            <button onclick="deleteActiveObject()" class="text-red-400 tool-btn w-12 h-12 rounded-lg border border-gray-600 flex flex-col items-center justify-center hover:bg-gray-700 transition" title="刪除選中物件">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+             <div class="w-8 h-[1px] bg-gray-700 my-2"></div>
+            <button onclick="startCrop()" id="btn-crop" class="tool-btn w-10 h-10 rounded-lg border border-gray-600 flex items-center justify-center hover:bg-gray-700 transition" title="裁切圖片 (C)">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
             </button>
         </div>
 
-        <div class="flex-1 bg-gray-900 flex items-center justify-center relative p-8 overflow-auto" id="canvas-wrapper">
-            <canvas id="c"></canvas>
+        <div class="flex-1 bg-gray-900/50 flex items-center justify-center relative p-4 overflow-auto backdrop-blur-sm" id="canvas-wrapper">
+            <div class="canvas-bg shadow-2xl rounded-sm overflow-hidden border border-gray-600/50">
+                <canvas id="c"></canvas>
+            </div>
             
-            <div id="crop-controls" class="absolute bottom-10 bg-gray-800 p-2 rounded shadow-lg flex space-x-2 hidden">
-                <span class="text-sm text-gray-300 flex items-center px-2">拖拉方框調整範圍</span>
-                <button onclick="applyCrop()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded text-sm">確認裁切</button>
-                <button onclick="cancelCrop()" class="bg-gray-600 hover:bg-gray-500 text-white px-3 py-1 rounded text-sm">取消</button>
+            <div id="crop-controls" class="absolute bottom-8 bg-gray-800 p-2 rounded-lg shadow-xl border border-gray-700 flex space-x-2 hidden z-30 animate-bounce">
+                <span class="text-xs text-gray-300 flex items-center px-2 font-bold">✂️ 調整裁切範圍</span>
+                <button onclick="applyCrop()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded text-xs font-bold">確認 √</button>
+                <button onclick="cancelCrop()" class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded text-xs">取消 X</button>
             </div>
         </div>
 
-        <div class="w-64 bg-gray-800 border-l border-gray-700 p-4 flex flex-col space-y-6">
+        <div class="w-64 bg-gray-800 border-l border-gray-700 p-5 flex flex-col space-y-6 z-10 shadow-lg overflow-y-auto">
             
-            <div id="panel-drawing" class="hidden">
-                <h3 class="text-sm font-bold text-gray-400 uppercase mb-3">🖊️ 畫筆設定</h3>
-                <div class="space-y-4">
-                    <div>
-                        <label class="text-xs text-gray-400">顏色</label>
-                        <input type="color" id="draw-color" value="#000000" class="w-full h-8 cursor-pointer rounded bg-transparent" onchange="updateBrush()">
+            <div id="panel-none" class="text-center text-gray-500 text-sm mt-10">
+                <p class="text-4xl mb-4">👈</p>
+                <p>在左側選擇工具</p>
+                <p>或點選畫布上的物件</p>
+            </div>
+
+            <div id="panel-brush" class="hidden space-y-5">
+                <h3 class="text-sm font-black text-gray-400 uppercase tracking-wider border-b border-gray-700 pb-2 flex items-center">
+                    <span id="brush-title">🖊️ 筆刷設定</span>
+                </h3>
+                <div id="brush-color-forcing" class="space-y-2">
+                    <label class="text-xs text-gray-400 font-bold">顏色</label>
+                    <div class="flex space-x-2">
+                        <input type="color" id="draw-color" value="#000000" class="w-10 h-10 p-0 border-2 border-gray-600 rounded cursor-pointer bg-transparent" onchange="updateBrush()">
+                        <button onclick="setColor('#000000')" class="w-10 h-10 bg-black border-2 border-gray-600 rounded"></button>
+                        <button onclick="setColor('#ffffff')" class="w-10 h-10 bg-white border-2 border-gray-600 rounded"></button>
+                        <button onclick="setColor('#FF0000')" class="w-10 h-10 bg-red-600 border-2 border-gray-600 rounded"></button>
                     </div>
-                    <div>
-                        <label class="text-xs text-gray-400">粗細: <span id="width-val">3</span></label>
-                        <input type="range" id="draw-width" min="1" max="50" value="3" class="w-full accent-blue-500" oninput="document.getElementById('width-val').innerText=this.value; updateBrush()">
-                    </div>
-                    <div class="flex items-center space-x-2 pt-2">
-                        <input type="checkbox" id="eraser-mode" onchange="updateBrush()" class="w-4 h-4 accent-red-500">
-                        <label for="eraser-mode" class="text-sm cursor-pointer select-none">橡皮擦模式</label>
-                    </div>
+                </div>
+                <div class="space-y-2">
+                    <label class="text-xs text-gray-400 font-bold flex justify-between">粗細 <span><span id="width-val" class="text-blue-400">5</span> px</span></label>
+                    <input type="range" id="draw-width" min="1" max="100" value="5" class="w-full accent-blue-500 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="document.getElementById('width-val').innerText=this.value; updateBrush()">
                 </div>
             </div>
 
-            <div id="panel-object">
-                <h3 class="text-sm font-bold text-gray-400 uppercase mb-3">🛠️ 物件屬性</h3>
-                <div class="space-y-4">
-                    <div>
-                        <label class="text-xs text-gray-400">填充顏色</label>
-                        <input type="color" id="obj-color" class="w-full h-8 cursor-pointer rounded bg-transparent" onchange="updateObject()">
-                    </div>
-                    <div id="text-controls" class="hidden space-y-4">
-                        <div>
-                            <label class="text-xs text-gray-400">文字外框顏色 (Stroke)</label>
-                            <input type="color" id="text-stroke" value="#ffffff" class="w-full h-8 cursor-pointer rounded bg-transparent" onchange="updateObject()">
-                        </div>
-                        <div>
-                            <label class="text-xs text-gray-400">外框粗細</label>
-                            <input type="range" id="text-stroke-width" min="0" max="10" value="0" class="w-full accent-blue-500" oninput="updateObject()">
-                        </div>
-                        <div>
-                            <label class="text-xs text-gray-400">字體</label>
-                            <select id="font-family" class="w-full bg-gray-700 text-sm p-1 rounded border border-gray-600" onchange="updateObject()">
-                                <option value="Noto Sans TC">思源黑體</option>
-                                <option value="Arial">Arial</option>
-                                <option value="Comic Sans MS">Comic Sans (手寫感)</option>
-                                <option value="Times New Roman">Times New Roman</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="text-xs text-gray-500 mt-4">
-                        💡 提示：點選畫布上的物件即可進行旋轉、縮放與移動。按 Delete 鍵可刪除。
+            <div id="panel-object" class="hidden space-y-5">
+                <h3 class="text-sm font-black text-gray-400 uppercase tracking-wider border-b border-gray-700 pb-2">🛠️ 物件屬性</h3>
+                
+                <div class="space-y-2">
+                    <label class="text-xs text-gray-400 font-bold">填充顏色 (Fill)</label>
+                    <div class="flex gap-2">
+                        <input type="color" id="obj-color" class="flex-1 h-9 cursor-pointer rounded border border-gray-600 bg-transparent p-0" onchange="updateObject()">
                     </div>
                 </div>
+
+                <div id="text-controls" class="hidden space-y-5 pt-2 border-t border-gray-700">
+                     <div class="space-y-2">
+                        <label class="text-xs text-gray-400 font-bold">字體 (Font)</label>
+                        <select id="font-family" class="w-full bg-gray-700 text-sm p-2 rounded border border-gray-600 focus:ring-2 focus:ring-blue-500 outline-none" onchange="updateObject()">
+                            <option value="Noto Sans TC" style="font-weight: 900;">思源黑體 (粗)</option>
+                            <option value="Mochiy Pop One">可愛圓體 (Mochiy)</option>
+                            <option value="Arial">Arial (通用)</option>
+                        </select>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-xs text-gray-400 font-bold">外框顏色 (Stroke)</label>
+                        <input type="color" id="text-stroke" value="#ffffff" class="w-full h-9 cursor-pointer rounded border border-gray-600 bg-transparent p-0" onchange="updateObject()">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-xs text-gray-400 font-bold flex justify-between">外框粗細 <span><span id="stroke-width-val" class="text-blue-400">0</span> px</span></label>
+                        <input type="range" id="text-stroke-width" min="0" max="20" value="0" step="0.5" class="w-full accent-blue-500 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="document.getElementById('stroke-width-val').innerText=this.value; updateObject()">
+                    </div>
+                     <p class="text-xs text-blue-400 mt-2">💡 提示：在畫布上「點兩下」文字即可直接輸入編輯。</p>
+                </div>
+
+                <button onclick="deleteActiveObject()" class="w-full mt-8 bg-red-900/50 hover:bg-red-800 text-red-300 border border-red-800 py-2 rounded-lg text-sm transition flex items-center justify-center gap-2">
+                    🗑️ 刪除此物件 (Del)
+                </button>
             </div>
 
         </div>
     </div>
 
     <script>
-        // 1. 初始化 Fabric Canvas
+        // --- 1. 初始化設定 ---
+        // 覆寫 Fabric 物件的預設控制項樣式 (讓它看起來更現代)
+        fabric.Object.prototype.set({
+            transparentCorners: false,
+            cornerColor: '#3b82f6',
+            cornerStyle: 'circle',
+            borderColor: '#3b82f6',
+            cornerSize: 12,
+            borderScaleFactor: 2,
+            padding: 5
+        });
+
         const canvas = new fabric.Canvas('c', {
-            width: 500,
-            height: 500,
+            width: 600, height: 600, // 初始預設大小
             backgroundColor: null, // 透明背景
             isDrawingMode: false
         });
 
-        // 監聽視窗大小改變 (簡易 RWD)
-        // window.addEventListener('resize', () => { ... }); // 略，保持固定尺寸較好控制
+        let currentMode = 'select';
+        let cropRect = null;
+        let isEraserActive = false;
 
-        // 2. 變數與狀態
-        let currentMode = 'select'; // select, draw, crop
-        let cropRect = null; // 裁切框物件
-
-        // 3. 圖片上傳
+        // --- 2. 核心功能：檔案與畫布 ---
         document.getElementById('imgLoader').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if(!file) return;
             const reader = new FileReader();
             reader.onload = function(f) {
                 fabric.Image.fromURL(f.target.result, function(img) {
-                    // 調整 Canvas 大小以符合圖片，或縮放圖片
-                    // 策略：將 Canvas 設為圖片大小 (最大限制 800px)
+                    // 設定畫布尺寸為圖片尺寸 (但不超過螢幕太多)
                     const maxDim = 800;
                     let scale = 1;
                     if(img.width > maxDim || img.height > maxDim) {
                         scale = Math.min(maxDim/img.width, maxDim/img.height);
                     }
-                    
                     canvas.setWidth(img.width * scale);
                     canvas.setHeight(img.height * scale);
                     canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas), {
-                        scaleX: scale,
-                        scaleY: scale
+                        scaleX: scale, scaleY: scale
                     });
+                    canvas.clear(); // 清除舊物件
                 });
             };
             reader.readAsDataURL(file);
         });
 
-        // 4. 模式切換邏輯
-        function setMode(mode) {
-            currentMode = mode;
-            
-            // UI 更新
-            document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById(`btn-${mode === 'crop' ? 'crop' : mode}`).classList.add('active');
+        function downloadImage() {
+            canvas.discardActiveObject(); // 取消選取框
+            canvas.requestRenderAll();
+            const link = document.createElement('a');
+            link.download = `sticker-${Date.now()}.png`;
+            // 輸出高品質 PNG
+            link.href = canvas.toDataURL({ format: 'png', quality: 1, multiplier: 1 });
+            link.click();
+        }
 
-            // 面板顯示
-            document.getElementById('panel-drawing').classList.toggle('hidden', mode !== 'draw');
-            document.getElementById('panel-object').classList.toggle('hidden', mode === 'draw' || mode === 'crop');
+        // --- 3. 核心功能：模式切換與 UI ---
+        function setMode(mode) {
+            if(currentMode === 'crop' && mode !== 'crop') cancelCrop();
+            currentMode = mode;
+            isEraserActive = (mode === 'eraser');
             
-            // Fabric 狀態設定
-            if (mode === 'draw') {
-                canvas.isDrawingMode = true;
+            // UI 按鈕狀態更新
+            document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+            const activeBtnId = mode === 'eraser' ? 'btn-eraser' : (mode === 'draw' ? 'btn-draw' : (mode === 'crop' ? 'btn-crop' : 'btn-select'));
+            document.getElementById(activeBtnId).classList.add('active');
+
+            // Fabric 畫布狀態設定
+            canvas.isDrawingMode = (mode === 'draw' || mode === 'eraser');
+            canvas.selection = (mode === 'select'); // 允許框選
+            if(canvas.isDrawingMode) {
                 canvas.discardActiveObject();
-                canvas.requestRenderAll();
                 updateBrush();
             } else {
-                canvas.isDrawingMode = false;
+                 canvas.defaultCursor = 'default';
             }
+            canvas.requestRenderAll();
+            updatePanelDisplay();
+        }
 
-            // 裁切模式特殊處理
-            if (mode !== 'crop') {
-                cancelCrop(); // 如果離開裁切模式，清除裁切框
+        function updatePanelDisplay() {
+            const panelNone = document.getElementById('panel-none');
+            const panelBrush = document.getElementById('panel-brush');
+            const panelObject = document.getElementById('panel-object');
+            const activeObj = canvas.getActiveObject();
+
+            panelNone.classList.add('hidden');
+            panelBrush.classList.add('hidden');
+            panelObject.classList.add('hidden');
+
+            if (currentMode === 'draw' || currentMode === 'eraser') {
+                panelBrush.classList.remove('hidden');
+                document.getElementById('brush-title').innerText = isEraserActive ? '🧹 橡皮擦設定' : '🖊️ 筆刷設定';
+                document.getElementById('brush-color-forcing').classList.toggle('hidden', isEraserActive); // 橡皮擦不需要顏色
+            } else if (activeObj && currentMode === 'select') {
+                panelObject.classList.remove('hidden');
+                updatePanelFromObject(activeObj);
+            } else {
+                panelNone.classList.remove('hidden');
             }
         }
 
-        // 5. 新增文字
-        function addText() {
-            setMode('select');
-            const text = new fabric.IText('請輸入文字', {
-                left: 50,
-                top: 50,
-                fontFamily: 'Noto Sans TC',
-                fill: '#000000',
-                fontSize: 40
-            });
-            canvas.add(text);
-            canvas.setActiveObject(text);
+        // --- 4. 核心功能：繪圖與橡皮擦 ---
+        function setColor(color) {
+            document.getElementById('draw-color').value = color;
+            updateBrush();
         }
 
-        // 6. 畫筆與橡皮擦更新
         function updateBrush() {
             if (!canvas.freeDrawingBrush) return;
-
-            const color = document.getElementById('draw-color').value;
             const width = parseInt(document.getElementById('draw-width').value, 10);
-            const isEraser = document.getElementById('eraser-mode').checked;
-
             canvas.freeDrawingBrush.width = width;
             
-            if (isEraser) {
-                // 橡皮擦邏輯：在 Fabric 中，我們使用白色或特殊合成模式
-                // 為了簡單且支援透明背景，我們把顏色設為白色 (如果是白底圖) 
-                // 或使用 globalCompositeOperation 'destination-out' (進階)
-                
-                // 這裡使用 'destination-out' 來擦除成透明
-                canvas.freeDrawingBrush.color = 'rgba(0,0,0,1)'; // 顏色不重要，重點是 opacity
-                // 這是 Fabric 隱藏的強大功能：直接修改 Context 屬性
-                canvas.freeDrawingBrush.source = canvas.freeDrawingBrush.getPatternSrc ? canvas.freeDrawingBrush.getPatternSrc() : null; 
-                
-                // Hack: 我們需要監聽 path:created 事件來應用 destination-out
-                // 但更簡單的方法是：當它是 Eraser 模式時，我們畫白色的線 (如果背景是白的)
-                // 既然使用者要生成 Line 貼圖 (透明底)，我們這裡模擬「橡皮擦」為「畫白色」
-                // 因為 Line 貼圖去背是在最後輸出時處理，或是這張圖本身就是透明的
-                
-                // 進階：使用 destination-out
-                // Fabric V5 不容易直接設定 Brush 的 CompositeOperation。
-                // 妥協方案：畫一條線，然後設定這條線的 globalCompositeOperation
-                
-                canvas.freeDrawingBrush.color = "white"; // 簡單起見，先畫白色，使用者可以當作修正液
+            if (isEraserActive) {
+                 // 關鍵：使用 destination-out 來實現真正的透明擦除
+                canvas.freeDrawingBrush.color = 'rgba(0,0,0,1)'; // 顏色不重要，重要的是 alpha
+                canvas.freeDrawingBrush.strokeLineCap = 'round'; // 圓頭橡皮擦比較自然
+                canvas.defaultCursor = 'crosshair';
             } else {
-                canvas.freeDrawingBrush.color = color;
+                canvas.freeDrawingBrush.color = document.getElementById('draw-color').value;
+                canvas.freeDrawingBrush.strokeLineCap = 'round';
+                canvas.defaultCursor = 'crosshair';
             }
         }
         
-        // 修正橡皮擦：監聽路徑建立，如果是橡皮擦模式，改變合成模式
+        // 監聽路徑建立事件，應用橡皮擦效果
         canvas.on('path:created', function(opt) {
-            const isEraser = document.getElementById('eraser-mode').checked;
-            if (isEraser) {
+            if (isEraserActive) {
+                // 將該筆觸的合成模式改為「挖空」
                 opt.path.globalCompositeOperation = 'destination-out';
-                // 需要重新繪製以生效
-                canvas.renderAll();
+                // 重要：設為不可選取，避免使用者不小心移動了「擦痕」
+                opt.path.selectable = false; 
+                opt.path.evented = false;
+                canvas.requestRenderAll();
             }
         });
 
-        // 7. 物件屬性更新 (監聽選取)
-        canvas.on('selection:created', updatePanelFromObject);
-        canvas.on('selection:updated', updatePanelFromObject);
-        
-        function updatePanelFromObject() {
-            const obj = canvas.getActiveObject();
-            if (!obj) return;
+        // --- 5. 核心功能：文字與物件編輯 ---
+        function addText() {
+            setMode('select');
+            // 使用 IText (Interactive Text) 支援雙擊編輯
+            const text = new fabric.IText('雙擊編輯文字', {
+                left: canvas.width / 2, top: canvas.height / 2, originX: 'center', originY: 'center',
+                fontFamily: 'Noto Sans TC', fontWeight: 900, fill: '#000000', fontSize: 60,
+                stroke: '#ffffff', strokeWidth: 8, // 預設給一個白邊，貼圖常用
+                paintFirst: 'stroke' // 先畫邊再畫填充，效果較好
+            });
+            canvas.add(text);
+            canvas.setActiveObject(text);
+            updatePanelDisplay();
+        }
 
-            // 顯示顏色
-            if (obj.fill && typeof obj.fill === 'string') {
-                document.getElementById('obj-color').value = obj.fill;
-            }
+        // 監聽物件選取事件來更新面板
+        canvas.on('selection:created', updatePanelDisplay);
+        canvas.on('selection:updated', updatePanelDisplay);
+        canvas.on('selection:cleared', updatePanelDisplay);
+
+        function updatePanelFromObject(obj) {
+            if (obj.fill && typeof obj.fill === 'string') document.getElementById('obj-color').value = obj.fill;
             
-            // 如果是文字，顯示文字選項
-            const isText = obj.type === 'i-text' || obj.type === 'text';
+            const isText = obj.type === 'i-text';
             document.getElementById('text-controls').classList.toggle('hidden', !isText);
             
             if (isText) {
                 document.getElementById('text-stroke').value = obj.stroke || '#ffffff';
                 document.getElementById('text-stroke-width').value = obj.strokeWidth || 0;
+                document.getElementById('stroke-width-val').innerText = obj.strokeWidth || 0;
                 document.getElementById('font-family').value = obj.fontFamily || 'Noto Sans TC';
             }
         }
@@ -286,122 +309,79 @@
         function updateObject() {
             const obj = canvas.getActiveObject();
             if (!obj) return;
-
-            const color = document.getElementById('obj-color').value;
-            obj.set('fill', color);
-
-            if (obj.type === 'i-text' || obj.type === 'text') {
-                obj.set('stroke', document.getElementById('text-stroke').value);
-                obj.set('strokeWidth', parseInt(document.getElementById('text-stroke-width').value, 10));
-                obj.set('fontFamily', document.getElementById('font-family').value);
+            obj.set('fill', document.getElementById('obj-color').value);
+            if (obj.type === 'i-text') {
+                obj.set({
+                    'stroke': document.getElementById('text-stroke').value,
+                    'strokeWidth': parseFloat(document.getElementById('text-stroke-width').value),
+                    'fontFamily': document.getElementById('font-family').value
+                });
             }
             canvas.requestRenderAll();
         }
 
-        // 8. 刪除物件
         function deleteActiveObject() {
             const obj = canvas.getActiveObject();
             if (obj) {
                 canvas.remove(obj);
                 canvas.discardActiveObject();
-                canvas.requestRenderAll();
+                updatePanelDisplay();
             }
         }
-        
-        // 鍵盤刪除支援
-        window.addEventListener('keydown', (e) => {
-            if (e.key === 'Delete' || e.key === 'Backspace') {
-                // 避免在打字時刪除物件
-                if (canvas.getActiveObject() && !canvas.getActiveObject().isEditing) {
-                    deleteActiveObject();
-                }
-            }
-        });
 
-        // 9. 裁切功能 (Crop)
+        // --- 6. 核心功能：裁切 (Crop) ---
         function startCrop() {
             setMode('crop');
             document.getElementById('crop-controls').classList.remove('hidden');
-
-            // 建立一個半透明遮罩矩形
+            // 建立半透明遮罩
             cropRect = new fabric.Rect({
-                fill: 'rgba(0,0,0,0.3)',
-                stroke: '#3b82f6',
-                strokeWidth: 2,
-                strokeDashArray: [5, 5],
-                left: 0,
-                top: 0,
-                width: canvas.width,
-                height: canvas.height,
-                selectable: true,
-                hasRotatingPoint: false,
-                lockRotation: true
+                fill: 'rgba(0,0,0,0.4)', stroke: '#3b82f6', strokeWidth: 2, strokeDashArray: [10, 5],
+                left: 0, top: 0, width: canvas.width, height: canvas.height,
+                selectable: true, hasRotatingPoint: false, lockRotation: true,
+                cornerColor: 'white', cornerStrokeColor: '#3b82f6', transparentCorners: false
             });
-            
             canvas.add(cropRect);
             canvas.setActiveObject(cropRect);
-            canvas.requestRenderAll();
         }
 
         function cancelCrop() {
-            if (cropRect) {
-                canvas.remove(cropRect);
-                cropRect = null;
-            }
+            if (cropRect) { canvas.remove(cropRect); cropRect = null; }
             document.getElementById('crop-controls').classList.add('hidden');
             if(currentMode === 'crop') setMode('select');
         }
 
         function applyCrop() {
             if (!cropRect) return;
-
-            const left = cropRect.left;
-            const top = cropRect.top;
-            const width = cropRect.getScaledWidth();
-            const height = cropRect.getScaledHeight();
-
-            // 1. 隱藏裁切框
+            const { left, top, width, height } = cropRect.getBoundingRect(); // 獲取絕對座標與尺寸
             cropRect.visible = false; 
             
-            // 2. 將目前的 Canvas 內容匯出為圖片 (依據裁切範圍)
+            // 將目前畫布指定區域匯出為圖片
             const croppedDataURL = canvas.toDataURL({
-                left: left,
-                top: top,
-                width: width,
-                height: height,
-                format: 'png'
+                left, top, width, height, format: 'png', multiplier: 1
             });
 
-            // 3. 清空 Canvas 並重新設定尺寸
+            // 重置畫布
             canvas.clear();
             canvas.setWidth(width);
             canvas.setHeight(height);
-
-            // 4. 重新載入裁切後的圖片作為背景
             fabric.Image.fromURL(croppedDataURL, function(img) {
-                canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas), {
-                    scaleX: 1,
-                    scaleY: 1
-                });
-                cancelCrop(); // 結束裁切模式
-                setMode('select');
+                canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas), { scaleX: 1, scaleY: 1 });
+                cancelCrop();
             });
         }
 
-        // 10. 下載
-        function downloadImage() {
-            // 確保沒有選取框被印出來
-            canvas.discardActiveObject();
-            canvas.requestRenderAll();
-            
-            const link = document.createElement('a');
-            link.download = `sticker-edited-${Date.now()}.png`;
-            link.href = canvas.toDataURL({
-                format: 'png',
-                quality: 1
-            });
-            link.click();
-        }
+        // --- 7. 鍵盤快捷鍵 ---
+        window.addEventListener('keydown', (e) => {
+            if ((e.key === 'Delete' || e.key === 'Backspace')) {
+                const activeObj = canvas.getActiveObject();
+                // 如果正在編輯文字，不要刪除物件
+                if(activeObj && !activeObj.isEditing) deleteActiveObject();
+            }
+            // 簡單的模式切換快捷鍵
+            if (e.key === 'v' || e.key === 'V') setMode('select');
+            if (e.key === 'b' || e.key === 'B') setMode('draw');
+            if (e.key === 'e' || e.key === 'E') setMode('eraser');
+        });
 
     </script>
 </body>

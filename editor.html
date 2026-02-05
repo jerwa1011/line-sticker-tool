@@ -3,510 +3,286 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sticker Master V13.5 - 經典回歸版</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&family=Mochiy+Pop+One&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>Sticker Studio Air</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Noto+Serif+TC:wght@400;700&family=Zen+Maru+Gothic:wght@400;700&display=swap" rel="stylesheet">
+    
     <style>
-        body { font-family: 'Noto Sans TC', sans-serif; overflow: hidden; background-color: #111827; color: white; }
+        :root {
+            --bg-color: #e5e5e5;
+            --panel-bg: rgba(255, 255, 255, 0.75);
+            --accent-color: #007AFF;
+            --text-color: #333;
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden; /* 禁止瀏覽器預設捲動 */
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            background-image: radial-gradient(#ccc 1px, transparent 1px);
+            background-size: 20px 20px; /* 網格背景 */
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* UI 面板 (macOS Glassmorphism) */
+        .ui-panel {
+            position: absolute;
+            background: var(--panel-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            padding: 10px;
+            z-index: 100;
+        }
+
+        /* 頂部工具列 */
+        .toolbar {
+            top: 20px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        /* 視窗容器 (Viewport) */
+        #viewport {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            cursor: default; /* 預設游標 */
+        }
         
-        /* 經典按鈕樣式 */
-        .tool-btn { 
-            @apply w-12 h-12 mb-2 rounded-lg border border-gray-600 flex flex-col items-center justify-center text-xs text-gray-400 hover:bg-gray-700 transition;
+        /* 抓手模式游標 */
+        #viewport.panning {
+            cursor: grab;
         }
-        .tool-btn.active { 
-            @apply bg-blue-600 text-white border-blue-500;
-        }
-
-        /* 畫布區域背景 (棋盤格) */
-        #canvas-area {
-            background-color: #252525;
-            background-image: 
-                linear-gradient(45deg, #333 25%, transparent 25%), 
-                linear-gradient(-45deg, #333 25%, transparent 25%), 
-                linear-gradient(45deg, transparent 75%, #333 75%), 
-                linear-gradient(-45deg, transparent 75%, #333 75%);
-            background-size: 20px 20px;
-            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
-            position: relative;
-            flex: 1;
-            overflow: hidden; /* 確保畫布不會撐開版面 */
+        #viewport.panning:active {
+            cursor: grabbing;
         }
 
-        /* 浮動選單 (保留好用的浮動刪除) */
-        #floating-menu {
-            display: none; position: absolute; z-index: 100;
-            padding: 5px; gap: 5px; border-radius: 8px;
-            background: rgba(31, 41, 55, 0.95);
-            border: 1px solid #4b5563;
-            transform: translate(-50%, -120%);
+        /* 實際畫布容器 (World) - 用來被縮放和平移 */
+        #world {
+            width: 0;
+            height: 0;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform-origin: 0 0; /* 變形原點 */
         }
-        .float-btn {
-            width: 30px; height: 30px; border-radius: 4px; 
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer; color: #d1d5db;
-        }
-        .float-btn:hover { background-color: #4b5563; color: white; }
 
-        input[type="range"] { @apply accent-blue-500 cursor-pointer; }
+        /* 模擬的 LINE 貼圖畫布 */
+        .canvas-area {
+            width: 370px;
+            height: 320px;
+            background: white;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.15);
+            position: absolute;
+            top: -160px; /* Center alignment based on size */
+            left: -185px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #aaa;
+            font-size: 14px;
+            user-select: none;
+            overflow: hidden; /* 確保內容不跑出去 */
+        }
+        
+        /* 測試文字 */
+        .sticker-text {
+            position: absolute;
+            font-size: 40px;
+            font-weight: bold;
+            color: #333;
+            cursor: move;
+            border: 1px dashed transparent;
+        }
+        .sticker-text:hover {
+            border: 1px dashed var(--accent-color);
+        }
+
+        button {
+            background: rgba(255,255,255,0.8);
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        button:hover {
+            background: white;
+            color: var(--accent-color);
+        }
+
+        /* 字型選單 */
+        select {
+            padding: 6px;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+            font-size: 13px;
+            background: transparent;
+        }
+        
+        /* 提示文字 */
+        .hint {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            font-size: 12px;
+            color: #666;
+            background: rgba(255,255,255,0.6);
+            padding: 5px 10px;
+            border-radius: 20px;
+            pointer-events: none;
+        }
     </style>
 </head>
-<body class="h-screen flex flex-col" oncontextmenu="return false;">
+<body>
 
-    <header class="h-14 bg-gray-800 border-b border-gray-700 flex items-center justify-between px-4 shrink-0 z-20">
-        <div class="flex items-center gap-3">
-            <span class="text-2xl">🛠️</span>
-            <h1 class="font-bold text-lg">貼圖大師 <span class="text-xs text-gray-400 bg-gray-700 px-2 py-1 rounded">Classic</span></h1>
-        </div>
+    <div class="ui-panel toolbar">
+        <span style="font-weight:600; font-size:14px;">Sticker Studio Air</span>
+        <div style="width: 1px; height: 15px; background: #ccc;"></div>
         
-        <div class="flex items-center gap-2">
-            <button onclick="undo()" class="bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded text-sm disabled:opacity-30"><i class="fas fa-undo"></i></button>
-            <button onclick="redo()" class="bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded text-sm disabled:opacity-30"><i class="fas fa-redo"></i></button>
-            <div class="w-[1px] h-6 bg-gray-600 mx-2"></div>
-            <label class="cursor-pointer bg-blue-600 hover:bg-blue-500 px-4 py-1.5 rounded text-sm font-bold flex items-center gap-2">
-                <i class="fas fa-folder-open"></i> 載入
-                <input type="file" id="imgLoader" accept="image/*" class="hidden">
-            </label>
-            <button onclick="downloadImage()" class="bg-green-600 hover:bg-green-500 px-4 py-1.5 rounded text-sm font-bold flex items-center gap-2">
-                <i class="fas fa-download"></i> 輸出
-            </button>
-        </div>
-    </header>
+        <select id="fontSelector" onchange="changeFont(this.value)">
+            <option value="'Noto Sans TC', sans-serif">思源黑體 (預設)</option>
+            <option value="'Zen Maru Gothic', sans-serif">圓體 (可愛)</option>
+            <option value="'Noto Serif TC', serif">思源宋體 (文青)</option>
+            <option value="Arial, sans-serif">Arial (英文)</option>
+            <option value="Impact, sans-serif">Impact (迷因)</option>
+        </select>
 
-    <div class="flex-1 flex overflow-hidden">
-        
-        <div class="w-16 bg-gray-800 border-r border-gray-700 flex flex-col items-center py-4 shrink-0 overflow-y-auto">
-            <button onclick="setMode('select')" id="btn-select" class="tool-btn active"><i class="fas fa-mouse-pointer text-lg"></i><span>選取</span></button>
-            <button onclick="setMode('pan')" id="btn-pan" class="tool-btn"><i class="fas fa-hand-paper text-lg"></i><span>移動</span></button>
-            <div class="w-8 h-[1px] bg-gray-600 my-2"></div>
-            <button onclick="addText()" class="tool-btn text-yellow-400 border-yellow-700"><i class="fas fa-font text-lg"></i><span>文字</span></button>
-            <button onclick="setMode('draw')" id="btn-draw" class="tool-btn"><i class="fas fa-pen text-lg"></i><span>畫筆</span></button>
-            <button onclick="setMode('eraser')" id="btn-eraser" class="tool-btn text-red-400 border-red-800"><i class="fas fa-eraser text-lg"></i><span>擦除</span></button>
-            <div class="w-8 h-[1px] bg-gray-600 my-2"></div>
-            <button onclick="deleteActiveObject()" class="tool-btn text-red-500 hover:bg-red-900/30"><i class="fas fa-trash-alt text-lg"></i><span>刪除</span></button>
-            <button onclick="startCrop()" id="btn-crop" class="tool-btn"><i class="fas fa-crop-alt text-lg"></i><span>裁切</span></button>
-        </div>
-
-        <div id="canvas-area">
-            <canvas id="c"></canvas>
-
-            <div id="floating-menu">
-                <div class="float-btn bg-red-600 text-white" onclick="deleteActiveObject()"><i class="fas fa-trash"></i></div>
-                <div class="float-btn" onclick="toggleLock()" id="float-lock"><i class="fas fa-unlock"></i></div>
-                <div class="float-btn" onclick="duplicateObject()"><i class="fas fa-clone"></i></div>
-                <div class="float-btn" onclick="groupObjects()" id="float-group"><i class="fas fa-object-group"></i></div>
-                <div class="float-btn" onclick="ungroupObjects()" id="float-ungroup"><i class="fas fa-object-ungroup"></i></div>
-                <div class="float-btn" onclick="bringToFront()"><i class="fas fa-arrow-up"></i></div>
-                <div class="float-btn" onclick="sendToBack()"><i class="fas fa-arrow-down"></i></div>
-            </div>
-
-            <div class="absolute bottom-4 right-4 bg-gray-800 p-2 rounded shadow flex items-center gap-2 border border-gray-600">
-                <button onclick="zoomToFit()" class="text-xs bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded" title="適應視窗"><i class="fas fa-expand"></i></button>
-                <button onclick="resetViewport()" class="text-xs bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded" id="zoom-val">100%</button>
-            </div>
-
-            <div id="crop-controls" class="absolute bottom-16 left-1/2 -translate-x-1/2 bg-gray-800 p-3 rounded shadow-xl border border-gray-600 flex gap-3 hidden">
-                <button onclick="applyCrop()" class="bg-blue-600 text-white px-4 py-1 rounded text-sm">確認裁切</button>
-                <button onclick="cancelCrop()" class="bg-gray-600 text-white px-4 py-1 rounded text-sm">取消</button>
-            </div>
-            
-            <div id="loading-toast" class="absolute top-10 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-6 py-2 rounded shadow-lg hidden">
-                <i class="fas fa-spinner fa-spin mr-2"></i>處理中...
-            </div>
-        </div>
-
-        <div class="w-64 bg-gray-800 border-l border-gray-700 flex flex-col shrink-0">
-            <div class="p-3 border-b border-gray-700 font-bold bg-gray-900 text-center text-sm text-gray-300">屬性面板</div>
-            <div class="p-4 flex-1 overflow-y-auto space-y-6">
-                
-                <div class="bg-gray-700/50 p-3 rounded">
-                    <label class="text-xs text-gray-400 block mb-2">輸出尺寸 (px)</label>
-                    <div class="flex items-center gap-2">
-                        <input type="number" id="canvas-w" value="370" class="w-16 bg-gray-900 border border-gray-600 rounded px-1 text-center text-sm" onchange="resizeCanvasDimension()">
-                        <span class="text-xs">x</span>
-                        <input type="number" id="canvas-h" value="320" class="w-16 bg-gray-900 border border-gray-600 rounded px-1 text-center text-sm" onchange="resizeCanvasDimension()">
-                    </div>
-                    <button onclick="setStandardSize()" class="w-full mt-2 bg-gray-600 hover:bg-gray-500 text-xs py-1 rounded">重設為 Line 標準</button>
-                </div>
-
-                <div id="panel-none" class="text-center text-gray-500 py-4 text-sm">
-                    <p>未選取物件</p>
-                </div>
-
-                <div id="panel-brush" class="hidden space-y-4">
-                    <h3 class="text-sm font-bold text-blue-400 border-b border-gray-600 pb-1">筆刷設定</h3>
-                    <div id="brush-color-wrap">
-                        <label class="text-xs text-gray-400 block mb-1">顏色</label>
-                        <input type="color" id="draw-color" value="#ffffff" class="w-full h-8 rounded cursor-pointer bg-transparent" onchange="updateBrush()">
-                    </div>
-                    <div>
-                        <label class="text-xs text-gray-400 flex justify-between">粗細 <span id="brush-size-val">5</span></label>
-                        <input type="range" id="draw-width" min="1" max="50" value="5" class="w-full" oninput="updateBrush()">
-                    </div>
-                </div>
-
-                <div id="panel-object" class="hidden space-y-4">
-                    <h3 class="text-sm font-bold text-green-400 border-b border-gray-600 pb-1">物件設定</h3>
-                    
-                    <div class="flex gap-2">
-                        <button onclick="toggleLock()" id="btn-lock" class="flex-1 bg-gray-700 py-1 rounded text-xs"><i class="fas fa-unlock mr-1"></i>鎖定</button>
-                        <button onclick="deleteActiveObject()" class="flex-1 bg-red-900/50 text-red-300 py-1 rounded text-xs"><i class="fas fa-trash mr-1"></i>刪除</button>
-                    </div>
-
-                    <div>
-                        <label class="text-xs text-gray-400 flex justify-between">旋轉 <span id="rotation-val">0°</span></label>
-                        <input type="range" id="angle-control" min="-180" max="180" value="0" class="w-full" oninput="setRotation(this.value)">
-                        <div class="flex justify-between mt-1">
-                            <button onclick="rotateObject(-90)" class="text-xs bg-gray-700 px-2 rounded">-90</button>
-                            <button onclick="rotateObject(0)" class="text-xs bg-gray-700 px-2 rounded">0</button>
-                            <button onclick="rotateObject(90)" class="text-xs bg-gray-700 px-2 rounded">+90</button>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="text-xs text-gray-400 block mb-1">填充顏色</label>
-                        <input type="color" id="obj-color" class="w-full h-8 rounded bg-transparent cursor-pointer" onchange="updateObject()">
-                    </div>
-
-                    <div id="text-controls" class="hidden space-y-3 border-t border-gray-600 pt-3">
-                        <div>
-                            <label class="text-xs text-gray-400 block mb-1">字型</label>
-                            <select id="font-family" class="w-full bg-gray-900 border border-gray-600 rounded px-1 py-1 text-sm" onchange="handleFontChange()">
-                                <option value="Noto Sans TC">思源黑體</option>
-                                <option value="Mochiy Pop One">可愛圓體</option>
-                                <option value="Microsoft JhengHei">微軟正黑體</option>
-                                <option value="Arial">Arial</option>
-                                <option value="custom_input">➕ 自訂...</option>
-                            </select>
-                            <div id="custom-font-area" class="hidden mt-1 flex gap-1">
-                                <input type="text" id="custom-font-input" placeholder="字型名稱" class="w-full bg-gray-900 border border-gray-600 rounded px-1 text-xs">
-                                <button onclick="saveCustomFont()" class="bg-blue-600 px-2 rounded text-xs">存</button>
-                            </div>
-                        </div>
-                        <div>
-                            <label class="text-xs text-gray-400 flex justify-between">描邊粗細</label>
-                            <div class="flex items-center gap-2">
-                                <input type="color" id="text-stroke-color" value="#ffffff" class="w-6 h-6 p-0 rounded-full border-none" onchange="updateObject()">
-                                <input type="range" id="text-stroke-width" min="0" max="20" value="8" step="0.5" class="flex-1" oninput="updateObject()">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <button onclick="resetView()">重置視角</button>
+        <button style="color: var(--accent-color);">匯出 PNG</button>
     </div>
 
+    <div id="viewport">
+        <div id="world">
+            <div class="canvas-area" id="canvasArea">
+                <div class="sticker-text" id="demoText" style="top: 100px; left: 80px;">哈囉你好!</div>
+                </div>
+        </div>
+    </div>
+    
+    <div class="hint">💡 提示：滾輪縮放 • 按住空白鍵 + 拖曳移動畫布</div>
+
     <script>
-        // 1. 初始化
-        fabric.Object.prototype.set({
-            transparentCorners: false, cornerColor: '#3b82f6', cornerStyle: 'circle', borderColor: '#3b82f6', cornerSize: 10, padding: 5, borderScaleFactor: 2, rotatingPointOffset: 25
-        });
-
-        // 在傳統版面中，Canvas 佔滿 #canvas-area
-        const canvas = new fabric.Canvas('c', {
-            backgroundColor: null, // 透明背景
-            preserveObjectStacking: true,
-            stopContextMenu: true,
-            fireRightClick: true
-        });
-
-        let artboardW = 370, artboardH = 320;
-        let guideFrame = null;
-        let currentMode = 'select', cropRect = null;
-        let isDragging = false, lastPosX, lastPosY;
-        let undoStack = [], redoStack = [], isRedoing = false;
-        let myFonts = JSON.parse(localStorage.getItem('sticker_my_fonts')) || [];
-        let spacePressed = false;
-
-        window.onload = function() {
-            renderFontOptions();
-            resizeCanvasToContainer();
-            createGuideFrame();
-            // 監聽視窗改變，調整 Canvas 大小
-            window.addEventListener('resize', resizeCanvasToContainer);
-        };
-
-        function resizeCanvasToContainer() {
-            const container = document.getElementById('canvas-area');
-            canvas.setWidth(container.offsetWidth);
-            canvas.setHeight(container.offsetHeight);
-            if(guideFrame) centerArtboard();
-        }
-
-        function createGuideFrame() {
-            if(guideFrame) canvas.remove(guideFrame);
-            guideFrame = new fabric.Rect({
-                id: 'guide-frame',
-                width: artboardW, height: artboardH, 
-                fill: 'transparent', 
-                stroke: 'rgba(255, 255, 255, 0.5)', 
-                strokeWidth: 1, strokeDashArray: [8, 4],
-                selectable: false, evented: false, 
-                originX: 'left', originY: 'top',
-                hoverCursor: 'default'
-            });
-            canvas.add(guideFrame);
-            guideFrame.bringToFront(); 
-            centerArtboard();
-        }
-
-        // 重要：將 Artboard 放在畫布正中央
-        function centerArtboard() {
-            if(!guideFrame) return;
-            // 重置視圖
-            canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
-            
-            // 計算置中偏移
-            const x = (canvas.width - artboardW) / 2;
-            const y = (canvas.height - artboardH) / 2;
-            
-            // 移動所有物件 (這是一種方式，但更好的方式是移動 viewport)
-            // 這裡我們採用移動 Viewport 的方式，讓 (0,0) 對應到 artboard 的左上角比較直覺？
-            // 不，Fabric 習慣是物件有絕對座標。我們把 guideFrame 放到中間。
-            guideFrame.set({ left: x, top: y });
-            guideFrame.setCoords();
-            canvas.requestRenderAll();
-            updateZoomDisplay();
-        }
-
-        function resizeCanvasDimension() {
-            artboardW = parseInt(document.getElementById('canvas-w').value);
-            artboardH = parseInt(document.getElementById('canvas-h').value);
-            guideFrame.set({ width: artboardW, height: artboardH });
-            centerArtboard();
-        }
-        function setStandardSize() {
-            document.getElementById('canvas-w').value = 370; document.getElementById('canvas-h').value = 320;
-            resizeCanvasDimension();
-        }
-
-        // --- 核心修正：載入圖片邏輯 ---
-        function loadToCanvas(dataURL) {
-            document.getElementById('loading-toast').classList.remove('hidden');
-            const imgObj = new Image();
-            imgObj.src = dataURL;
-            imgObj.onload = function() {
-                const imgInstance = new fabric.Image(imgObj);
-                
-                // 1. 縮放邏輯
-                if (imgInstance.width > artboardW || imgInstance.height > artboardH) {
-                    const scale = Math.min(artboardW / imgInstance.width, artboardH / imgInstance.height) * 0.9;
-                    imgInstance.scale(scale);
-                }
-                
-                // 2. 確保 guideFrame 有座標
-                const centerX = guideFrame.left + (artboardW / 2);
-                const centerY = guideFrame.top + (artboardH / 2);
-
-                // 3. 放置在 Artboard 中心
-                imgInstance.set({
-                    left: centerX,
-                    top: centerY,
-                    originX: 'center',
-                    originY: 'center'
-                });
-
-                canvas.add(imgInstance);
-                // 確保虛線框在最上層
-                guideFrame.bringToFront();
-                canvas.setActiveObject(imgInstance);
-                canvas.requestRenderAll();
-                saveState();
-                document.getElementById('loading-toast').classList.add('hidden');
-            };
-        }
-
-        // --- 導航 (平移/縮放) ---
-        canvas.on('mouse:down', function(opt) {
-            const evt = opt.e;
-            if (evt.button === 2 || evt.altKey || spacePressed || currentMode === 'pan') {
-                this.isDragging = true; this.selection = false;
-                this.lastPosX = evt.clientX; this.lastPosY = evt.clientY;
-                canvas.defaultCursor = 'grabbing';
-            }
-        });
-        canvas.on('mouse:move', function(opt) {
-            if (this.isDragging) {
-                var e = opt.e; var vpt = this.viewportTransform;
-                vpt[4] += e.clientX - this.lastPosX; vpt[5] += e.clientY - this.lastPosY;
-                this.requestRenderAll(); this.lastPosX = e.clientX; this.lastPosY = e.clientY;
-                document.getElementById('floating-menu').style.display = 'none';
-            }
-        });
-        canvas.on('mouse:up', function(opt) {
-            if(this.isDragging) {
-                this.setViewportTransform(this.viewportTransform); this.isDragging = false; this.selection = true;
-                canvas.defaultCursor = currentMode === 'pan' ? 'grab' : 'default';
-                if(canvas.getActiveObject()) updateFloatingMenu(canvas.getActiveObject());
-            }
-        });
-        canvas.on('mouse:wheel', function(opt) {
-            var delta = opt.e.deltaY; var zoom = canvas.getZoom(); zoom *= 0.999 ** delta;
-            if (zoom > 10) zoom = 10; if (zoom < 0.1) zoom = 0.1;
-            canvas.zoomToPoint({ x: opt.e.offsetX, y: opt.e.offsetY }, zoom);
-            opt.e.preventDefault(); opt.e.stopPropagation(); updateZoomDisplay();
-            if(canvas.getActiveObject()) updateFloatingMenu(canvas.getActiveObject());
-        });
-
-        // 智慧對焦
-        function zoomToFit() { centerArtboard(); }
-        function resetViewport() { canvas.setViewportTransform([1,0,0,1,0,0]); centerArtboard(); }
-
-        // --- 工具模式 ---
-        function setMode(mode) {
-            if(currentMode === 'crop' && mode !== 'crop') cancelCrop();
-            currentMode = mode;
-            document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
-            // 簡易映射
-            const ids = { 'select': 'btn-select', 'draw': 'btn-draw', 'eraser': 'btn-eraser', 'crop': 'btn-crop', 'pan': 'btn-pan' };
-            if(ids[mode]) document.getElementById(ids[mode]).classList.add('active');
-
-            if (mode === 'draw' || mode === 'eraser') {
-                canvas.isDrawingMode = true; canvas.discardActiveObject(); updateBrush();
-            } else if (mode === 'pan') {
-                canvas.isDrawingMode = false; canvas.defaultCursor = 'grab'; canvas.discardActiveObject();
-            } else {
-                canvas.isDrawingMode = false; canvas.defaultCursor = 'default';
-            }
-            canvas.requestRenderAll(); updatePanel();
-        }
-
-        // 橡皮擦 (Destination-out)
-        function updateBrush() {
-            if (!canvas.freeDrawingBrush) return;
-            const size = parseInt(document.getElementById('draw-width').value);
-            document.getElementById('brush-size-val').innerText = size;
-            
-            if (currentMode === 'eraser') {
-                canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
-                canvas.freeDrawingBrush.width = size;
-                canvas.freeDrawingBrush.color = 'rgba(255,255,255,1)'; 
-                document.getElementById('brush-color-wrap').classList.add('opacity-30', 'pointer-events-none');
-            } else {
-                canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
-                canvas.freeDrawingBrush.width = size;
-                canvas.freeDrawingBrush.color = document.getElementById('draw-color').value;
-                document.getElementById('brush-color-wrap').classList.remove('opacity-30', 'pointer-events-none');
-            }
-        }
-        canvas.on('path:created', function(opt) {
-            if (currentMode === 'eraser') {
-                const path = opt.path;
-                path.globalCompositeOperation = 'destination-out'; 
-                path.selectable = false; path.evented = false;
-                if(guideFrame) guideFrame.bringToFront();
-                canvas.requestRenderAll(); saveState();
-            }
-        });
-
-        // 輸出 (裁切 Artboard 範圍)
-        function downloadImage() {
-            canvas.discardActiveObject();
-            document.getElementById('floating-menu').style.display = 'none';
-            const originalVpt = canvas.viewportTransform.slice();
-            canvas.viewportTransform = [1, 0, 0, 1, 0, 0]; // 暫時重置視圖以精確裁切
-            
-            if(guideFrame) guideFrame.visible = false;
-            canvas.renderAll();
-
-            setTimeout(() => {
-                const link = document.createElement('a'); link.download = `sticker-${Date.now()}.png`;
-                // 擷取 guideFrame 所在的區域
-                link.href = canvas.toDataURL({ 
-                    format: 'png', quality: 1, multiplier: 1, 
-                    left: guideFrame.left, top: guideFrame.top, width: artboardW, height: artboardH 
-                });
-                link.click();
-                
-                if(guideFrame) guideFrame.visible = true;
-                guideFrame.bringToFront();
-                canvas.viewportTransform = originalVpt; // 恢復視圖
-                canvas.requestRenderAll();
-            }, 50);
-        }
-
-        // 事件與其餘輔助
-        const imgLoader = document.getElementById('imgLoader');
-        imgLoader.addEventListener('change', (e) => { const file = e.target.files[0]; if(!file) return; const reader = new FileReader(); reader.onload = (f) => loadToCanvas(f.target.result); reader.readAsDataURL(file); imgLoader.value = ''; });
-        window.addEventListener('paste', (e) => { const items = (e.clipboardData || e.originalEvent.clipboardData).items; for (let item of items) { if (item.kind === 'file') { const reader = new FileReader(); reader.onload = (event) => loadToCanvas(event.target.result); reader.readAsDataURL(item.getAsFile()); }}});
+        // 變數設定
+        const viewport = document.getElementById('viewport');
+        const world = document.getElementById('world');
         
-        window.addEventListener('keydown', (e) => {
-            if (e.code === 'Space' && !spacePressed) { if(document.activeElement.tagName === 'INPUT') return; spacePressed = true; canvas.defaultCursor = 'grab'; }
-            if (e.key === 'v') setMode('select'); if (e.key === 'b') setMode('draw'); if (e.key === 'e') setMode('eraser'); if (e.key === 'h') setMode('pan');
-            if ((e.key === 'Delete' || e.key === 'Backspace')) deleteActiveObject();
-            if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); }
-            if (e.ctrlKey && e.key === 'y') { e.preventDefault(); redo(); }
-        });
-        window.addEventListener('keyup', (e) => { if (e.code === 'Space') { spacePressed = false; if(currentMode !== 'pan') canvas.defaultCursor = 'default'; } });
-
-        // 浮動選單
-        canvas.on('selection:created', (e) => { updatePanel(); updateFloatingMenu(e.selected[0]); });
-        canvas.on('selection:updated', (e) => { updatePanel(); updateFloatingMenu(e.selected[0]); });
-        canvas.on('selection:cleared', () => { updatePanel(); document.getElementById('floating-menu').style.display = 'none'; });
-        canvas.on('object:moving', (e) => updateFloatingMenu(e.target));
-        canvas.on('object:scaling', (e) => updateFloatingMenu(e.target));
-        canvas.on('object:rotating', (e) => updateFloatingMenu(e.target));
-
-        function updateFloatingMenu(obj) {
-            if (!obj || obj.id === 'guide-frame') return;
-            const menu = document.getElementById('floating-menu');
-            const bound = obj.getBoundingRect();
-            if (bound.top < -2000 || bound.left < -2000) { menu.style.display = 'none'; return; }
-            menu.style.left = (bound.left + bound.width / 2) + 'px';
-            menu.style.top = (bound.top - 10) + 'px';
-            menu.style.display = 'flex';
-            
-            const isLocked = obj.lockMovementX;
-            const lockBtn = document.getElementById('float-lock');
-            lockBtn.style.color = isLocked ? '#ef4444' : '#d1d5db';
-            
-            document.getElementById('float-group').style.display = (obj.type === 'activeSelection') ? 'flex' : 'none';
-            document.getElementById('float-ungroup').style.display = (obj.type === 'group') ? 'flex' : 'none';
-        }
-
-        function updatePanel() {
-            const obj = canvas.getActiveObject();
-            document.getElementById('panel-none').style.display = (!obj && !canvas.isDrawingMode) ? 'block' : 'none';
-            document.getElementById('panel-brush').style.display = canvas.isDrawingMode ? 'block' : 'none';
-            document.getElementById('panel-object').style.display = (obj && !canvas.isDrawingMode) ? 'block' : 'none';
-            if(obj) {
-                document.getElementById('rotation-val').innerText = parseInt(obj.angle % 360) + "°";
-                document.getElementById('angle-control').value = parseInt(obj.angle % 360);
-                if(typeof obj.fill === 'string') document.getElementById('obj-color').value = obj.fill;
-                const isText = obj.type === 'i-text';
-                document.getElementById('text-controls').classList.toggle('hidden', !isText);
-                if(isText) {
-                    document.getElementById('text-stroke-color').value = obj.stroke || '#ffffff';
-                    document.getElementById('text-stroke-width').value = obj.strokeWidth || 0;
-                }
-            }
-        }
-
-        function deleteActiveObject() { const obj = canvas.getActiveObject(); if (obj && !obj.isEditing && obj.id !== 'guide-frame') { canvas.remove(obj); canvas.discardActiveObject(); updatePanel(); document.getElementById('floating-menu').style.display = 'none'; saveState(); } }
-        function toggleLock() { const obj = canvas.getActiveObject(); if(!obj) return; const isLocked = !obj.lockMovementX; obj.set({ lockMovementX: isLocked, lockMovementY: isLocked, lockRotation: isLocked, lockScalingX: isLocked, lockScalingY: isLocked, borderColor: isLocked ? '#ef4444' : '#3b82f6', hasControls: !isLocked }); canvas.requestRenderAll(); updateFloatingMenu(obj); updatePanel(); saveState(); }
-        function groupObjects() { if (!canvas.getActiveObject()) return; if (canvas.getActiveObject().type !== 'activeSelection') return; canvas.getActiveObject().toGroup(); canvas.requestRenderAll(); updatePanel(); saveState(); }
-        function ungroupObjects() { if (!canvas.getActiveObject()) return; if (canvas.getActiveObject().type !== 'group') return; canvas.getActiveObject().toActiveSelection(); canvas.requestRenderAll(); updatePanel(); saveState(); }
-        function bringToFront() { const obj = canvas.getActiveObject(); if(obj) { obj.bringToFront(); if(guideFrame) guideFrame.bringToFront(); saveState(); } }
-        function sendToBack() { const obj = canvas.getActiveObject(); if(obj) { obj.sendToBack(); saveState(); } }
-        function saveState() { if (isRedoing) return; redoStack = []; if(undoStack.length > 20) undoStack.shift(); undoStack.push(canvas.toJSON()); document.getElementById('btn-undo').disabled = undoStack.length === 0; document.getElementById('btn-redo').disabled = redoStack.length === 0; }
-        function undo() { if (undoStack.length > 0) { isRedoing = true; redoStack.push(canvas.toJSON()); const state = undoStack.pop(); canvas.loadFromJSON(state, () => { canvas.renderAll(); isRedoing = false; updatePanel(); }); } document.getElementById('btn-undo').disabled = undoStack.length === 0; document.getElementById('btn-redo').disabled = redoStack.length === 0; }
-        function redo() { if (redoStack.length > 0) { isRedoing = true; undoStack.push(canvas.toJSON()); const state = redoStack.pop(); canvas.loadFromJSON(state, () => { canvas.renderAll(); isRedoing = false; updatePanel(); }); } document.getElementById('btn-undo').disabled = undoStack.length === 0; document.getElementById('btn-redo').disabled = redoStack.length === 0; }
-        function updateZoomDisplay() { document.getElementById('zoom-val').innerText = Math.round(canvas.getZoom() * 100) + '%'; }
+        let scale = 1;
+        let pannedX = 0;
+        let pannedY = 0;
         
-        function addText() { setMode('select'); const text = new fabric.IText('Text', { left: guideFrame.left + artboardW/2, top: guideFrame.top + artboardH/2, originX: 'center', originY: 'center', fontFamily: 'Noto Sans TC', fontSize: 60, fill: '#ffffff', stroke: '#000000', strokeWidth: 8, paintFirst: 'stroke', fontWeight: '900' }); canvas.add(text); canvas.setActiveObject(text); if(guideFrame) guideFrame.bringToFront(); }
-        function updateObject() { const obj = canvas.getActiveObject(); if (!obj) return; obj.set('fill', document.getElementById('obj-color').value); if (obj.type === 'i-text') { let fontVal = document.getElementById('font-family').value; if (fontVal === 'custom_input') fontVal = document.getElementById('custom-font-input').value || 'sans-serif'; obj.set({ fontFamily: fontVal, stroke: document.getElementById('text-stroke-color').value, strokeWidth: parseFloat(document.getElementById('text-stroke-width').value) }); } canvas.requestRenderAll(); }
-        function setRotation(angle) { const obj = canvas.getActiveObject(); if(!obj) return; obj.set('angle', parseInt(angle)); document.getElementById('rotation-val').innerText = parseInt(angle) + "°"; canvas.requestRenderAll(); }
-        document.getElementById('angle-control').addEventListener('change', saveState);
-        function rotateObject(deg) { const obj = canvas.getActiveObject(); if(!obj) return; let currentAngle = obj.angle; obj.rotate(currentAngle + deg); canvas.requestRenderAll(); updatePanel(); saveState(); }
-        function renderFontOptions() { const group = document.getElementById('saved-fonts-group'); group.innerHTML = ''; if (myFonts.length === 0) { const opt = document.createElement('option'); opt.text = "(None)"; opt.disabled = true; group.appendChild(opt); } else { myFonts.forEach(fontName => { const opt = document.createElement('option'); opt.value = fontName; opt.text = fontName; group.appendChild(opt); }); } }
-        function handleFontChange() { const select = document.getElementById('font-family'); const customArea = document.getElementById('custom-font-area'); if (select.value === 'custom_input') { customArea.classList.remove('hidden'); document.getElementById('custom-font-input').focus(); } else { customArea.classList.add('hidden'); updateObject(); } }
-        function saveCustomFont() { const name = document.getElementById('custom-font-input').value.trim(); if (!name) return; if (!myFonts.includes(name)) { myFonts.unshift(name); localStorage.setItem('sticker_my_fonts', JSON.stringify(myFonts)); renderFontOptions(); document.getElementById('font-family').value = name; document.getElementById('custom-font-area').classList.add('hidden'); updateObject(); alert(`Saved: ${name}`); } else { document.getElementById('font-family').value = name; updateObject(); } }
-        function duplicateObject() { const obj = canvas.getActiveObject(); if(!obj || obj.id === 'guide-frame') return; obj.clone(function(cloned) { canvas.discardActiveObject(); cloned.set({ left: cloned.left + 20, top: cloned.top + 20, evented: true }); if (cloned.type === 'activeSelection') { cloned.canvas = canvas; cloned.forEachObject(function(o) { canvas.add(o); }); cloned.setCoords(); } else { canvas.add(cloned); } canvas.setActiveObject(cloned); if(guideFrame) guideFrame.bringToFront(); canvas.requestRenderAll(); saveState(); }); }
-        function startCrop() { setMode('crop'); document.getElementById('crop-controls').classList.remove('hidden'); cropRect = new fabric.Rect({ fill: 'rgba(0,0,0,0.5)', stroke: '#38bdf8', strokeWidth: 2, strokeDashArray: [10, 5], left: guideFrame.left, top: guideFrame.top, width: artboardW, height: artboardH, selectable: true, hasRotatingPoint: false, lockRotation: true, cornerColor: 'white', cornerStrokeColor: '#38bdf8', transparentCorners: false }); canvas.add(cropRect); canvas.setActiveObject(cropRect); if(guideFrame) guideFrame.bringToFront(); }
-        function cancelCrop() { if (cropRect) canvas.remove(cropRect); document.getElementById('crop-controls').classList.add('hidden'); setMode('select'); }
-        function applyCrop() { if (!cropRect) return; const { left, top, width, height } = cropRect.getBoundingRect(); cropRect.visible = false; const url = canvas.toDataURL({ left, top, width, height, format: 'png', multiplier: 1 }); canvas.clear(); createGuideFrame(); loadToCanvas(url); cancelCrop(); }
+        let isSpaceDown = false;
+        let isDragging = false;
+        let startX, startY;
 
+        // 1. 處理滾輪縮放 (Zoom)
+        viewport.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            
+            const zoomIntensity = 0.1;
+            const delta = e.deltaY > 0 ? -zoomIntensity : zoomIntensity;
+            const newScale = Math.min(Math.max(0.1, scale + delta), 5); // 限制縮放 0.1x ~ 5x
+
+            // 簡單的中心縮放 (進階版可以做游標指向縮放)
+            scale = newScale;
+            updateTransform();
+        }, { passive: false });
+
+        // 2. 處理平移 (Pan) - 偵測空白鍵
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                isSpaceDown = true;
+                viewport.classList.add('panning');
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (e.code === 'Space') {
+                isSpaceDown = false;
+                viewport.classList.remove('panning');
+                isDragging = false; // 確保放開空白鍵時停止拖曳
+            }
+        });
+
+        // 3. 滑鼠拖曳邏輯
+        viewport.addEventListener('mousedown', (e) => {
+            // 只有按住空白鍵時，左鍵才能拖動視窗
+            if (isSpaceDown) {
+                isDragging = true;
+                startX = e.clientX - pannedX;
+                startY = e.clientY - pannedY;
+            }
+        });
+
+        viewport.addEventListener('mousemove', (e) => {
+            if (isDragging && isSpaceDown) {
+                e.preventDefault();
+                pannedX = e.clientX - startX;
+                pannedY = e.clientY - startY;
+                updateTransform();
+            }
+        });
+
+        viewport.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+        
+        viewport.addEventListener('mouseleave', () => {
+            isDragging = false;
+        });
+
+        // 更新 CSS Transform
+        function updateTransform() {
+            // 使用 translate 和 scale 來控制
+            world.style.transform = `translate(${pannedX}px, ${pannedY}px) scale(${scale})`;
+        }
+
+        // 重置功能
+        function resetView() {
+            scale = 1;
+            pannedX = 0;
+            pannedY = 0;
+            updateTransform();
+        }
+
+        // 4. 字型切換功能
+        function changeFont(fontFamily) {
+            const textElement = document.getElementById('demoText');
+            textElement.style.fontFamily = fontFamily;
+        }
+        
+        // 初始化字型
+        changeFont("'Noto Sans TC', sans-serif");
+        
+        // 簡單的文字拖曳 (模擬貼圖編輯)
+        const demoText = document.getElementById('demoText');
+        let isTextDragging = false;
+        let textOffsetX, textOffsetY;
+
+        demoText.addEventListener('mousedown', (e) => {
+            if (isSpaceDown) return; // 如果正在平移畫布，不要觸發文字拖曳
+            e.stopPropagation(); // 防止冒泡
+            isTextDragging = true;
+            textOffsetX = e.clientX - demoText.offsetLeft * scale; // 簡化計算
+            textOffsetY = e.clientY - demoText.offsetTop * scale;
+            demoText.style.cursor = 'grabbing';
+        });
+        
+        // 注意：這裡只是簡單演示 DOM 拖曳，正式版我們會用 Canvas 內部邏輯處理
+        window.addEventListener('mouseup', () => {
+            isTextDragging = false;
+            demoText.style.cursor = 'move';
+        });
     </script>
 </body>
 </html>

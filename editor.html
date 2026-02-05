@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sticker Master V15.1 - 完整修補版</title>
+    <title>Sticker Master V16 - 橡皮擦修復版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
@@ -18,17 +18,32 @@
             -webkit-font-smoothing: antialiased;
         }
 
-        /* 護眼低對比棋盤格 */
+        /* 背景層：動態切換 Class */
         #workspace-bg {
             position: absolute; inset: 0; z-index: 0;
-            background-color: #18181b; 
-            background-image: 
-                linear-gradient(45deg, rgba(255,255,255,0.03) 25%, transparent 25%), 
-                linear-gradient(-45deg, rgba(255,255,255,0.03) 25%, transparent 25%), 
-                linear-gradient(45deg, transparent 75%, rgba(255,255,255,0.03) 75%), 
-                linear-gradient(-45deg, transparent 75%, rgba(255,255,255,0.03) 75%);
             background-size: 24px 24px;
             background-position: 0 0, 0 12px, 12px -12px, -12px 0px;
+            pointer-events: none;
+        }
+
+        /* 暗色模式棋盤格 (預設) */
+        .bg-dark-check {
+            background-color: #18181b; 
+            background-image: 
+                linear-gradient(45deg, rgba(255,255,255,0.05) 25%, transparent 25%), 
+                linear-gradient(-45deg, rgba(255,255,255,0.05) 25%, transparent 25%), 
+                linear-gradient(45deg, transparent 75%, rgba(255,255,255,0.05) 75%), 
+                linear-gradient(-45deg, transparent 75%, rgba(255,255,255,0.05) 75%);
+        }
+
+        /* 亮色模式棋盤格 (檢查用) */
+        .bg-light-check {
+            background-color: #fff; 
+            background-image: 
+                linear-gradient(45deg, #ccc 25%, transparent 25%), 
+                linear-gradient(-45deg, #ccc 25%, transparent 25%), 
+                linear-gradient(45deg, transparent 75%, #ccc 75%), 
+                linear-gradient(-45deg, transparent 75%, #ccc 75%);
         }
 
         .ios-glass {
@@ -59,11 +74,11 @@
 </head>
 <body oncontextmenu="return false;">
 
-    <div id="workspace-bg"></div>
+    <div id="workspace-bg" class="bg-dark-check"></div>
     <div class="absolute inset-0 z-10"><canvas id="c"></canvas></div>
 
     <nav class="absolute top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4 ios-glass px-6 py-3 rounded-full shadow-2xl transition-all hover:scale-105">
-        <div class="font-bold text-sm tracking-wide text-gray-200">Sticker V15.1</div>
+        <div class="font-bold text-sm tracking-wide text-gray-200">Sticker V16</div>
         <div class="w-[1px] h-4 bg-gray-600"></div>
         <label class="ios-btn w-8 h-8 rounded-full" title="載入"><i class="fas fa-image text-lg"></i><input type="file" id="imgLoader" accept="image/*" class="hidden"></label>
         <button onclick="downloadImage()" class="ios-btn w-8 h-8 rounded-full text-green-400" title="輸出"><i class="fas fa-file-export text-lg"></i></button>
@@ -78,15 +93,19 @@
         <button onclick="addText()" class="ios-btn w-12 h-12 rounded-2xl flex-col gap-1 text-yellow-400"><i class="fas fa-font text-lg"></i><span class="text-[9px]">文字</span></button>
         <div class="w-[1px] h-8 bg-gray-600 mx-1"></div>
         <button onclick="setMode('draw')" id="btn-draw" class="ios-btn w-12 h-12 rounded-2xl flex-col gap-1"><i class="fas fa-pen text-lg"></i><span class="text-[9px]">畫筆</span></button>
-        <button onclick="setMode('eraser')" id="btn-eraser" class="ios-btn w-12 h-12 rounded-2xl flex-col gap-1 text-red-400"><i class="fas fa-eraser text-lg"></i><span class="text-[9px]">橡皮擦</span></button>
+        <button onclick="setMode('eraser')" id="btn-eraser" class="ios-btn w-12 h-12 rounded-2xl flex-col gap-1 text-pink-400"><i class="fas fa-eraser text-lg"></i><span class="text-[9px]">橡皮擦</span></button>
         <div class="w-[1px] h-8 bg-gray-600 mx-1"></div>
+        <button onclick="deleteActiveObject()" class="ios-btn w-12 h-12 rounded-2xl flex-col gap-1 text-red-500 hover:bg-red-500/20"><i class="fas fa-trash-alt text-lg"></i><span class="text-[9px]">刪除</span></button>
         <button onclick="startCrop()" id="btn-crop" class="ios-btn w-12 h-12 rounded-2xl flex-col gap-1"><i class="fas fa-crop-alt text-lg"></i><span class="text-[9px]">裁切</span></button>
     </div>
 
     <div class="absolute top-20 right-4 z-40 w-64 ios-glass rounded-3xl p-5 transition-all duration-300" id="prop-panel">
         <div class="flex justify-between items-center mb-4 pb-2 border-b border-gray-700/50">
             <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Settings</span>
-            <button onclick="resetViewport()" class="text-[10px] bg-gray-700/50 hover:bg-gray-600 px-2 py-1 rounded-md text-blue-300" id="zoom-val">100%</button>
+            <div class="flex gap-2">
+                <button onclick="toggleBg()" class="text-[10px] bg-gray-700/50 hover:bg-gray-600 px-2 py-1 rounded-md text-yellow-300" title="切換背景亮暗"><i class="fas fa-lightbulb"></i></button>
+                <button onclick="resetViewport()" class="text-[10px] bg-gray-700/50 hover:bg-gray-600 px-2 py-1 rounded-md text-blue-300" id="zoom-val">100%</button>
+            </div>
         </div>
 
         <div id="panel-none" class="py-10 text-center text-gray-500 text-xs">
@@ -96,7 +115,7 @@
         </div>
 
         <div id="panel-brush" class="hidden space-y-5">
-            <div>
+            <div id="brush-color-container">
                 <label class="text-[10px] text-gray-400 block mb-2 font-bold">COLOR</label>
                 <div class="flex gap-2">
                     <input type="color" id="draw-color" value="#ffffff" class="w-8 h-8 rounded-full border border-gray-600 p-0 bg-transparent cursor-pointer" onchange="updateBrush()">
@@ -161,7 +180,7 @@
     <div id="floating-menu" class="ios-glass flex items-center">
         <div class="ios-btn w-9 h-9 rounded-full bg-red-500/20 text-red-400" onclick="deleteActiveObject()"><i class="fas fa-trash"></i></div>
         <div class="ios-btn w-9 h-9 rounded-full" onclick="toggleLock()" id="float-lock"><i class="fas fa-unlock"></i></div>
-        <div class="ios-btn w-9 h-9 rounded-full" onclick="duplicateObject()" title="複製"><i class="fas fa-clone"></i></div>
+        <div class="ios-btn w-9 h-9 rounded-full" onclick="duplicateObject()"><i class="fas fa-clone"></i></div>
         <div class="w-[1px] h-5 bg-gray-600 mx-1"></div>
         <div class="ios-btn w-9 h-9 rounded-full" onclick="groupObjects()" id="float-group"><i class="fas fa-object-group"></i></div>
         <div class="ios-btn w-9 h-9 rounded-full" onclick="ungroupObjects()" id="float-ungroup"><i class="fas fa-object-ungroup"></i></div>
@@ -211,7 +230,19 @@
             if(guideFrame) centerArtboard();
         }
 
-        // --- 虛線框 (Guide Frame) ---
+        // V16: 切換背景
+        function toggleBg() {
+            const bg = document.getElementById('workspace-bg');
+            if (bg.classList.contains('bg-dark-check')) {
+                bg.classList.remove('bg-dark-check');
+                bg.classList.add('bg-light-check');
+            } else {
+                bg.classList.remove('bg-light-check');
+                bg.classList.add('bg-dark-check');
+            }
+        }
+
+        // 虛線框
         function createGuideFrame() {
             if(guideFrame) canvas.remove(guideFrame);
             guideFrame = new fabric.Rect({
@@ -239,7 +270,7 @@
             updateZoomDisplay();
         }
 
-        // --- 核心邏輯 (刪除/複製/輸出) ---
+        // 刪除保護
         function deleteActiveObject() {
             const obj = canvas.getActiveObject();
             if (obj && !obj.isEditing && obj.id !== 'guide-frame') {
@@ -251,26 +282,7 @@
             }
         }
 
-        function duplicateObject() {
-            const obj = canvas.getActiveObject();
-            if(!obj || obj.id === 'guide-frame') return;
-            obj.clone(function(cloned) {
-                canvas.discardActiveObject();
-                cloned.set({ left: cloned.left + 20, top: cloned.top + 20, evented: true });
-                if (cloned.type === 'activeSelection') {
-                    cloned.canvas = canvas;
-                    cloned.forEachObject(function(o) { canvas.add(o); });
-                    cloned.setCoords();
-                } else {
-                    canvas.add(cloned);
-                }
-                canvas.setActiveObject(cloned);
-                if(guideFrame) guideFrame.bringToFront();
-                canvas.requestRenderAll();
-                saveState();
-            });
-        }
-
+        // 輸出
         function downloadImage() {
             canvas.discardActiveObject();
             document.getElementById('floating-menu').style.display = 'none';
@@ -290,7 +302,7 @@
             }, 50);
         }
 
-        // --- 導航 ---
+        // 導航
         canvas.on('mouse:down', function(opt) {
             const evt = opt.e;
             const isRightClick = opt.button === 2 || evt.button === 2;
@@ -324,7 +336,7 @@
         });
         canvas.on('object:added', (e) => { if (e.target.id !== 'guide-frame' && guideFrame) guideFrame.bringToFront(); });
 
-        // --- 載入 ---
+        // 載入
         function loadToCanvas(dataURL) {
             document.getElementById('loading-toast').classList.remove('hidden');
             const imgObj = new Image();
@@ -345,7 +357,7 @@
             };
         }
 
-        // --- 工具模式 ---
+        // 工具模式
         function setMode(mode) {
             if(currentMode === 'crop' && mode !== 'crop') cancelCrop();
             currentMode = mode;
@@ -363,22 +375,26 @@
             canvas.requestRenderAll(); updatePanel();
         }
 
+        // V16 修正：橡皮擦完全不透明 (alpha 1)
         function updateBrush() {
             if (!canvas.freeDrawingBrush) return;
             const size = parseInt(document.getElementById('draw-width').value);
             document.getElementById('brush-size-val').innerText = size;
+            
             if (currentMode === 'eraser') {
                 canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
                 canvas.freeDrawingBrush.width = size;
-                canvas.freeDrawingBrush.color = 'rgba(255,255,255,0.5)'; 
-                document.getElementById('brush-color-wrap').classList.add('opacity-30', 'pointer-events-none');
+                // 關鍵：這裡使用不透明的白色，確保 destination-out 能夠 100% 挖空
+                canvas.freeDrawingBrush.color = 'rgba(255,255,255,1)'; 
+                document.getElementById('brush-color-container').style.display = 'none';
             } else {
                 canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
                 canvas.freeDrawingBrush.width = size;
                 canvas.freeDrawingBrush.color = document.getElementById('draw-color').value;
-                document.getElementById('brush-color-wrap').classList.remove('opacity-30', 'pointer-events-none');
+                document.getElementById('brush-color-container').style.display = 'block';
             }
         }
+        
         canvas.on('path:created', function(opt) {
             if (currentMode === 'eraser') {
                 const path = opt.path;
@@ -462,6 +478,8 @@
         document.getElementById('angle-control').addEventListener('change', saveState);
         function rotateObject(deg) { const obj = canvas.getActiveObject(); if(!obj) return; let currentAngle = obj.angle; obj.rotate(currentAngle + deg); canvas.requestRenderAll(); updatePanel(); saveState(); }
         
+        function duplicateObject() { const obj = canvas.getActiveObject(); if(!obj || obj.id === 'guide-frame') return; obj.clone(function(cloned) { canvas.discardActiveObject(); cloned.set({ left: cloned.left + 20, top: cloned.top + 20, evented: true }); if (cloned.type === 'activeSelection') { cloned.canvas = canvas; cloned.forEachObject(function(o) { canvas.add(o); }); cloned.setCoords(); } else { canvas.add(cloned); } canvas.setActiveObject(cloned); if(guideFrame) guideFrame.bringToFront(); canvas.requestRenderAll(); saveState(); }); }
+
         function startCrop() { setMode('crop'); document.getElementById('crop-controls').classList.remove('hidden'); resetViewport(); cropRect = new fabric.Rect({ fill: 'rgba(0,0,0,0.5)', stroke: '#38bdf8', strokeWidth: 2, strokeDashArray: [10, 5], left: 0, top: 0, width: artboardW, height: artboardH, selectable: true, hasRotatingPoint: false, lockRotation: true, cornerColor: 'white', cornerStrokeColor: '#38bdf8', transparentCorners: false }); canvas.add(cropRect); canvas.setActiveObject(cropRect); if(guideFrame) guideFrame.bringToFront(); }
         function cancelCrop() { if (cropRect) canvas.remove(cropRect); document.getElementById('crop-controls').classList.add('hidden'); setMode('select'); }
         function applyCrop() { if (!cropRect) return; const { left, top, width, height } = cropRect.getBoundingRect(); cropRect.visible = false; const url = canvas.toDataURL({ left, top, width, height, format: 'png', multiplier: 1 }); canvas.clear(); createGuideFrame(); loadToCanvas(url); cancelCrop(); }

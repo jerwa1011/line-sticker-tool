@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sticker Master V15 - 舒適精準版</title>
+    <title>Sticker Master V15.1 - 完整修補版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
@@ -18,11 +18,10 @@
             -webkit-font-smoothing: antialiased;
         }
 
-        /* V15 改良：極低對比度棋盤格 (護眼模式) */
+        /* 護眼低對比棋盤格 */
         #workspace-bg {
             position: absolute; inset: 0; z-index: 0;
-            background-color: #18181b; /* 深灰底 */
-            /* 使用極淡的透明度 (0.03) 來製作紋理，避免視覺疲勞 */
+            background-color: #18181b; 
             background-image: 
                 linear-gradient(45deg, rgba(255,255,255,0.03) 25%, transparent 25%), 
                 linear-gradient(-45deg, rgba(255,255,255,0.03) 25%, transparent 25%), 
@@ -34,8 +33,7 @@
 
         .ios-glass {
             background: rgba(30, 30, 30, 0.7);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.08);
             box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
         }
@@ -62,54 +60,30 @@
 <body oncontextmenu="return false;">
 
     <div id="workspace-bg"></div>
-
-    <div class="absolute inset-0 z-10">
-        <canvas id="c"></canvas>
-    </div>
+    <div class="absolute inset-0 z-10"><canvas id="c"></canvas></div>
 
     <nav class="absolute top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4 ios-glass px-6 py-3 rounded-full shadow-2xl transition-all hover:scale-105">
-        <div class="font-bold text-sm tracking-wide text-gray-200">Sticker V15</div>
+        <div class="font-bold text-sm tracking-wide text-gray-200">Sticker V15.1</div>
         <div class="w-[1px] h-4 bg-gray-600"></div>
-        
-        <label class="ios-btn w-8 h-8 rounded-full" title="載入">
-            <i class="fas fa-image text-lg"></i>
-            <input type="file" id="imgLoader" accept="image/*" class="hidden">
-        </label>
-        <button onclick="downloadImage()" class="ios-btn w-8 h-8 rounded-full text-green-400" title="輸出">
-            <i class="fas fa-file-export text-lg"></i>
-        </button>
-        
+        <label class="ios-btn w-8 h-8 rounded-full" title="載入"><i class="fas fa-image text-lg"></i><input type="file" id="imgLoader" accept="image/*" class="hidden"></label>
+        <button onclick="downloadImage()" class="ios-btn w-8 h-8 rounded-full text-green-400" title="輸出"><i class="fas fa-file-export text-lg"></i></button>
         <div class="w-[1px] h-4 bg-gray-600"></div>
-        
         <button onclick="undo()" id="btn-undo" class="ios-btn w-8 h-8 rounded-full disabled:opacity-30"><i class="fas fa-undo"></i></button>
         <button onclick="redo()" id="btn-redo" class="ios-btn w-8 h-8 rounded-full disabled:opacity-30"><i class="fas fa-redo"></i></button>
     </nav>
 
     <div class="absolute bottom-8 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 ios-glass px-5 py-3 rounded-3xl shadow-2xl">
-        <button onclick="setMode('select')" id="btn-select" class="ios-btn active w-12 h-12 rounded-2xl flex-col gap-1">
-            <i class="fas fa-mouse-pointer text-lg"></i><span class="text-[9px]">選取</span>
-        </button>
-        <button onclick="setMode('pan')" id="btn-pan" class="ios-btn w-12 h-12 rounded-2xl flex-col gap-1">
-            <i class="fas fa-hand-paper text-lg"></i><span class="text-[9px]">移動</span>
-        </button>
-        <button onclick="addText()" class="ios-btn w-12 h-12 rounded-2xl flex-col gap-1 text-yellow-400">
-            <i class="fas fa-font text-lg"></i><span class="text-[9px]">文字</span>
-        </button>
+        <button onclick="setMode('select')" id="btn-select" class="ios-btn active w-12 h-12 rounded-2xl flex-col gap-1"><i class="fas fa-mouse-pointer text-lg"></i><span class="text-[9px]">選取</span></button>
+        <button onclick="setMode('pan')" id="btn-pan" class="ios-btn w-12 h-12 rounded-2xl flex-col gap-1"><i class="fas fa-hand-paper text-lg"></i><span class="text-[9px]">移動</span></button>
+        <button onclick="addText()" class="ios-btn w-12 h-12 rounded-2xl flex-col gap-1 text-yellow-400"><i class="fas fa-font text-lg"></i><span class="text-[9px]">文字</span></button>
         <div class="w-[1px] h-8 bg-gray-600 mx-1"></div>
-        <button onclick="setMode('draw')" id="btn-draw" class="ios-btn w-12 h-12 rounded-2xl flex-col gap-1">
-            <i class="fas fa-pen text-lg"></i><span class="text-[9px]">畫筆</span>
-        </button>
-        <button onclick="setMode('eraser')" id="btn-eraser" class="ios-btn w-12 h-12 rounded-2xl flex-col gap-1 text-red-400">
-            <i class="fas fa-eraser text-lg"></i><span class="text-[9px]">橡皮擦</span>
-        </button>
+        <button onclick="setMode('draw')" id="btn-draw" class="ios-btn w-12 h-12 rounded-2xl flex-col gap-1"><i class="fas fa-pen text-lg"></i><span class="text-[9px]">畫筆</span></button>
+        <button onclick="setMode('eraser')" id="btn-eraser" class="ios-btn w-12 h-12 rounded-2xl flex-col gap-1 text-red-400"><i class="fas fa-eraser text-lg"></i><span class="text-[9px]">橡皮擦</span></button>
         <div class="w-[1px] h-8 bg-gray-600 mx-1"></div>
-        <button onclick="startCrop()" id="btn-crop" class="ios-btn w-12 h-12 rounded-2xl flex-col gap-1">
-            <i class="fas fa-crop-alt text-lg"></i><span class="text-[9px]">裁切</span>
-        </button>
+        <button onclick="startCrop()" id="btn-crop" class="ios-btn w-12 h-12 rounded-2xl flex-col gap-1"><i class="fas fa-crop-alt text-lg"></i><span class="text-[9px]">裁切</span></button>
     </div>
 
     <div class="absolute top-20 right-4 z-40 w-64 ios-glass rounded-3xl p-5 transition-all duration-300" id="prop-panel">
-        
         <div class="flex justify-between items-center mb-4 pb-2 border-b border-gray-700/50">
             <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Settings</span>
             <button onclick="resetViewport()" class="text-[10px] bg-gray-700/50 hover:bg-gray-600 px-2 py-1 rounded-md text-blue-300" id="zoom-val">100%</button>
@@ -139,14 +113,9 @@
 
         <div id="panel-object" class="hidden space-y-5">
             <div class="grid grid-cols-2 gap-2">
-                <button onclick="toggleLock()" id="btn-lock" class="ios-btn bg-gray-700/30 hover:bg-gray-600 h-9 rounded-xl text-xs">
-                    <i class="fas fa-unlock mr-2"></i>鎖定
-                </button>
-                <button onclick="deleteActiveObject()" class="ios-btn bg-red-500/10 hover:bg-red-500/30 text-red-400 h-9 rounded-xl text-xs">
-                    <i class="fas fa-trash-alt mr-2"></i>刪除
-                </button>
+                <button onclick="toggleLock()" id="btn-lock" class="ios-btn bg-gray-700/30 hover:bg-gray-600 h-9 rounded-xl text-xs"><i class="fas fa-unlock mr-2"></i>鎖定</button>
+                <button onclick="deleteActiveObject()" class="ios-btn bg-red-500/10 hover:bg-red-500/30 text-red-400 h-9 rounded-xl text-xs"><i class="fas fa-trash-alt mr-2"></i>刪除</button>
             </div>
-
             <div>
                 <label class="text-[10px] text-gray-400 flex justify-between mb-2 font-bold">ROTATION <span id="rotation-val">0°</span></label>
                 <input type="range" id="angle-control" min="-180" max="180" value="0" class="w-full" oninput="setRotation(this.value)">
@@ -156,12 +125,10 @@
                     <button onclick="rotateObject(90)" class="text-[10px] text-gray-500 hover:text-white bg-gray-800 px-2 py-1 rounded">+90°</button>
                 </div>
             </div>
-
             <div>
                 <label class="text-[10px] text-gray-400 block mb-2 font-bold">FILL</label>
                 <input type="color" id="obj-color" class="w-full h-8 rounded-lg cursor-pointer border border-gray-600 bg-transparent" onchange="updateObject()">
             </div>
-
             <div id="text-controls" class="hidden space-y-4 border-t border-gray-700 pt-4">
                 <div>
                     <label class="text-[10px] text-gray-400 block mb-2 font-bold">FONT</label>
@@ -194,6 +161,7 @@
     <div id="floating-menu" class="ios-glass flex items-center">
         <div class="ios-btn w-9 h-9 rounded-full bg-red-500/20 text-red-400" onclick="deleteActiveObject()"><i class="fas fa-trash"></i></div>
         <div class="ios-btn w-9 h-9 rounded-full" onclick="toggleLock()" id="float-lock"><i class="fas fa-unlock"></i></div>
+        <div class="ios-btn w-9 h-9 rounded-full" onclick="duplicateObject()" title="複製"><i class="fas fa-clone"></i></div>
         <div class="w-[1px] h-5 bg-gray-600 mx-1"></div>
         <div class="ios-btn w-9 h-9 rounded-full" onclick="groupObjects()" id="float-group"><i class="fas fa-object-group"></i></div>
         <div class="ios-btn w-9 h-9 rounded-full" onclick="ungroupObjects()" id="float-ungroup"><i class="fas fa-object-ungroup"></i></div>
@@ -211,7 +179,6 @@
     </div>
 
     <script>
-        // --- 1. Fabric 初始化 ---
         fabric.Object.prototype.set({
             transparentCorners: false, cornerColor: '#38bdf8', cornerStyle: 'circle', borderColor: '#38bdf8', cornerSize: 10, padding: 5, borderScaleFactor: 2, rotatingPointOffset: 25
         });
@@ -244,22 +211,20 @@
             if(guideFrame) centerArtboard();
         }
 
-        // --- 2. 虛線框修正 (Guide Frame) ---
+        // --- 虛線框 (Guide Frame) ---
         function createGuideFrame() {
             if(guideFrame) canvas.remove(guideFrame);
             guideFrame = new fabric.Rect({
-                id: 'guide-frame', // 標記它
+                id: 'guide-frame',
                 width: artboardW, height: artboardH, 
                 fill: 'transparent', 
-                stroke: 'rgba(255, 255, 255, 0.3)', // 淡淡的白線
+                stroke: 'rgba(255, 255, 255, 0.3)', 
                 strokeWidth: 1, strokeDashArray: [8, 4],
-                selectable: false, // 不可選取
-                evented: false,    // 不接收事件 (滑鼠可穿透)
+                selectable: false, evented: false, 
                 originX: 'left', originY: 'top',
                 hoverCursor: 'default'
             });
             canvas.add(guideFrame);
-            // V15: 移到最上層，確保看得到邊界，但因為 evented:false 所以不會擋到操作
             guideFrame.bringToFront(); 
             centerArtboard();
         }
@@ -274,9 +239,7 @@
             updateZoomDisplay();
         }
 
-        // --- 3. 核心邏輯 (刪除/輸出保護) ---
-        
-        // 修改：刪除時檢查是否為 guide-frame (雙重保險)
+        // --- 核心邏輯 (刪除/複製/輸出) ---
         function deleteActiveObject() {
             const obj = canvas.getActiveObject();
             if (obj && !obj.isEditing && obj.id !== 'guide-frame') {
@@ -284,40 +247,50 @@
                 canvas.discardActiveObject();
                 updatePanel();
                 document.getElementById('floating-menu').style.display = 'none';
+                saveState();
             }
         }
 
-        // 修改：輸出時隱藏 guide-frame
+        function duplicateObject() {
+            const obj = canvas.getActiveObject();
+            if(!obj || obj.id === 'guide-frame') return;
+            obj.clone(function(cloned) {
+                canvas.discardActiveObject();
+                cloned.set({ left: cloned.left + 20, top: cloned.top + 20, evented: true });
+                if (cloned.type === 'activeSelection') {
+                    cloned.canvas = canvas;
+                    cloned.forEachObject(function(o) { canvas.add(o); });
+                    cloned.setCoords();
+                } else {
+                    canvas.add(cloned);
+                }
+                canvas.setActiveObject(cloned);
+                if(guideFrame) guideFrame.bringToFront();
+                canvas.requestRenderAll();
+                saveState();
+            });
+        }
+
         function downloadImage() {
             canvas.discardActiveObject();
             document.getElementById('floating-menu').style.display = 'none';
-            
             const originalVpt = canvas.viewportTransform.slice();
             canvas.viewportTransform = [1, 0, 0, 1, 0, 0];
-            
-            // 隱藏虛線框
             if(guideFrame) guideFrame.visible = false;
             canvas.renderAll();
-
             setTimeout(() => {
                 const link = document.createElement('a'); 
                 link.download = `sticker-${Date.now()}.png`;
-                link.href = canvas.toDataURL({ 
-                    format: 'png', quality: 1, multiplier: 1, 
-                    left: 0, top: 0, width: artboardW, height: artboardH 
-                });
+                link.href = canvas.toDataURL({ format: 'png', quality: 1, multiplier: 1, left: 0, top: 0, width: artboardW, height: artboardH });
                 link.click();
-                
-                // 恢復顯示
                 if(guideFrame) guideFrame.visible = true;
-                // 保持 frame 在最上層
-                guideFrame.bringToFront(); 
+                guideFrame.bringToFront();
                 canvas.viewportTransform = originalVpt;
                 canvas.requestRenderAll();
             }, 50);
         }
 
-        // --- 4. 導航與操作 ---
+        // --- 導航 ---
         canvas.on('mouse:down', function(opt) {
             const evt = opt.e;
             const isRightClick = opt.button === 2 || evt.button === 2;
@@ -349,15 +322,9 @@
             opt.e.preventDefault(); opt.e.stopPropagation(); updateZoomDisplay();
             if(canvas.getActiveObject()) updateFloatingMenu(canvas.getActiveObject());
         });
+        canvas.on('object:added', (e) => { if (e.target.id !== 'guide-frame' && guideFrame) guideFrame.bringToFront(); });
 
-        // 每次添加新物件，確保 Guide Frame 在最上面，但不擋操作
-        canvas.on('object:added', (e) => {
-            if (e.target.id !== 'guide-frame' && guideFrame) {
-                guideFrame.bringToFront();
-            }
-        });
-
-        // --- 圖片載入 ---
+        // --- 載入 ---
         function loadToCanvas(dataURL) {
             document.getElementById('loading-toast').classList.remove('hidden');
             const imgObj = new Image();
@@ -369,11 +336,8 @@
                     imgInstance.scale(scale);
                 }
                 imgInstance.set({ left: artboardW / 2, top: artboardH / 2, originX: 'center', originY: 'center' });
-                
-                // 圖片加入後，它會在最上層，我們要把 Guide Frame 再次拉到最上層
                 canvas.add(imgInstance);
                 if(guideFrame) guideFrame.bringToFront();
-                
                 canvas.setActiveObject(imgInstance);
                 canvas.requestRenderAll();
                 saveState();
@@ -381,7 +345,7 @@
             };
         }
 
-        // --- 其餘功能 (保持 V14 邏輯) ---
+        // --- 工具模式 ---
         function setMode(mode) {
             if(currentMode === 'crop' && mode !== 'crop') cancelCrop();
             currentMode = mode;
@@ -420,13 +384,12 @@
                 const path = opt.path;
                 path.globalCompositeOperation = 'destination-out'; 
                 path.selectable = false; path.evented = false;
-                // 畫完橡皮擦筆跡後，也要確保 Guide Frame 在最上面
                 if(guideFrame) guideFrame.bringToFront();
                 canvas.requestRenderAll(); saveState();
             }
         });
 
-        // 浮動選單與面板
+        // 浮動選單
         canvas.on('selection:created', (e) => { updatePanel(); updateFloatingMenu(e.selected[0]); });
         canvas.on('selection:updated', (e) => { updatePanel(); updateFloatingMenu(e.selected[0]); });
         canvas.on('selection:cleared', () => { updatePanel(); document.getElementById('floating-menu').style.display = 'none'; });
@@ -435,7 +398,7 @@
         canvas.on('object:rotating', (e) => updateFloatingMenu(e.target));
 
         function updateFloatingMenu(obj) {
-            if (!obj || obj.id === 'guide-frame') return; // 不顯示 Guide Frame 的選單
+            if (!obj || obj.id === 'guide-frame') return;
             const menu = document.getElementById('floating-menu');
             const bound = obj.getBoundingRect();
             if (bound.top < -2000 || bound.left < -2000) { menu.style.display = 'none'; return; }
@@ -466,7 +429,6 @@
             }
         }
 
-        // 其餘工具
         const imgLoader = document.getElementById('imgLoader');
         imgLoader.addEventListener('change', (e) => { const file = e.target.files[0]; if(!file) return; const reader = new FileReader(); reader.onload = (f) => loadToCanvas(f.target.result); reader.readAsDataURL(file); imgLoader.value = ''; });
         window.addEventListener('paste', (e) => { const items = (e.clipboardData || e.originalEvent.clipboardData).items; for (let item of items) { if (item.kind === 'file') { const reader = new FileReader(); reader.onload = (event) => loadToCanvas(event.target.result); reader.readAsDataURL(item.getAsFile()); }}});
@@ -480,10 +442,10 @@
         });
         window.addEventListener('keyup', (e) => { if (e.code === 'Space') { spacePressed = false; if(currentMode !== 'pan') canvas.defaultCursor = 'default'; } });
 
-        function toggleLock() { const obj = canvas.getActiveObject(); if(!obj) return; const isLocked = !obj.lockMovementX; obj.set({ lockMovementX: isLocked, lockMovementY: isLocked, lockRotation: isLocked, lockScalingX: isLocked, lockScalingY: isLocked, borderColor: isLocked ? '#ef4444' : '#0a84ff', hasControls: !isLocked }); canvas.requestRenderAll(); updateFloatingMenu(obj); updatePanel(); saveState(); }
+        function toggleLock() { const obj = canvas.getActiveObject(); if(!obj) return; const isLocked = !obj.lockMovementX; obj.set({ lockMovementX: isLocked, lockMovementY: isLocked, lockRotation: isLocked, lockScalingX: isLocked, lockScalingY: isLocked, borderColor: isLocked ? '#ef4444' : '#38bdf8', hasControls: !isLocked }); canvas.requestRenderAll(); updateFloatingMenu(obj); updatePanel(); saveState(); }
         function groupObjects() { if (!canvas.getActiveObject()) return; if (canvas.getActiveObject().type !== 'activeSelection') return; canvas.getActiveObject().toGroup(); canvas.requestRenderAll(); updatePanel(); saveState(); }
         function ungroupObjects() { if (!canvas.getActiveObject()) return; if (canvas.getActiveObject().type !== 'group') return; canvas.getActiveObject().toActiveSelection(); canvas.requestRenderAll(); updatePanel(); saveState(); }
-        function bringToFront() { const obj = canvas.getActiveObject(); if(obj) { obj.bringToFront(); saveState(); } }
+        function bringToFront() { const obj = canvas.getActiveObject(); if(obj) { obj.bringToFront(); if(guideFrame) guideFrame.bringToFront(); saveState(); } }
         function sendToBack() { const obj = canvas.getActiveObject(); if(obj) { obj.sendToBack(); saveState(); } }
         function saveState() { if (isRedoing) return; redoStack = []; if(undoStack.length > 20) undoStack.shift(); undoStack.push(canvas.toJSON()); document.getElementById('btn-undo').disabled = undoStack.length === 0; document.getElementById('btn-redo').disabled = redoStack.length === 0; }
         function undo() { if (undoStack.length > 0) { isRedoing = true; redoStack.push(canvas.toJSON()); const state = undoStack.pop(); canvas.loadFromJSON(state, () => { canvas.renderAll(); isRedoing = false; updatePanel(); }); } document.getElementById('btn-undo').disabled = undoStack.length === 0; document.getElementById('btn-redo').disabled = redoStack.length === 0; }

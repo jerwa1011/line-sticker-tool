@@ -3,19 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sticker Studio Air - 最終版</title>
+    <title>Sticker Studio Air - Pro</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Zen+Maru+Gothic:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&family=Zen+Maru+Gothic:wght@400;700;900&family=Biz+UDGothic&display=swap" rel="stylesheet">
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
 
     <style>
         :root {
             --bg-color: #e5e5e5;
-            --panel-bg: rgba(255, 255, 255, 0.9);
+            --panel-bg: rgba(255, 255, 255, 0.95);
             --accent-color: #007AFF;
             --danger-color: #FF3B30;
+            --text-color: #333;
         }
 
         body {
@@ -29,24 +30,44 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            user-select: none;
         }
 
+        /* 介面容器 */
         .ui-panel {
             position: absolute;
             background: var(--panel-bg);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.4);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
             border-radius: 12px;
-            padding: 8px;
+            padding: 6px;
             z-index: 100;
             display: flex;
-            gap: 10px;
+            gap: 8px;
             align-items: center;
         }
 
-        .toolbar-top { top: 20px; height: 44px; }
+        /* 1. 主工具列 (Top) */
+        .toolbar-main { top: 20px; height: 44px; }
+        
+        /* 2. 屬性工具列 (Sub Top) - 動態顯示 */
+        .toolbar-props { 
+            top: 80px; 
+            padding: 8px 16px;
+            min-width: 200px;
+            justify-content: center;
+            display: none; /* 預設隱藏 */
+            animation: slideDown 0.2s ease-out;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 3. 左側工具列 */
         .toolbar-left { 
             left: 20px; 
             flex-direction: column; 
@@ -54,270 +75,340 @@
             transform: translateY(-50%); 
         }
 
+        /* UI 元件樣式 */
         button {
             background: transparent;
             border: none;
-            padding: 8px;
+            padding: 6px 10px;
             border-radius: 8px;
             cursor: pointer;
             transition: 0.2s;
             display: flex;
-            flex-direction: column; /* 讓圖示跟文字垂直排列 */
+            flex-direction: column;
             align-items: center;
-            justify-content: center;
             color: #555;
-            min-width: 44px;
+            min-width: 48px;
         }
         button:hover { background: rgba(0,0,0,0.05); color: var(--accent-color); }
+        button.active { background: #e0eaff; color: var(--accent-color); }
+        
         button svg { width: 20px; height: 20px; margin-bottom: 2px;}
         button span { font-size: 10px; font-weight: 500;}
 
-        #fileInput { display: none; }
+        /* 分隔線 */
+        .divider { width:1px; height:24px; background:#ddd; margin: 0 4px; }
 
-        #viewport {
-            width: 100vw;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+        /* 選單與滑塊 */
+        select {
+            padding: 6px;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+            font-size: 13px;
+            background: transparent;
+            color: #333;
             outline: none;
         }
+        
+        .slider-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: #555;
+        }
+        input[type=range] {
+            width: 100px;
+            accent-color: var(--accent-color);
+        }
 
-        .canvas-container-wrapper {
+        /* 畫布 */
+        #viewport {
+            width: 100vw; height: 100vh;
+            display: flex; justify-content: center; align-items: center;
+            outline: none;
+        }
+        .canvas-wrapper {
             box-shadow: 0 20px 60px rgba(0,0,0,0.2);
             border: 1px solid rgba(0,0,0,0.05);
-            background-color: #849ebf; 
+            background-color: #849ebf; /* LINE 預設背景 */
             transition: background-color 0.3s;
         }
 
-        /* 優化後的狀態列：加粗關鍵字 */
+        /* 狀態列 */
         .status-bar {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            font-size: 13px;
-            color: #444;
-            background: var(--panel-bg);
-            padding: 8px 16px;
-            border-radius: 30px;
-            pointer-events: none;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            letter-spacing: 0.5px;
-        }
-        .key-tag {
-            font-weight: 800;
-            color: #000;
-            background: rgba(0,0,0,0.06);
-            padding: 2px 6px;
-            border-radius: 4px;
-            margin: 0 2px;
-            border-bottom: 2px solid rgba(0,0,0,0.1);
+            position: absolute; bottom: 20px; right: 20px;
+            font-size: 12px; color: #666; background: var(--panel-bg);
+            padding: 8px 16px; border-radius: 20px; pointer-events: none;
         }
     </style>
 </head>
 <body>
 
-    <input type="file" id="fileInput" accept="image/*">
+    <input type="file" id="fileInput" accept="image/*" style="display:none">
 
-    <div class="ui-panel toolbar-top">
-        <span style="font-weight:800; font-size:15px; margin: 0 10px; color:#333;">Sticker Air</span>
-        <div style="width:1px; height:20px; background:#ddd;"></div>
+    <div class="ui-panel toolbar-main">
+        <span style="font-weight:900; font-size:16px; margin: 0 10px; color:#333;">Sticker Pro</span>
+        <div class="divider"></div>
         
-        <button onclick="triggerUpload()" title="上傳圖片">
+        <button onclick="triggerUpload()" title="上傳">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
             <span>匯入</span>
         </button>
-        
-        <button onclick="addText()" title="加入文字">
+        <button onclick="addText()" title="文字">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg>
             <span>文字</span>
         </button>
+        
+        <div class="divider"></div>
 
-        <div style="width:1px; height:20px; background:#ddd;"></div>
+        <button onclick="toggleEraser()" id="btnEraser" title="橡皮擦 (白色遮罩)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 20H7L3 16C2 15 2 13 3 12L13 2L22 11L20 20Z"/><line x1="11" y1="11" x2="14" y2="14"/></svg>
+            <span>橡皮擦</span>
+        </button>
 
-        <button onclick="removeBackground()" title="去除白色背景 (Magic Wand)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <button onclick="removeWhite()" title="去除白色 (魔術棒)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 4V2m0 2v2m0-2h2m-2 0h-2M4 15l3 3 9-9-3-3-9 9z"/></svg>
             <span>去背</span>
         </button>
 
-        <button onclick="addStroke()" title="加入白邊 (Stroke)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10" stroke-dasharray="4 4"/></svg>
-            <span>白邊</span>
+        <div class="divider"></div>
+
+        <button onclick="undo()" title="復原 (Ctrl+Z)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+            <span>復原</span>
         </button>
 
-        <div style="width:1px; height:20px; background:#ddd;"></div>
-
-        <button onclick="downloadPNG()" title="匯出 PNG" style="color: var(--accent-color);">
+        <button onclick="downloadPNG()" style="color: var(--accent-color);">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
             <span>匯出</span>
         </button>
     </div>
 
+    <div class="ui-panel toolbar-props" id="propPanel">
+        <div id="textProps" style="display:none; align-items:center; gap:10px;">
+            <select id="fontFamilySelect" onchange="changeFont(this.value)">
+                <option value="'Noto Sans TC'">思源黑體</option>
+                <option value="'Zen Maru Gothic'">可愛圓體</option>
+                <option value="'Biz UDGothic'">日系黑體</option>
+                <option value="Arial">Arial</option>
+            </select>
+            <div class="divider"></div>
+        </div>
+
+        <div class="slider-group">
+            <span>白邊</span>
+            <input type="range" id="strokeRange" min="0" max="15" value="0" step="1" oninput="updateStroke(this.value)">
+            <span id="strokeValue">0</span>
+        </div>
+    </div>
+
     <div class="ui-panel toolbar-left">
-        <button onclick="toggleBackground()" title="切換背景">
+        <button onclick="toggleBackground()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
         </button>
         
-        <button onclick="deleteObject()" title="刪除 (Del)" style="color: var(--danger-color);">
+        <button onclick="deleteObject()" style="color: var(--danger-color);">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
         </button>
     </div>
 
     <div id="viewport">
-        <div class="canvas-container-wrapper">
+        <div class="canvas-wrapper">
             <canvas id="c" width="370" height="320"></canvas>
         </div>
     </div>
 
-    <div class="status-bar">
-        <span class="key-tag">空白鍵</span> + <span class="key-tag">左鍵拖曳</span> 移動視角 • 
-        <span class="key-tag">滾輪</span> 縮放 • 
-        <span class="key-tag">Delete</span> 刪除物件
-    </div>
+    <div class="status-bar">空白鍵拖曳 • 滾輪縮放 • Ctrl+Z 復原</div>
 
     <script>
-        // 初始化
+        // === 1. 初始化 Fabric Canvas ===
         const canvas = new fabric.Canvas('c', {
             preserveObjectStacking: true,
-            backgroundColor: null
+            isDrawingMode: false
         });
 
-        // 設定控制項
+        // 畫筆預設為白色 (橡皮擦效果)
+        canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+        canvas.freeDrawingBrush.color = "white";
+        canvas.freeDrawingBrush.width = 20;
+
+        // 樣式設定
         fabric.Object.prototype.set({
             transparentCorners: false,
-            cornerColor: '#ffffff',
+            cornerColor: '#fff',
             cornerStrokeColor: '#007AFF',
             borderColor: '#007AFF',
             cornerSize: 10,
-            padding: 5,
             cornerStyle: 'circle'
         });
 
-        // === 核心功能：去背與白邊 ===
+        // === 2. 歷史紀錄系統 (Undo) ===
+        let historyStack = [];
+        let historyProcessing = false;
 
-        // 1. 去背功能 (簡單版：去除白色)
-        function removeBackground() {
-            const activeObj = canvas.getActiveObject();
-            if (!activeObj || activeObj.type !== 'image') {
-                alert('請先點選一張圖片！');
-                return;
-            }
+        function saveHistory() {
+            if(historyProcessing) return;
+            if(historyStack.length > 10) historyStack.shift(); // 限制步數
+            historyStack.push(JSON.stringify(canvas));
+        }
 
-            // 使用 Fabric 內建濾鏡
-            const filter = new fabric.Image.filters.RemoveColor({
-                threshold: 0.2, // 敏感度 (0-1)，可調整以過濾灰白色
-                distance: 0.5
+        // 監聽變更事件自動存檔
+        canvas.on('object:added', saveHistory);
+        canvas.on('object:modified', saveHistory);
+        canvas.on('object:removed', saveHistory);
+        // 初始化存第一步
+        saveHistory();
+
+        function undo() {
+            if (historyStack.length <= 1) return; // 至少保留最後狀態
+            
+            historyProcessing = true;
+            historyStack.pop(); // 移除當前狀態
+            const prevState = historyStack[historyStack.length - 1];
+            
+            canvas.loadFromJSON(prevState, function() {
+                canvas.renderAll();
+                historyProcessing = false;
             });
-
-            activeObj.filters.push(filter);
-            activeObj.applyFilters();
-            canvas.requestRenderAll();
         }
 
-        // 2. 白邊功能 (模擬描邊)
-        function addStroke() {
-            const activeObj = canvas.getActiveObject();
-            if (!activeObj) {
-                alert('請先點選圖片或文字！');
-                return;
-            }
-
-            // 透過陰影模擬描邊 (解決 Canvas 描邊鋸齒問題)
-            // 如果是文字，原生支援 stroke
-            if (activeObj.type === 'i-text') {
-                activeObj.set({
-                    stroke: '#fff',
-                    strokeWidth: 8,
-                    paintFirst: 'stroke' // 讓描邊在字體後面
-                });
-            } else {
-                // 如果是圖片，使用亮色陰影模擬光暈
-                activeObj.set({
-                    shadow: new fabric.Shadow({
-                        color: '#ffffff',
-                        blur: 0,
-                        offsetX: 2,
-                        offsetY: 2
-                    })
-                });
-                // 為了達到全方位描邊，通常需要複雜的 Filter，這裡先用簡易版
-                // 提示：如果要更粗的邊，建議在生成時就加好，或使用付費的 API
-            }
-            canvas.requestRenderAll();
-        }
-
-        // === 基礎交互邏輯 (延續上一版) ===
-
-        let isSpaceDown = false;
-        let isDragging = false;
-        let lastPosX, lastPosY;
-        const viewport = document.getElementById('viewport');
-        const wrapper = document.querySelector('.canvas-container-wrapper');
-        let currentScale = 1;
-        let panX = 0, panY = 0;
-
-        // 滾輪縮放
-        viewport.addEventListener('wheel', function(opt) {
-            opt.preventDefault();
-            const delta = opt.deltaY * -0.001;
-            currentScale = Math.min(Math.max(0.5, currentScale + delta), 4);
-            updateWrapperTransform();
-        }, { passive: false });
-
-        // 按鍵監聽
+        // 監聽鍵盤 Ctrl+Z
         document.addEventListener('keydown', (e) => {
-            if (e.code === 'Space') {
-                isSpaceDown = true;
-                viewport.style.cursor = 'grab';
-                canvas.selection = false;
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+                e.preventDefault();
+                undo();
             }
             if (e.key === 'Delete' || e.key === 'Backspace') {
-                // 避免在打字時刪除物件
-                if(canvas.getActiveObject() && !canvas.getActiveObject().isEditing) {
-                    deleteObject();
-                }
+                if(!canvas.getActiveObject()?.isEditing) deleteObject();
             }
         });
 
-        document.addEventListener('keyup', (e) => {
-            if (e.code === 'Space') {
-                isSpaceDown = false;
-                viewport.style.cursor = 'default';
-                canvas.selection = true;
+        // === 3. 橡皮擦功能 ===
+        let isEraserMode = false;
+        function toggleEraser() {
+            isEraserMode = !isEraserMode;
+            canvas.isDrawingMode = isEraserMode;
+            
+            const btn = document.getElementById('btnEraser');
+            if(isEraserMode) {
+                btn.classList.add('active');
+                canvas.defaultCursor = 'crosshair';
+            } else {
+                btn.classList.remove('active');
+                canvas.defaultCursor = 'default';
             }
-        });
-
-        viewport.addEventListener('mousedown', (e) => {
-            if (isSpaceDown) {
-                isDragging = true;
-                viewport.style.cursor = 'grabbing';
-                lastPosX = e.clientX;
-                lastPosY = e.clientY;
-            }
-        });
-
-        viewport.addEventListener('mousemove', (e) => {
-            if (isDragging) {
-                const deltaX = e.clientX - lastPosX;
-                const deltaY = e.clientY - lastPosY;
-                panX += deltaX;
-                panY += deltaY;
-                lastPosX = e.clientX;
-                lastPosY = e.clientY;
-                updateWrapperTransform();
-            }
-        });
-
-        viewport.addEventListener('mouseup', () => { isDragging = false; });
-
-        function updateWrapperTransform() {
-            wrapper.style.transform = `translate(${panX}px, ${panY}px) scale(${currentScale})`;
         }
 
-        // === 檔案處理與工具 ===
+        // 去除白色 (Magic Wand)
+        function removeWhite() {
+            const activeObj = canvas.getActiveObject();
+            // 如果沒選東西，就嘗試把整個畫布去背 (包含橡皮擦塗過的痕跡)
+            // 這裡為了簡單，我們針對選取的圖片做去背
+            if (activeObj && activeObj.type === 'image') {
+                const filter = new fabric.Image.filters.RemoveColor({
+                    threshold: 0.15,
+                    distance: 0.5
+                });
+                activeObj.filters.push(filter);
+                activeObj.applyFilters();
+                canvas.requestRenderAll();
+                saveHistory();
+            } else {
+                alert('請先選取一張圖片來執行去背');
+            }
+        }
 
-        function triggerUpload() { document.getElementById('fileInput').click(); }
+        // === 4. UI 互動與屬性控制 ===
+        const propPanel = document.getElementById('propPanel');
+        const textProps = document.getElementById('textProps');
+        const strokeRange = document.getElementById('strokeRange');
+        const strokeValue = document.getElementById('strokeValue');
+
+        // 當選取物件改變時
+        canvas.on('selection:created', updatePropsUI);
+        canvas.on('selection:updated', updatePropsUI);
+        canvas.on('selection:cleared', () => {
+            propPanel.style.display = 'none';
+        });
+
+        function updatePropsUI() {
+            const obj = canvas.getActiveObject();
+            if(!obj) return;
+
+            propPanel.style.display = 'flex';
+            
+            // 判斷是否為文字
+            if(obj.type === 'i-text') {
+                textProps.style.display = 'flex';
+                // 同步 UI 數值
+                document.getElementById('fontFamilySelect').value = obj.fontFamily;
+                strokeRange.value = obj.strokeWidth || 0;
+                strokeValue.textContent = obj.strokeWidth || 0;
+            } else {
+                textProps.style.display = 'none';
+                // 圖片白邊判定
+                if(obj.shadow) {
+                    // 粗略用 offset 來回推數值
+                    strokeRange.value = obj.shadow.offsetX; 
+                    strokeValue.textContent = obj.shadow.offsetX;
+                } else {
+                    strokeRange.value = 0;
+                    strokeValue.textContent = 0;
+                }
+            }
+        }
+
+        // 更改字型
+        function changeFont(font) {
+            const obj = canvas.getActiveObject();
+            if(obj && obj.type === 'i-text') {
+                obj.set("fontFamily", font);
+                canvas.requestRenderAll();
+                saveHistory();
+            }
+        }
+
+        // 調整白邊 (核心邏輯)
+        function updateStroke(val) {
+            const width = parseInt(val);
+            strokeValue.textContent = width;
+            const obj = canvas.getActiveObject();
+            if(!obj) return;
+
+            if (width === 0) {
+                obj.set({ strokeWidth: 0, stroke: null, shadow: null });
+            } else {
+                if (obj.type === 'i-text') {
+                    // 文字用原生的 stroke
+                    obj.set({
+                        stroke: '#fff',
+                        strokeWidth: width,
+                        paintFirst: 'stroke' // 讓描邊在字體後方
+                    });
+                } else {
+                    // 圖片：使用 "硬陰影" 模擬白邊 (blur: 0, opacity: 1)
+                    // 這比投影更像框線
+                    obj.set({
+                        shadow: new fabric.Shadow({
+                            color: '#ffffff',
+                            blur: 0,    // 關鍵：無模糊，呈現實心
+                            offsetX: width/2, // 稍微偏移製造厚度
+                            offsetY: width/2,
+                            opacity: 1
+                        })
+                    });
+                    
+                    // 備註：完美的圖片輪廓描邊在 Canvas 需要複雜運算 (Edge Detection)
+                    // 這裡使用硬陰影是網頁效能最好的模擬方案
+                }
+            }
+            canvas.requestRenderAll();
+        }
+
+        // === 5. 基礎功能 (上傳、下載、視窗控制) ===
+        // (保持原有的視窗控制邏輯)
         
+        function triggerUpload() { document.getElementById('fileInput').click(); }
         document.getElementById('fileInput').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -328,39 +419,22 @@
                     canvas.add(img);
                     canvas.centerObject(img);
                     canvas.setActiveObject(img);
+                    saveHistory(); // 存檔
                 });
             };
             reader.readAsDataURL(file);
             this.value = '';
         });
 
-        window.addEventListener('drop', function(e) {
-            e.preventDefault();
-            const file = e.dataTransfer.files[0];
-            if (file && file.type.startsWith('image')) {
-                const reader = new FileReader();
-                reader.onload = function(f) {
-                    fabric.Image.fromURL(f.target.result, function(img) {
-                        if (img.width > 250) img.scaleToWidth(250);
-                        canvas.add(img);
-                        canvas.centerObject(img);
-                        canvas.setActiveObject(img);
-                    });
-                };
-                reader.readAsDataURL(file);
-            }
-        });
-        window.addEventListener('dragover', e => e.preventDefault());
-
         function addText() {
             const text = new fabric.IText('輸入文字', {
                 left: 100, top: 100,
-                fontFamily: 'Zen Maru Gothic',
-                fill: '#333', fontSize: 40,
-                fontWeight: '700'
+                fontFamily: 'Noto Sans TC',
+                fill: '#333', fontSize: 40, fontWeight: '900'
             });
             canvas.add(text);
             canvas.setActiveObject(text);
+            saveHistory();
         }
 
         function deleteObject() {
@@ -368,9 +442,12 @@
             if (activeObjects.length) {
                 canvas.discardActiveObject();
                 activeObjects.forEach((obj) => canvas.remove(obj));
+                saveHistory();
             }
         }
 
+        // 背景切換
+        const wrapper = document.querySelector('.canvas-wrapper');
         const bgColors = ['#849ebf', '#ffffff', '#1a1a1a', 'transparent'];
         let bgIndex = 0;
         function toggleBackground() {
@@ -387,23 +464,66 @@
         }
 
         function downloadPNG() {
-            // 確保沒有選取框被印出來
             canvas.discardActiveObject();
             canvas.requestRenderAll();
-            
             setTimeout(() => {
-                const dataURL = canvas.toDataURL({
-                    format: 'png', quality: 1, multiplier: 1
-                });
+                const dataURL = canvas.toDataURL({ format: 'png', quality: 1, multiplier: 1 });
                 const link = document.createElement('a');
                 link.download = `sticker-${Date.now()}.png`;
                 link.href = dataURL;
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
-            }, 100);
+            }, 50);
         }
+
+        // 視窗平移與縮放邏輯 (沿用)
+        const viewport = document.getElementById('viewport');
+        let isSpaceDown = false;
+        let isDragging = false;
+        let lastPosX, lastPosY;
+        let panX = 0, panY = 0, currentScale = 1;
+
+        viewport.addEventListener('wheel', (opt) => {
+            opt.preventDefault();
+            const delta = opt.deltaY * -0.001;
+            currentScale = Math.min(Math.max(0.5, currentScale + delta), 4);
+            wrapper.style.transform = `translate(${panX}px, ${panY}px) scale(${currentScale})`;
+        }, { passive: false });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                isSpaceDown = true;
+                viewport.style.cursor = 'grab';
+                canvas.selection = false;
+            }
+        });
+        document.addEventListener('keyup', (e) => {
+            if (e.code === 'Space') {
+                isSpaceDown = false;
+                viewport.style.cursor = 'default';
+                canvas.selection = true;
+            }
+        });
+        viewport.addEventListener('mousedown', (e) => {
+            if (isSpaceDown) {
+                isDragging = true;
+                viewport.style.cursor = 'grabbing';
+                lastPosX = e.clientX;
+                lastPosY = e.clientY;
+            }
+        });
+        viewport.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                panX += (e.clientX - lastPosX);
+                panY += (e.clientY - lastPosY);
+                lastPosX = e.clientX;
+                lastPosY = e.clientY;
+                wrapper.style.transform = `translate(${panX}px, ${panY}px) scale(${currentScale})`;
+            }
+        });
+        viewport.addEventListener('mouseup', () => isDragging = false);
+
     </script>
 </body>
 </html>
-

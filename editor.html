@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sticker Studio Air - 編輯模式</title>
+    <title>Sticker Studio Air - 最終版</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Zen+Maru+Gothic:wght@400;700&display=swap" rel="stylesheet">
@@ -13,7 +13,7 @@
     <style>
         :root {
             --bg-color: #e5e5e5;
-            --panel-bg: rgba(255, 255, 255, 0.85);
+            --panel-bg: rgba(255, 255, 255, 0.9);
             --accent-color: #007AFF;
             --danger-color: #FF3B30;
         }
@@ -21,7 +21,7 @@
         body {
             margin: 0;
             overflow: hidden;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-family: "Noto Sans TC", sans-serif;
             background-color: var(--bg-color);
             background-image: radial-gradient(#ccc 1px, transparent 1px);
             background-size: 20px 20px;
@@ -31,7 +31,6 @@
             align-items: center;
         }
 
-        /* UI 面板共用樣式 */
         .ui-panel {
             position: absolute;
             background: var(--panel-bg);
@@ -47,21 +46,14 @@
             align-items: center;
         }
 
-        /* 頂部工具列 */
-        .toolbar-top {
-            top: 20px;
-            height: 40px;
+        .toolbar-top { top: 20px; height: 44px; }
+        .toolbar-left { 
+            left: 20px; 
+            flex-direction: column; 
+            top: 50%; 
+            transform: translateY(-50%); 
         }
 
-        /* 左側工具列 */
-        .toolbar-left {
-            left: 20px;
-            flex-direction: column;
-            top: 50%;
-            transform: translateY(-50%);
-        }
-
-        /* 按鈕樣式 */
         button {
             background: transparent;
             border: none;
@@ -70,27 +62,18 @@
             cursor: pointer;
             transition: 0.2s;
             display: flex;
+            flex-direction: column; /* 讓圖示跟文字垂直排列 */
             align-items: center;
             justify-content: center;
             color: #555;
+            min-width: 44px;
         }
-        button:hover {
-            background: rgba(0,0,0,0.05);
-            color: var(--accent-color);
-        }
-        button.active {
-            background: #e0eaff;
-            color: var(--accent-color);
-        }
-        button svg {
-            width: 20px;
-            height: 20px;
-        }
+        button:hover { background: rgba(0,0,0,0.05); color: var(--accent-color); }
+        button svg { width: 20px; height: 20px; margin-bottom: 2px;}
+        button span { font-size: 10px; font-weight: 500;}
 
-        /* 檔案上傳隱藏 input */
         #fileInput { display: none; }
 
-        /* 畫布容器 */
         #viewport {
             width: 100vw;
             height: 100vh;
@@ -100,26 +83,35 @@
             outline: none;
         }
 
-        /* Canvas 外框陰影與背景 */
         .canvas-container-wrapper {
             box-shadow: 0 20px 60px rgba(0,0,0,0.2);
             border: 1px solid rgba(0,0,0,0.05);
-            /* LINE 預覽背景色 (淺藍) */
             background-color: #849ebf; 
             transition: background-color 0.3s;
         }
 
-        /* 提示 */
+        /* 優化後的狀態列：加粗關鍵字 */
         .status-bar {
             position: absolute;
             bottom: 20px;
             right: 20px;
-            font-size: 12px;
-            color: #666;
+            font-size: 13px;
+            color: #444;
             background: var(--panel-bg);
-            padding: 5px 12px;
-            border-radius: 20px;
+            padding: 8px 16px;
+            border-radius: 30px;
             pointer-events: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            letter-spacing: 0.5px;
+        }
+        .key-tag {
+            font-weight: 800;
+            color: #000;
+            background: rgba(0,0,0,0.06);
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin: 0 2px;
+            border-bottom: 2px solid rgba(0,0,0,0.1);
         }
     </style>
 </head>
@@ -128,33 +120,45 @@
     <input type="file" id="fileInput" accept="image/*">
 
     <div class="ui-panel toolbar-top">
-        <span style="font-weight:700; font-size:14px; margin: 0 10px;">Sticker Studio</span>
-        <div style="width:1px; height:16px; background:#ccc;"></div>
+        <span style="font-weight:800; font-size:15px; margin: 0 10px; color:#333;">Sticker Air</span>
+        <div style="width:1px; height:20px; background:#ddd;"></div>
         
         <button onclick="triggerUpload()" title="上傳圖片">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
-            <span style="font-size:12px; margin-left:5px;">匯入</span>
+            <span>匯入</span>
         </button>
         
         <button onclick="addText()" title="加入文字">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg>
-            <span style="font-size:12px; margin-left:5px;">文字</span>
+            <span>文字</span>
         </button>
 
-        <div style="width:1px; height:16px; background:#ccc;"></div>
+        <div style="width:1px; height:20px; background:#ddd;"></div>
+
+        <button onclick="removeBackground()" title="去除白色背景 (Magic Wand)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            <span>去背</span>
+        </button>
+
+        <button onclick="addStroke()" title="加入白邊 (Stroke)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10" stroke-dasharray="4 4"/></svg>
+            <span>白邊</span>
+        </button>
+
+        <div style="width:1px; height:20px; background:#ddd;"></div>
 
         <button onclick="downloadPNG()" title="匯出 PNG" style="color: var(--accent-color);">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-            <span style="font-size:12px; margin-left:5px; font-weight:600;">匯出</span>
+            <span>匯出</span>
         </button>
     </div>
 
     <div class="ui-panel toolbar-left">
-        <button onclick="toggleBackground()" title="切換預覽背景 (黑/白/LINE)">
+        <button onclick="toggleBackground()" title="切換背景">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
         </button>
         
-        <button onclick="deleteObject()" title="刪除選取物件 (Del)" style="color: var(--danger-color);">
+        <button onclick="deleteObject()" title="刪除 (Del)" style="color: var(--danger-color);">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
         </button>
     </div>
@@ -165,16 +169,20 @@
         </div>
     </div>
 
-    <div class="status-bar">空白鍵 + 拖曳：移動視角 • 滾輪：縮放 • Delete：刪除圖層</div>
+    <div class="status-bar">
+        <span class="key-tag">空白鍵</span> + <span class="key-tag">左鍵拖曳</span> 移動視角 • 
+        <span class="key-tag">滾輪</span> 縮放 • 
+        <span class="key-tag">Delete</span> 刪除物件
+    </div>
 
     <script>
-        // 1. 初始化 Fabric Canvas
+        // 初始化
         const canvas = new fabric.Canvas('c', {
-            preserveObjectStacking: true, // 選取時保持層級順序
-            backgroundColor: null // 透明背景
+            preserveObjectStacking: true,
+            backgroundColor: null
         });
 
-        // 設定控制項樣式 (macOS 風格)
+        // 設定控制項
         fabric.Object.prototype.set({
             transparentCorners: false,
             cornerColor: '#ffffff',
@@ -182,19 +190,73 @@
             borderColor: '#007AFF',
             cornerSize: 10,
             padding: 5,
-            cornerStyle: 'circle',
-            borderDashArray: [4, 4]
+            cornerStyle: 'circle'
         });
 
-        // 2. 視圖控制邏輯 (Zoom & Pan) - 移植自 Phase 2
+        // === 核心功能：去背與白邊 ===
+
+        // 1. 去背功能 (簡單版：去除白色)
+        function removeBackground() {
+            const activeObj = canvas.getActiveObject();
+            if (!activeObj || activeObj.type !== 'image') {
+                alert('請先點選一張圖片！');
+                return;
+            }
+
+            // 使用 Fabric 內建濾鏡
+            const filter = new fabric.Image.filters.RemoveColor({
+                threshold: 0.2, // 敏感度 (0-1)，可調整以過濾灰白色
+                distance: 0.5
+            });
+
+            activeObj.filters.push(filter);
+            activeObj.applyFilters();
+            canvas.requestRenderAll();
+        }
+
+        // 2. 白邊功能 (模擬描邊)
+        function addStroke() {
+            const activeObj = canvas.getActiveObject();
+            if (!activeObj) {
+                alert('請先點選圖片或文字！');
+                return;
+            }
+
+            // 透過陰影模擬描邊 (解決 Canvas 描邊鋸齒問題)
+            // 如果是文字，原生支援 stroke
+            if (activeObj.type === 'i-text') {
+                activeObj.set({
+                    stroke: '#fff',
+                    strokeWidth: 8,
+                    paintFirst: 'stroke' // 讓描邊在字體後面
+                });
+            } else {
+                // 如果是圖片，使用亮色陰影模擬光暈
+                activeObj.set({
+                    shadow: new fabric.Shadow({
+                        color: '#ffffff',
+                        blur: 0,
+                        offsetX: 2,
+                        offsetY: 2
+                    })
+                });
+                // 為了達到全方位描邊，通常需要複雜的 Filter，這裡先用簡易版
+                // 提示：如果要更粗的邊，建議在生成時就加好，或使用付費的 API
+            }
+            canvas.requestRenderAll();
+        }
+
+        // === 基礎交互邏輯 (延續上一版) ===
+
         let isSpaceDown = false;
         let isDragging = false;
         let lastPosX, lastPosY;
         const viewport = document.getElementById('viewport');
         const wrapper = document.querySelector('.canvas-container-wrapper');
         let currentScale = 1;
+        let panX = 0, panY = 0;
 
-        // 滾輪縮放 (CSS Transform 方式，保持 Canvas 解析度)
+        // 滾輪縮放
         viewport.addEventListener('wheel', function(opt) {
             opt.preventDefault();
             const delta = opt.deltaY * -0.001;
@@ -202,17 +264,18 @@
             updateWrapperTransform();
         }, { passive: false });
 
-        // 空白鍵平移邏輯
-        let panX = 0, panY = 0;
-        
+        // 按鍵監聽
         document.addEventListener('keydown', (e) => {
             if (e.code === 'Space') {
                 isSpaceDown = true;
                 viewport.style.cursor = 'grab';
-                canvas.selection = false; // 暫停 Canvas 選取
+                canvas.selection = false;
             }
             if (e.key === 'Delete' || e.key === 'Backspace') {
-                deleteObject();
+                // 避免在打字時刪除物件
+                if(canvas.getActiveObject() && !canvas.getActiveObject().isEditing) {
+                    deleteObject();
+                }
             }
         });
 
@@ -220,7 +283,7 @@
             if (e.code === 'Space') {
                 isSpaceDown = false;
                 viewport.style.cursor = 'default';
-                canvas.selection = true; // 恢復 Canvas 選取
+                canvas.selection = true;
             }
         });
 
@@ -251,10 +314,8 @@
             wrapper.style.transform = `translate(${panX}px, ${panY}px) scale(${currentScale})`;
         }
 
+        // === 檔案處理與工具 ===
 
-        // 3. 功能實作
-
-        // 上傳圖片
         function triggerUpload() { document.getElementById('fileInput').click(); }
         
         document.getElementById('fileInput').addEventListener('change', function(e) {
@@ -263,18 +324,16 @@
             const reader = new FileReader();
             reader.onload = function(f) {
                 fabric.Image.fromURL(f.target.result, function(img) {
-                    // 自動縮放適應畫布
-                    if (img.width > 300) img.scaleToWidth(300);
+                    if (img.width > 250) img.scaleToWidth(250);
                     canvas.add(img);
                     canvas.centerObject(img);
                     canvas.setActiveObject(img);
                 });
             };
             reader.readAsDataURL(file);
-            this.value = ''; // 重置 input
+            this.value = '';
         });
 
-        // 支援拖曳上傳 (Drag & Drop)
         window.addEventListener('drop', function(e) {
             e.preventDefault();
             const file = e.dataTransfer.files[0];
@@ -282,9 +341,10 @@
                 const reader = new FileReader();
                 reader.onload = function(f) {
                     fabric.Image.fromURL(f.target.result, function(img) {
-                        if (img.width > 300) img.scaleToWidth(300);
+                        if (img.width > 250) img.scaleToWidth(250);
                         canvas.add(img);
                         canvas.centerObject(img);
+                        canvas.setActiveObject(img);
                     });
                 };
                 reader.readAsDataURL(file);
@@ -292,32 +352,26 @@
         });
         window.addEventListener('dragover', e => e.preventDefault());
 
-        // 加入文字
         function addText() {
             const text = new fabric.IText('輸入文字', {
-                left: 100,
-                top: 100,
-                fontFamily: 'Zen Maru Gothic', // 預設使用圓體
-                fill: '#333',
-                fontSize: 40
+                left: 100, top: 100,
+                fontFamily: 'Zen Maru Gothic',
+                fill: '#333', fontSize: 40,
+                fontWeight: '700'
             });
             canvas.add(text);
             canvas.setActiveObject(text);
         }
 
-        // 刪除物件
         function deleteObject() {
             const activeObjects = canvas.getActiveObjects();
             if (activeObjects.length) {
                 canvas.discardActiveObject();
-                activeObjects.forEach(function(object) {
-                    canvas.remove(object);
-                });
+                activeObjects.forEach((obj) => canvas.remove(obj));
             }
         }
 
-        // 切換背景預覽
-        const bgColors = ['#849ebf', '#ffffff', '#1a1a1a', 'transparent']; // LINE藍, 白, 黑, 透明
+        const bgColors = ['#849ebf', '#ffffff', '#1a1a1a', 'transparent'];
         let bgIndex = 0;
         function toggleBackground() {
             bgIndex = (bgIndex + 1) % bgColors.length;
@@ -332,24 +386,23 @@
             }
         }
 
-        // 匯出 PNG
         function downloadPNG() {
-            // 匯出前把背景變透明 (因為我們只是改 wrapper 背景，canvas 本身是透明的)
-            // 如果使用者不小心讓圖片超出邊界，我們應該裁切
-            const dataURL = canvas.toDataURL({
-                format: 'png',
-                quality: 1,
-                multiplier: 1 // 維持原解析度
-            });
+            // 確保沒有選取框被印出來
+            canvas.discardActiveObject();
+            canvas.requestRenderAll();
             
-            const link = document.createElement('a');
-            link.download = 'line-sticker.png';
-            link.href = dataURL;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            setTimeout(() => {
+                const dataURL = canvas.toDataURL({
+                    format: 'png', quality: 1, multiplier: 1
+                });
+                const link = document.createElement('a');
+                link.download = `sticker-${Date.now()}.png`;
+                link.href = dataURL;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }, 100);
         }
-
     </script>
 </body>
 </html>

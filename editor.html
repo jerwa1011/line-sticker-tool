@@ -3,142 +3,121 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sticker Studio Air</title>
+    <title>Sticker Studio Air - 編輯模式</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Noto+Serif+TC:wght@400;700&family=Zen+Maru+Gothic:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Zen+Maru+Gothic:wght@400;700&display=swap" rel="stylesheet">
     
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+
     <style>
         :root {
             --bg-color: #e5e5e5;
-            --panel-bg: rgba(255, 255, 255, 0.75);
+            --panel-bg: rgba(255, 255, 255, 0.85);
             --accent-color: #007AFF;
-            --text-color: #333;
+            --danger-color: #FF3B30;
         }
 
         body {
             margin: 0;
-            overflow: hidden; /* 禁止瀏覽器預設捲動 */
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background-color: var(--bg-color);
             background-image: radial-gradient(#ccc 1px, transparent 1px);
-            background-size: 20px 20px; /* 網格背景 */
+            background-size: 20px 20px;
             height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
         }
 
-        /* UI 面板 (macOS Glassmorphism) */
+        /* UI 面板共用樣式 */
         .ui-panel {
             position: absolute;
             background: var(--panel-bg);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.4);
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
             border-radius: 12px;
-            padding: 10px;
+            padding: 8px;
             z-index: 100;
+            display: flex;
+            gap: 10px;
+            align-items: center;
         }
 
         /* 頂部工具列 */
-        .toolbar {
+        .toolbar-top {
             top: 20px;
-            display: flex;
-            gap: 15px;
-            align-items: center;
+            height: 40px;
         }
 
-        /* 視窗容器 (Viewport) */
+        /* 左側工具列 */
+        .toolbar-left {
+            left: 20px;
+            flex-direction: column;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        /* 按鈕樣式 */
+        button {
+            background: transparent;
+            border: none;
+            padding: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #555;
+        }
+        button:hover {
+            background: rgba(0,0,0,0.05);
+            color: var(--accent-color);
+        }
+        button.active {
+            background: #e0eaff;
+            color: var(--accent-color);
+        }
+        button svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        /* 檔案上傳隱藏 input */
+        #fileInput { display: none; }
+
+        /* 畫布容器 */
         #viewport {
             width: 100vw;
             height: 100vh;
-            overflow: hidden;
-            cursor: default; /* 預設游標 */
-        }
-        
-        /* 抓手模式游標 */
-        #viewport.panning {
-            cursor: grab;
-        }
-        #viewport.panning:active {
-            cursor: grabbing;
-        }
-
-        /* 實際畫布容器 (World) - 用來被縮放和平移 */
-        #world {
-            width: 0;
-            height: 0;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform-origin: 0 0; /* 變形原點 */
-        }
-
-        /* 模擬的 LINE 貼圖畫布 */
-        .canvas-area {
-            width: 370px;
-            height: 320px;
-            background: white;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.15);
-            position: absolute;
-            top: -160px; /* Center alignment based on size */
-            left: -185px;
             display: flex;
             justify-content: center;
             align-items: center;
-            color: #aaa;
-            font-size: 14px;
-            user-select: none;
-            overflow: hidden; /* 確保內容不跑出去 */
-        }
-        
-        /* 測試文字 */
-        .sticker-text {
-            position: absolute;
-            font-size: 40px;
-            font-weight: bold;
-            color: #333;
-            cursor: move;
-            border: 1px dashed transparent;
-        }
-        .sticker-text:hover {
-            border: 1px dashed var(--accent-color);
+            outline: none;
         }
 
-        button {
-            background: rgba(255,255,255,0.8);
-            border: none;
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 13px;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-        button:hover {
-            background: white;
-            color: var(--accent-color);
+        /* Canvas 外框陰影與背景 */
+        .canvas-container-wrapper {
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+            border: 1px solid rgba(0,0,0,0.05);
+            /* LINE 預覽背景色 (淺藍) */
+            background-color: #849ebf; 
+            transition: background-color 0.3s;
         }
 
-        /* 字型選單 */
-        select {
-            padding: 6px;
-            border-radius: 6px;
-            border: 1px solid #ddd;
-            font-size: 13px;
-            background: transparent;
-        }
-        
-        /* 提示文字 */
-        .hint {
+        /* 提示 */
+        .status-bar {
             position: absolute;
             bottom: 20px;
-            left: 20px;
+            right: 20px;
             font-size: 12px;
             color: #666;
-            background: rgba(255,255,255,0.6);
-            padding: 5px 10px;
+            background: var(--panel-bg);
+            padding: 5px 12px;
             border-radius: 20px;
             pointer-events: none;
         }
@@ -146,143 +125,231 @@
 </head>
 <body>
 
-    <div class="ui-panel toolbar">
-        <span style="font-weight:600; font-size:14px;">Sticker Studio Air</span>
-        <div style="width: 1px; height: 15px; background: #ccc;"></div>
-        
-        <select id="fontSelector" onchange="changeFont(this.value)">
-            <option value="'Noto Sans TC', sans-serif">思源黑體 (預設)</option>
-            <option value="'Zen Maru Gothic', sans-serif">圓體 (可愛)</option>
-            <option value="'Noto Serif TC', serif">思源宋體 (文青)</option>
-            <option value="Arial, sans-serif">Arial (英文)</option>
-            <option value="Impact, sans-serif">Impact (迷因)</option>
-        </select>
+    <input type="file" id="fileInput" accept="image/*">
 
-        <button onclick="resetView()">重置視角</button>
-        <button style="color: var(--accent-color);">匯出 PNG</button>
+    <div class="ui-panel toolbar-top">
+        <span style="font-weight:700; font-size:14px; margin: 0 10px;">Sticker Studio</span>
+        <div style="width:1px; height:16px; background:#ccc;"></div>
+        
+        <button onclick="triggerUpload()" title="上傳圖片">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+            <span style="font-size:12px; margin-left:5px;">匯入</span>
+        </button>
+        
+        <button onclick="addText()" title="加入文字">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg>
+            <span style="font-size:12px; margin-left:5px;">文字</span>
+        </button>
+
+        <div style="width:1px; height:16px; background:#ccc;"></div>
+
+        <button onclick="downloadPNG()" title="匯出 PNG" style="color: var(--accent-color);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+            <span style="font-size:12px; margin-left:5px; font-weight:600;">匯出</span>
+        </button>
+    </div>
+
+    <div class="ui-panel toolbar-left">
+        <button onclick="toggleBackground()" title="切換預覽背景 (黑/白/LINE)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        </button>
+        
+        <button onclick="deleteObject()" title="刪除選取物件 (Del)" style="color: var(--danger-color);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        </button>
     </div>
 
     <div id="viewport">
-        <div id="world">
-            <div class="canvas-area" id="canvasArea">
-                <div class="sticker-text" id="demoText" style="top: 100px; left: 80px;">哈囉你好!</div>
-                </div>
+        <div class="canvas-container-wrapper">
+            <canvas id="c" width="370" height="320"></canvas>
         </div>
     </div>
-    
-    <div class="hint">💡 提示：滾輪縮放 • 按住空白鍵 + 拖曳移動畫布</div>
+
+    <div class="status-bar">空白鍵 + 拖曳：移動視角 • 滾輪：縮放 • Delete：刪除圖層</div>
 
     <script>
-        // 變數設定
-        const viewport = document.getElementById('viewport');
-        const world = document.getElementById('world');
-        
-        let scale = 1;
-        let pannedX = 0;
-        let pannedY = 0;
-        
+        // 1. 初始化 Fabric Canvas
+        const canvas = new fabric.Canvas('c', {
+            preserveObjectStacking: true, // 選取時保持層級順序
+            backgroundColor: null // 透明背景
+        });
+
+        // 設定控制項樣式 (macOS 風格)
+        fabric.Object.prototype.set({
+            transparentCorners: false,
+            cornerColor: '#ffffff',
+            cornerStrokeColor: '#007AFF',
+            borderColor: '#007AFF',
+            cornerSize: 10,
+            padding: 5,
+            cornerStyle: 'circle',
+            borderDashArray: [4, 4]
+        });
+
+        // 2. 視圖控制邏輯 (Zoom & Pan) - 移植自 Phase 2
         let isSpaceDown = false;
         let isDragging = false;
-        let startX, startY;
+        let lastPosX, lastPosY;
+        const viewport = document.getElementById('viewport');
+        const wrapper = document.querySelector('.canvas-container-wrapper');
+        let currentScale = 1;
 
-        // 1. 處理滾輪縮放 (Zoom)
-        viewport.addEventListener('wheel', (e) => {
-            e.preventDefault();
-            
-            const zoomIntensity = 0.1;
-            const delta = e.deltaY > 0 ? -zoomIntensity : zoomIntensity;
-            const newScale = Math.min(Math.max(0.1, scale + delta), 5); // 限制縮放 0.1x ~ 5x
-
-            // 簡單的中心縮放 (進階版可以做游標指向縮放)
-            scale = newScale;
-            updateTransform();
+        // 滾輪縮放 (CSS Transform 方式，保持 Canvas 解析度)
+        viewport.addEventListener('wheel', function(opt) {
+            opt.preventDefault();
+            const delta = opt.deltaY * -0.001;
+            currentScale = Math.min(Math.max(0.5, currentScale + delta), 4);
+            updateWrapperTransform();
         }, { passive: false });
 
-        // 2. 處理平移 (Pan) - 偵測空白鍵
+        // 空白鍵平移邏輯
+        let panX = 0, panY = 0;
+        
         document.addEventListener('keydown', (e) => {
             if (e.code === 'Space') {
                 isSpaceDown = true;
-                viewport.classList.add('panning');
+                viewport.style.cursor = 'grab';
+                canvas.selection = false; // 暫停 Canvas 選取
+            }
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+                deleteObject();
             }
         });
 
         document.addEventListener('keyup', (e) => {
             if (e.code === 'Space') {
                 isSpaceDown = false;
-                viewport.classList.remove('panning');
-                isDragging = false; // 確保放開空白鍵時停止拖曳
+                viewport.style.cursor = 'default';
+                canvas.selection = true; // 恢復 Canvas 選取
             }
         });
 
-        // 3. 滑鼠拖曳邏輯
         viewport.addEventListener('mousedown', (e) => {
-            // 只有按住空白鍵時，左鍵才能拖動視窗
             if (isSpaceDown) {
                 isDragging = true;
-                startX = e.clientX - pannedX;
-                startY = e.clientY - pannedY;
+                viewport.style.cursor = 'grabbing';
+                lastPosX = e.clientX;
+                lastPosY = e.clientY;
             }
         });
 
         viewport.addEventListener('mousemove', (e) => {
-            if (isDragging && isSpaceDown) {
-                e.preventDefault();
-                pannedX = e.clientX - startX;
-                pannedY = e.clientY - startY;
-                updateTransform();
+            if (isDragging) {
+                const deltaX = e.clientX - lastPosX;
+                const deltaY = e.clientY - lastPosY;
+                panX += deltaX;
+                panY += deltaY;
+                lastPosX = e.clientX;
+                lastPosY = e.clientY;
+                updateWrapperTransform();
             }
         });
 
-        viewport.addEventListener('mouseup', () => {
-            isDragging = false;
-        });
-        
-        viewport.addEventListener('mouseleave', () => {
-            isDragging = false;
-        });
+        viewport.addEventListener('mouseup', () => { isDragging = false; });
 
-        // 更新 CSS Transform
-        function updateTransform() {
-            // 使用 translate 和 scale 來控制
-            world.style.transform = `translate(${pannedX}px, ${pannedY}px) scale(${scale})`;
+        function updateWrapperTransform() {
+            wrapper.style.transform = `translate(${panX}px, ${panY}px) scale(${currentScale})`;
         }
 
-        // 重置功能
-        function resetView() {
-            scale = 1;
-            pannedX = 0;
-            pannedY = 0;
-            updateTransform();
+
+        // 3. 功能實作
+
+        // 上傳圖片
+        function triggerUpload() { document.getElementById('fileInput').click(); }
+        
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(f) {
+                fabric.Image.fromURL(f.target.result, function(img) {
+                    // 自動縮放適應畫布
+                    if (img.width > 300) img.scaleToWidth(300);
+                    canvas.add(img);
+                    canvas.centerObject(img);
+                    canvas.setActiveObject(img);
+                });
+            };
+            reader.readAsDataURL(file);
+            this.value = ''; // 重置 input
+        });
+
+        // 支援拖曳上傳 (Drag & Drop)
+        window.addEventListener('drop', function(e) {
+            e.preventDefault();
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image')) {
+                const reader = new FileReader();
+                reader.onload = function(f) {
+                    fabric.Image.fromURL(f.target.result, function(img) {
+                        if (img.width > 300) img.scaleToWidth(300);
+                        canvas.add(img);
+                        canvas.centerObject(img);
+                    });
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+        window.addEventListener('dragover', e => e.preventDefault());
+
+        // 加入文字
+        function addText() {
+            const text = new fabric.IText('輸入文字', {
+                left: 100,
+                top: 100,
+                fontFamily: 'Zen Maru Gothic', // 預設使用圓體
+                fill: '#333',
+                fontSize: 40
+            });
+            canvas.add(text);
+            canvas.setActiveObject(text);
         }
 
-        // 4. 字型切換功能
-        function changeFont(fontFamily) {
-            const textElement = document.getElementById('demoText');
-            textElement.style.fontFamily = fontFamily;
+        // 刪除物件
+        function deleteObject() {
+            const activeObjects = canvas.getActiveObjects();
+            if (activeObjects.length) {
+                canvas.discardActiveObject();
+                activeObjects.forEach(function(object) {
+                    canvas.remove(object);
+                });
+            }
         }
-        
-        // 初始化字型
-        changeFont("'Noto Sans TC', sans-serif");
-        
-        // 簡單的文字拖曳 (模擬貼圖編輯)
-        const demoText = document.getElementById('demoText');
-        let isTextDragging = false;
-        let textOffsetX, textOffsetY;
 
-        demoText.addEventListener('mousedown', (e) => {
-            if (isSpaceDown) return; // 如果正在平移畫布，不要觸發文字拖曳
-            e.stopPropagation(); // 防止冒泡
-            isTextDragging = true;
-            textOffsetX = e.clientX - demoText.offsetLeft * scale; // 簡化計算
-            textOffsetY = e.clientY - demoText.offsetTop * scale;
-            demoText.style.cursor = 'grabbing';
-        });
-        
-        // 注意：這裡只是簡單演示 DOM 拖曳，正式版我們會用 Canvas 內部邏輯處理
-        window.addEventListener('mouseup', () => {
-            isTextDragging = false;
-            demoText.style.cursor = 'move';
-        });
+        // 切換背景預覽
+        const bgColors = ['#849ebf', '#ffffff', '#1a1a1a', 'transparent']; // LINE藍, 白, 黑, 透明
+        let bgIndex = 0;
+        function toggleBackground() {
+            bgIndex = (bgIndex + 1) % bgColors.length;
+            const color = bgColors[bgIndex];
+            wrapper.style.backgroundColor = color;
+            if(color === 'transparent') {
+                wrapper.style.backgroundImage = 'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)';
+                wrapper.style.backgroundSize = '20px 20px';
+                wrapper.style.backgroundPosition = '0 0, 0 10px, 10px -10px, -10px 0px';
+            } else {
+                wrapper.style.backgroundImage = 'none';
+            }
+        }
+
+        // 匯出 PNG
+        function downloadPNG() {
+            // 匯出前把背景變透明 (因為我們只是改 wrapper 背景，canvas 本身是透明的)
+            // 如果使用者不小心讓圖片超出邊界，我們應該裁切
+            const dataURL = canvas.toDataURL({
+                format: 'png',
+                quality: 1,
+                multiplier: 1 // 維持原解析度
+            });
+            
+            const link = document.createElement('a');
+            link.download = 'line-sticker.png';
+            link.href = dataURL;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
     </script>
 </body>
 </html>

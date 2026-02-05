@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sticker Master V18 - 自動適應版</title>
+    <title>Sticker Master V19 - 強制對焦版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&family=Noto+Serif+TC:wght@700&family=Mochiy+Pop+One&family=Caveat:wght@700&family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
@@ -12,6 +12,7 @@
         body { 
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "Noto Sans TC", sans-serif;
             background-color: #111; color: #fff; overflow: hidden; user-select: none; -webkit-font-smoothing: antialiased;
+            margin: 0; padding: 0; width: 100vw; height: 100vh;
         }
 
         #workspace-bg {
@@ -63,12 +64,10 @@
 <body oncontextmenu="return false;">
 
     <div id="workspace-bg"></div>
-    <div id="canvas-wrapper" class="absolute inset-0 z-10 w-full h-full">
-        <canvas id="c"></canvas>
-    </div>
+    <div class="absolute inset-0 z-10 w-full h-full"><canvas id="c"></canvas></div>
 
     <nav class="absolute top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4 ios-glass px-6 py-3 rounded-full shadow-2xl transition-all hover:scale-105">
-        <div class="font-bold text-sm tracking-wide text-gray-200">Sticker V18</div>
+        <div class="font-bold text-sm tracking-wide text-gray-200">Sticker V19</div>
         <div class="w-[1px] h-4 bg-gray-600"></div>
         <label class="ios-btn w-8 h-8 rounded-full" title="載入"><i class="fas fa-image text-lg"></i><input type="file" id="imgLoader" accept="image/*" class="hidden"></label>
         <button onclick="downloadImage()" class="ios-btn w-8 h-8 rounded-full text-green-400" title="輸出"><i class="fas fa-file-export text-lg"></i></button>
@@ -94,7 +93,7 @@
             <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Settings</span>
             <div class="flex gap-2">
                 <button onclick="toggleBg()" class="text-[10px] bg-gray-700/50 hover:bg-gray-600 px-2 py-1 rounded-md text-yellow-300" title="切換背景"><i class="fas fa-lightbulb"></i></button>
-                <button onclick="zoomToFit()" class="text-[10px] bg-gray-700/50 hover:bg-gray-600 px-2 py-1 rounded-md text-blue-300" title="適應螢幕"><i class="fas fa-expand"></i></button>
+                <button onclick="zoomToFit()" class="text-[10px] bg-gray-700/50 hover:bg-gray-600 px-2 py-1 rounded-md text-blue-300" title="適應螢幕 (全覽)"><i class="fas fa-expand"></i></button>
                 <button onclick="resetViewport()" class="text-[10px] bg-gray-700/50 hover:bg-gray-600 px-2 py-1 rounded-md text-gray-300" id="zoom-val">100%</button>
             </div>
         </div>
@@ -237,17 +236,14 @@
 
         window.onload = function() {
             renderFontOptions();
-            resizeCanvasToContainer(); // 先確保畫布佔滿視窗
+            resizeCanvasToContainer();
             createGuideFrame();
-            zoomToFit(); // V18: 啟動時自動置中
-            window.addEventListener('resize', () => {
-                resizeCanvasToContainer();
-                // 這裡可以選擇是否要在調整視窗大小時自動 ZoomToFit，通常不用，以免干擾編輯
-            });
+            // 初始自動對焦
+            setTimeout(zoomToFit, 100);
+            window.addEventListener('resize', resizeCanvasToContainer);
         };
 
         function resizeCanvasToContainer() {
-            // V18: 改用 window.innerWidth 確保填滿
             canvas.setWidth(window.innerWidth);
             canvas.setHeight(window.innerHeight);
         }
@@ -256,19 +252,24 @@
         function zoomToFit() {
             if(!guideFrame) return;
             
-            const padding = 0.85; // 留 15% 邊距
-            const scaleX = window.innerWidth / artboardW;
-            const scaleY = window.innerHeight / artboardH;
+            // 重新抓取容器大小
+            const containerW = window.innerWidth;
+            const containerH = window.innerHeight;
+            
+            // 計算縮放比例 (留 20% 邊距)
+            const padding = 0.80; 
+            const scaleX = containerW / artboardW;
+            const scaleY = containerH / artboardH;
             const zoom = Math.min(scaleX, scaleY) * padding;
             
             // 設定縮放
             canvas.setZoom(zoom);
             
-            // 設定平移 (Pan) 將 Artboard 置中
-            // 公式：(Canvas寬 - (Artboard寬 * zoom)) / 2
+            // 計算平移 (將 Artboard 中心 對齊 螢幕中心)
+            // 公式：(螢幕寬 - Artboard寬 * zoom) / 2
             const vpt = canvas.viewportTransform;
-            vpt[4] = (canvas.width - artboardW * zoom) / 2;
-            vpt[5] = (canvas.height - artboardH * zoom) / 2;
+            vpt[4] = (containerW - artboardW * zoom) / 2;
+            vpt[5] = (containerH - artboardH * zoom) / 2;
             
             canvas.requestRenderAll();
             updateZoomDisplay();
@@ -290,21 +291,25 @@
             guideFrame.bringToFront(); 
         }
 
-        // --- 修正載入邏輯 ---
+        // --- V18 關鍵修正：載入邏輯 ---
         function loadToCanvas(dataURL) {
             document.getElementById('loading-toast').classList.remove('hidden');
+            
+            // 1. 強制重置視圖到初始狀態 (0,0)
+            canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
+            
             const imgObj = new Image();
             imgObj.src = dataURL;
             imgObj.onload = function() {
                 const imgInstance = new fabric.Image(imgObj);
                 
-                // 1. 調整圖片大小以適應 Artboard
+                // 2. 縮放邏輯
                 if (imgInstance.width > artboardW || imgInstance.height > artboardH) {
                     const scale = Math.min(artboardW / imgInstance.width, artboardH / imgInstance.height) * 0.9;
                     imgInstance.scale(scale);
                 }
                 
-                // 2. 放置在 Artboard 中心
+                // 3. 放置在 Artboard 中心 (絕對座標)
                 imgInstance.set({
                     left: artboardW / 2,
                     top: artboardH / 2,
@@ -316,48 +321,17 @@
                 if(guideFrame) guideFrame.bringToFront();
                 canvas.setActiveObject(imgInstance);
                 
-                // V18 關鍵：載入完成後，執行「全覽模式」
-                zoomToFit();
-                
-                canvas.requestRenderAll();
-                saveState();
-                document.getElementById('loading-toast').classList.add('hidden');
+                // 4. 載入完成後，執行智慧對焦 (延遲一點點確保渲染完成)
+                setTimeout(() => {
+                    zoomToFit();
+                    canvas.requestRenderAll();
+                    saveState();
+                    document.getElementById('loading-toast').classList.add('hidden');
+                }, 50);
             };
         }
 
-        // --- 下載 ---
-        function downloadImage() { openExportModal(); }
-        
-        function confirmDownload() {
-            canvas.discardActiveObject();
-            document.getElementById('floating-menu').style.display = 'none';
-            closeExportModal();
-            
-            const targetW = parseInt(document.getElementById('export-w').value);
-            const multiplier = targetW / artboardW;
-            const originalVpt = canvas.viewportTransform.slice();
-            
-            // 輸出時暫時重置視圖，確保裁切正確
-            canvas.viewportTransform = [1, 0, 0, 1, 0, 0];
-            
-            if(guideFrame) guideFrame.visible = false;
-            canvas.renderAll();
-
-            setTimeout(() => {
-                const link = document.createElement('a'); 
-                link.download = `sticker-${Date.now()}.png`;
-                link.href = canvas.toDataURL({ format: 'png', quality: 1, multiplier: multiplier, left: 0, top: 0, width: artboardW, height: artboardH });
-                link.click();
-                
-                if(guideFrame) guideFrame.visible = true;
-                guideFrame.bringToFront();
-                // 恢復原本的視圖 (Zoom/Pan)
-                canvas.viewportTransform = originalVpt;
-                canvas.requestRenderAll();
-            }, 50);
-        }
-
-        // 其餘功能 (保持 V17)
+        // --- 其他邏輯保持不變 ---
         function toggleBg() {
             const bg = document.getElementById('workspace-bg');
             if (bg.style.backgroundColor === 'rgb(221, 221, 221)') { 
@@ -371,11 +345,32 @@
         function openExportModal() { document.getElementById('export-modal').style.display = 'flex'; document.getElementById('export-w').value = artboardW; syncExportHeight(); }
         function closeExportModal() { document.getElementById('export-modal').style.display = 'none'; }
         function syncExportHeight() { const w = parseInt(document.getElementById('export-w').value); const ratio = artboardH / artboardW; document.getElementById('export-h').value = Math.round(w * ratio); }
+        function downloadImage() { openExportModal(); }
+        function confirmDownload() {
+            canvas.discardActiveObject();
+            document.getElementById('floating-menu').style.display = 'none';
+            closeExportModal();
+            const targetW = parseInt(document.getElementById('export-w').value);
+            const multiplier = targetW / artboardW;
+            const originalVpt = canvas.viewportTransform.slice();
+            canvas.viewportTransform = [1, 0, 0, 1, 0, 0];
+            if(guideFrame) guideFrame.visible = false;
+            canvas.renderAll();
+            setTimeout(() => {
+                const link = document.createElement('a'); 
+                link.download = `sticker-${Date.now()}.png`;
+                link.href = canvas.toDataURL({ format: 'png', quality: 1, multiplier: multiplier, left: 0, top: 0, width: artboardW, height: artboardH });
+                link.click();
+                if(guideFrame) guideFrame.visible = true;
+                guideFrame.bringToFront();
+                canvas.viewportTransform = originalVpt;
+                canvas.requestRenderAll();
+            }, 50);
+        }
         function resizeCanvasDimension() { artboardW = parseInt(document.getElementById('canvas-w').value); artboardH = parseInt(document.getElementById('canvas-h').value); guideFrame.set({ width: artboardW, height: artboardH }); zoomToFit(); }
         function setStandardSize() { document.getElementById('canvas-w').value = 370; document.getElementById('canvas-h').value = 320; resizeCanvasDimension(); }
         function deleteActiveObject() { const obj = canvas.getActiveObject(); if (obj && !obj.isEditing && obj.id !== 'guide-frame') { canvas.remove(obj); canvas.discardActiveObject(); updatePanel(); document.getElementById('floating-menu').style.display = 'none'; saveState(); } }
         
-        // 導航
         canvas.on('mouse:down', function(opt) {
             const evt = opt.e;
             const isRightClick = opt.button === 2 || evt.button === 2;
@@ -526,8 +521,8 @@
         
         function duplicateObject() { const obj = canvas.getActiveObject(); if(!obj || obj.id === 'guide-frame') return; obj.clone(function(cloned) { canvas.discardActiveObject(); cloned.set({ left: cloned.left + 20, top: cloned.top + 20, evented: true }); if (cloned.type === 'activeSelection') { cloned.canvas = canvas; cloned.forEachObject(function(o) { canvas.add(o); }); cloned.setCoords(); } else { canvas.add(cloned); } canvas.setActiveObject(cloned); if(guideFrame) guideFrame.bringToFront(); canvas.requestRenderAll(); saveState(); }); }
 
-        function startCrop() { setMode('crop'); document.getElementById('crop-controls').classList.remove('hidden'); resetViewport(); cropRect = new fabric.Rect({ fill: 'rgba(0,0,0,0.5)', stroke: '#38bdf8', strokeWidth: 2, strokeDashArray: [10, 5], left: 0, top: 0, width: artboardW, height: artboardH, selectable: true, hasRotatingPoint: false, lockRotation: true, cornerColor: 'white', cornerStrokeColor: '#38bdf8', transparentCorners: false }); canvas.add(cropRect); canvas.setActiveObject(cropRect); if(guideFrame) guideFrame.bringToFront(); }
-        function cancelCrop() { if (cropRect) canvas.remove(cropRect); document.getElementById('crop-controls').classList.add('hidden'); setMode('select'); }
+        function startCrop() { setMode('crop'); document.getElementById('crop-controls').classList.remove('hidden'); canvas.setViewportTransform([1,0,0,1,0,0]); centerArtboard(); cropRect = new fabric.Rect({ fill: 'rgba(0,0,0,0.5)', stroke: '#38bdf8', strokeWidth: 2, strokeDashArray: [10, 5], left: 0, top: 0, width: artboardW, height: artboardH, selectable: true, hasRotatingPoint: false, lockRotation: true, cornerColor: 'white', cornerStrokeColor: '#38bdf8', transparentCorners: false }); canvas.add(cropRect); canvas.setActiveObject(cropRect); if(guideFrame) guideFrame.bringToFront(); }
+        function cancelCrop() { if (cropRect) canvas.remove(cropRect); document.getElementById('crop-controls').classList.add('hidden'); setMode('select'); zoomToFit(); }
         function applyCrop() { if (!cropRect) return; const { left, top, width, height } = cropRect.getBoundingRect(); cropRect.visible = false; const url = canvas.toDataURL({ left, top, width, height, format: 'png', multiplier: 1 }); canvas.clear(); createGuideFrame(); loadToCanvas(url); cancelCrop(); }
 
     </script>

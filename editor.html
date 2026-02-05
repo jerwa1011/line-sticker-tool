@@ -235,198 +235,282 @@
 
     <script>
         const canvas = new fabric.Canvas('c', {
-            preserveObjectStacking: true,
-            isDrawingMode: false,
-            backgroundColor: null
-        });
+        preserveObjectStacking: true,
+        isDrawingMode: false,
+        backgroundColor: null
+    });
 
-        // 預設寬高
-        let canvasW = 370;
-        let canvasH = 320;
+    // 預設寬高
+    let canvasW = 370;
+    let canvasH = 320;
 
-        fabric.Object.prototype.set({
-            transparentCorners: false, cornerColor: '#fff', cornerStrokeColor: '#007AFF',
-            borderColor: '#007AFF', cornerSize: 10, cornerStyle: 'circle', locked: false 
-        });
+    fabric.Object.prototype.set({
+        transparentCorners: false, cornerColor: '#fff', cornerStrokeColor: '#007AFF',
+        borderColor: '#007AFF', cornerSize: 10, cornerStyle: 'circle', locked: false 
+    });
 
-        let currentMode = 'select';
-        let brushColor = '#000000'; let brushSize = 5; let eraserSize = 20;
+    // 狀態變數
+    let currentMode = 'select'; // 目前的主模式
+    let isSpaceDown = false;    // 空白鍵是否被按住
+    let isDragging = false;     // 是否正在拖曳畫布
 
-        const propPanel = document.getElementById('propPanel');
-        const textProps = document.getElementById('textProps');
-        const strokeProps = document.getElementById('strokeProps');
-        const brushProps = document.getElementById('brushProps');
-        const eraserProps = document.getElementById('eraserProps');
-        const btnLock = document.getElementById('btnLock');
+    let brushColor = '#000000'; let brushSize = 5; let eraserSize = 20;
 
-        // === 尺寸設定功能 ===
-        const resizeModal = document.getElementById('resizeModal');
-        const wrapper = document.querySelector('.canvas-wrapper');
-        const inputW = document.getElementById('inputW');
-        const inputH = document.getElementById('inputH');
+    // UI 參考
+    const propPanel = document.getElementById('propPanel');
+    const textProps = document.getElementById('textProps');
+    const strokeProps = document.getElementById('strokeProps');
+    const brushProps = document.getElementById('brushProps');
+    const eraserProps = document.getElementById('eraserProps');
+    const btnLock = document.getElementById('btnLock');
+    const viewport = document.getElementById('viewport');
+    const wrapper = document.querySelector('.canvas-wrapper');
 
-        function openResizeModal() {
-            inputW.value = canvas.width;
-            inputH.value = canvas.height;
-            resizeModal.style.display = 'flex';
+    // === 1. 關鍵核心：空白鍵平移邏輯 (Space Panning) ===
+    
+    // 監聽鍵盤按下
+    document.addEventListener('keydown', (e) => {
+        // 衝突解決：如果正在輸入文字，不要觸發抓手
+        const activeObj = canvas.getActiveObject();
+        const isEditingText = activeObj && activeObj.type === 'i-text' && activeObj.isEditing;
+
+        if (e.code === 'Space' && !isEditingText) {
+            e.preventDefault(); // 阻止瀏覽器向下捲動
+            if (!isSpaceDown) {
+                isSpaceDown = true;
+                viewport.style.cursor = 'grab'; // 游標變手掌
+                
+                // 暫時鎖住 Canvas 的互動，讓事件透傳給 Viewport
+                canvas.selection = false; 
+                canvas.forEachObject(o => o.selectable = false);
+            }
         }
 
-        function closeResizeModal() {
-            resizeModal.style.display = 'none';
+        // 其他快捷鍵
+        if (e.key === 'Delete' || e.key === 'Backspace') { 
+            if(!isEditingText) deleteObject(); 
         }
+        if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undo(); }
+    });
 
-        function applyResize() {
-            const newW = parseInt(inputW.value) || 370;
-            const newH = parseInt(inputH.value) || 320;
+    // 監聽鍵盤放開
+    document.addEventListener('keyup', (e) => {
+        if (e.code === 'Space') {
+            isSpaceDown = false;
+            isDragging = false; // 停止拖曳
             
-            // 更新 Canvas 邏輯尺寸
-            canvas.setDimensions({ width: newW, height: newH });
-            canvasW = newW;
-            canvasH = newH;
-
-            // 更新 DOM 容器尺寸以符合視覺
-            // 注意：Fabric 的 canvas 元素會自己變，但外層 wrapper 也要跟著變
-            // 因為 wrapper 負責背景色顯示
-            // 這裡不需要手動設 style.width，因為 canvas 撐開了，但我們可以強制更新一下介面
-            
-            closeResizeModal();
-            centerView(); // 調整後重置視角
-            saveHistory();
+            // 恢復原本模式的游標與狀態
+            if (currentMode === 'select') {
+                viewport.style.cursor = 'default';
+                canvas.selection = true;
+                canvas.forEachObject(o => o.selectable = true);
+            } else if (currentMode === 'draw' || currentMode === 'eraser') {
+                viewport.style.cursor = 'default'; // 或者是 crosshair，視設計而定
+                canvas.selection = false;
+                // 畫筆模式不需要 selectable
+            } else if (currentMode === 'pan') {
+                viewport.style.cursor = 'grab';
+            }
+            canvas.requestRenderAll();
         }
-        
-        function centerView() {
-            scale = 1; panX = 0; panY = 0;
+    });
+
+    // 滑鼠與畫布拖曳邏輯
+    let lastX, lastY, panX = 0, panY = 0, scale = 1;
+
+    viewport.addEventListener('mousedown', (e) => {
+        // 觸發條件：1. 抓手模式 OR 2. 按住空白鍵
+        if (currentMode === 'pan' || isSpaceDown) {
+            isDragging = true;
+            lastX = e.clientX; 
+            lastY = e.clientY;
+            viewport.style.cursor = 'grabbing'; // 變成抓緊的手
+        }
+    });
+
+    window.addEventListener('mousemove', (e) => {
+        if (isDragging && (currentMode === 'pan' || isSpaceDown)) {
+            const deltaX = e.clientX - lastX;
+            const deltaY = e.clientY - lastY;
+            panX += deltaX;
+            panY += deltaY;
+            lastX = e.clientX;
+            lastY = e.clientY;
             updateTransform();
         }
+    });
 
-        // === 模式切換 ===
-        function setMode(mode) {
-            currentMode = mode;
-            ['btnSelect', 'btnPan', 'btnDraw', 'btnEraser'].forEach(id => document.getElementById(id).classList.remove('active'));
-            const activeBtnMap = {'select': 'btnSelect', 'pan': 'btnPan', 'draw': 'btnDraw', 'eraser': 'btnEraser'};
-            document.getElementById(activeBtnMap[mode]).classList.add('active');
-            canvas.isDrawingMode = false; canvas.selection = false; canvas.defaultCursor = 'default';
-            canvas.discardActiveObject(); canvas.requestRenderAll();
-            propPanel.style.display = 'none'; brushProps.style.display = 'none'; eraserProps.style.display = 'none'; textProps.style.display = 'none'; strokeProps.style.display = 'none';
-
-            if (mode === 'select') canvas.selection = true;
-            else if (mode === 'pan') canvas.defaultCursor = 'grab';
-            else if (mode === 'draw') {
-                canvas.isDrawingMode = true;
-                canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
-                canvas.freeDrawingBrush.color = brushColor;
-                canvas.freeDrawingBrush.width = parseInt(brushSize);
-                propPanel.style.display = 'flex'; brushProps.style.display = 'flex';
-            } else if (mode === 'eraser') {
-                canvas.isDrawingMode = true;
-                canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
-                canvas.freeDrawingBrush.color = 'white';
-                canvas.freeDrawingBrush.width = parseInt(eraserSize);
-                propPanel.style.display = 'flex'; eraserProps.style.display = 'flex';
+    window.addEventListener('mouseup', () => {
+        if (isDragging) {
+            isDragging = false;
+            // 恢復游標
+            if (isSpaceDown || currentMode === 'pan') {
+                viewport.style.cursor = 'grab';
             }
         }
+    });
 
-        // === 鎖定 ===
-        function toggleLock() {
-            const active = canvas.getActiveObject(); if (!active) return;
-            const isLocked = !active.lockMovementX;
-            active.set({
-                lockMovementX: isLocked, lockMovementY: isLocked, lockRotation: isLocked, lockScalingX: isLocked, lockScalingY: isLocked,
-                borderColor: isLocked ? '#FF9500' : '#007AFF', cornerStrokeColor: isLocked ? '#FF9500' : '#007AFF', cornerColor: isLocked ? '#eee' : '#fff'
+    function updateTransform() { 
+        wrapper.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`; 
+    }
+    
+    // 滾輪縮放
+    viewport.addEventListener('wheel', (e) => { 
+        e.preventDefault(); 
+        scale = Math.min(Math.max(0.5, scale - e.deltaY * 0.001), 4); 
+        updateTransform(); 
+    }, { passive: false });
+
+
+    // === 2. 模式切換與工具 ===
+    function setMode(mode) {
+        currentMode = mode;
+        ['btnSelect', 'btnPan', 'btnDraw', 'btnEraser'].forEach(id => document.getElementById(id).classList.remove('active'));
+        const activeBtnMap = {'select': 'btnSelect', 'pan': 'btnPan', 'draw': 'btnDraw', 'eraser': 'btnEraser'};
+        document.getElementById(activeBtnMap[mode]).classList.add('active');
+        
+        // 重置狀態
+        canvas.isDrawingMode = false; 
+        canvas.selection = false; 
+        canvas.defaultCursor = 'default';
+        canvas.discardActiveObject(); 
+        canvas.requestRenderAll();
+        
+        // 隱藏屬性面板
+        propPanel.style.display = 'none'; brushProps.style.display = 'none'; eraserProps.style.display = 'none'; textProps.style.display = 'none'; strokeProps.style.display = 'none';
+
+        if (mode === 'select') {
+            canvas.selection = true;
+            canvas.forEachObject(o => o.selectable = true);
+        }
+        else if (mode === 'pan') {
+            canvas.defaultCursor = 'grab';
+            canvas.forEachObject(o => o.selectable = false); // 抓手模式不能選物件
+        }
+        else if (mode === 'draw') {
+            canvas.isDrawingMode = true;
+            canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+            canvas.freeDrawingBrush.color = brushColor;
+            canvas.freeDrawingBrush.width = parseInt(brushSize);
+            propPanel.style.display = 'flex'; brushProps.style.display = 'flex';
+        } else if (mode === 'eraser') {
+            canvas.isDrawingMode = true;
+            canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+            canvas.freeDrawingBrush.color = 'white';
+            canvas.freeDrawingBrush.width = parseInt(eraserSize);
+            propPanel.style.display = 'flex'; eraserProps.style.display = 'flex';
+        }
+    }
+
+    // === 3. 尺寸設定功能 ===
+    const resizeModal = document.getElementById('resizeModal');
+    const inputW = document.getElementById('inputW');
+    const inputH = document.getElementById('inputH');
+
+    function openResizeModal() { inputW.value = canvasW; inputH.value = canvasH; resizeModal.style.display = 'flex'; }
+    function closeResizeModal() { resizeModal.style.display = 'none'; }
+    function applyResize() {
+        const newW = parseInt(inputW.value) || 370;
+        const newH = parseInt(inputH.value) || 320;
+        canvas.setDimensions({ width: newW, height: newH });
+        canvasW = newW; canvasH = newH;
+        closeResizeModal(); centerView(); saveHistory();
+    }
+    function centerView() { scale = 1; panX = 0; panY = 0; updateTransform(); }
+
+    // === 4. 物件操作與屬性 ===
+    function toggleLock() {
+        const active = canvas.getActiveObject(); if (!active) return;
+        const isLocked = !active.lockMovementX;
+        active.set({
+            lockMovementX: isLocked, lockMovementY: isLocked, lockRotation: isLocked, lockScalingX: isLocked, lockScalingY: isLocked,
+            borderColor: isLocked ? '#FF9500' : '#007AFF', cornerStrokeColor: isLocked ? '#FF9500' : '#007AFF', cornerColor: isLocked ? '#eee' : '#fff'
+        });
+        if (isLocked) btnLock.classList.add('locked'); else btnLock.classList.remove('locked');
+        canvas.requestRenderAll(); saveHistory();
+    }
+
+    canvas.on('selection:created', updatePropsUI);
+    canvas.on('selection:updated', updatePropsUI);
+    canvas.on('selection:cleared', () => { if(currentMode === 'select') propPanel.style.display = 'none'; btnLock.classList.remove('locked'); });
+
+    function updatePropsUI() {
+        if(currentMode !== 'select') return;
+        const obj = canvas.getActiveObject(); if(!obj) return;
+        if (obj.lockMovementX) btnLock.classList.add('locked'); else btnLock.classList.remove('locked');
+        propPanel.style.display = 'flex'; textProps.style.display = 'none'; strokeProps.style.display = 'flex';
+        let currentStroke = 0;
+        if (obj.shadow) currentStroke = obj.shadow.offsetX * 3 || 0;
+        if (obj.strokeWidth) currentStroke = obj.strokeWidth;
+        document.getElementById('strokeRange').value = currentStroke;
+        document.getElementById('strokeValue').textContent = currentStroke;
+        if(obj.type === 'i-text') { textProps.style.display = 'flex'; document.getElementById('fontFamilySelect').value = obj.fontFamily; }
+    }
+
+    // === 5. 繪圖與橡皮擦 ===
+    function updateEraser() { eraserSize = document.getElementById('eraserSize').value; if(currentMode === 'eraser') canvas.freeDrawingBrush.width = parseInt(eraserSize); }
+    function updateBrush() { brushColor = document.getElementById('brushColor').value; brushSize = document.getElementById('brushSize').value; if(currentMode === 'draw') { canvas.freeDrawingBrush.color = brushColor; canvas.freeDrawingBrush.width = parseInt(brushSize); } }
+    canvas.on('path:created', function(e) {
+        const path = e.path; saveHistory();
+        if (currentMode === 'eraser') { path.globalCompositeOperation = 'destination-out'; path.selectable = false; path.evented = false; }
+        else if (currentMode === 'draw') { path.selectable = true; }
+    });
+
+    // === 6. 白邊、群組、字型 ===
+    function updateStroke(val) {
+        const width = parseInt(val); document.getElementById('strokeValue').textContent = width;
+        const obj = canvas.getActiveObject(); if(!obj) return;
+        if (obj.type === 'i-text' || obj.type === 'text') { obj.set({ stroke: '#fff', strokeWidth: width, paintFirst: 'stroke' }); }
+        else {
+            if (width === 0) obj.shadow = null;
+            else obj.set({ shadow: new fabric.Shadow({ color: '#ffffff', blur: 0, offsetX: width/3, offsetY: width/3, opacity: 1 }) });
+        }
+        canvas.requestRenderAll(); saveHistory();
+    }
+    function toggleGroup() {
+        const active = canvas.getActiveObject(); if (!active) return;
+        if (active.type === 'activeSelection') active.toGroup(); else if (active.type === 'group') active.toActiveSelection();
+        canvas.requestRenderAll(); saveHistory();
+    }
+    function addText() { const text = new fabric.IText('輸入文字', { left: 100, top: 100, fontFamily: 'Noto Sans TC', fill: '#333', fontSize: 40, fontWeight: '900' }); canvas.add(text); canvas.setActiveObject(text); setMode('select'); saveHistory(); }
+    function changeFont(font) { const obj = canvas.getActiveObject(); if(obj && obj.type === 'i-text') { obj.set("fontFamily", font); canvas.requestRenderAll(); saveHistory(); } }
+
+    // === 7. 歷史與檔案 ===
+    let historyStack = []; let historyProcessing = false;
+    function saveHistory() { if(historyProcessing) return; if(historyStack.length > 10) historyStack.shift(); historyStack.push(JSON.stringify(canvas)); }
+    function undo() { if (historyStack.length <= 1) return; historyProcessing = true; historyStack.pop(); const state = historyStack[historyStack.length - 1]; canvas.loadFromJSON(state, () => { canvas.renderAll(); historyProcessing = false; }); }
+
+    function triggerUpload() { document.getElementById('fileInput').click(); }
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+        const file = e.target.files[0]; if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(f) {
+            fabric.Image.fromURL(f.target.result, function(img) {
+                if (img.width > 250) img.scaleToWidth(250);
+                canvas.add(img); canvas.centerObject(img); setMode('select'); saveHistory();
             });
-            if (isLocked) btnLock.classList.add('locked'); else btnLock.classList.remove('locked');
-            canvas.requestRenderAll(); saveHistory();
-        }
+        }; reader.readAsDataURL(file); this.value = '';
+    });
+    
+    function deleteObject() { const active = canvas.getActiveObjects(); if (active.length) { canvas.discardActiveObject(); active.forEach(obj => canvas.remove(obj)); saveHistory(); } }
 
-        canvas.on('selection:created', updatePropsUI);
-        canvas.on('selection:updated', updatePropsUI);
-        canvas.on('selection:cleared', () => { if(currentMode === 'select') propPanel.style.display = 'none'; btnLock.classList.remove('locked'); });
-
-        function updatePropsUI() {
-            if(currentMode !== 'select') return;
-            const obj = canvas.getActiveObject(); if(!obj) return;
-            if (obj.lockMovementX) btnLock.classList.add('locked'); else btnLock.classList.remove('locked');
-            propPanel.style.display = 'flex'; textProps.style.display = 'none'; strokeProps.style.display = 'flex';
-            let currentStroke = 0;
-            if (obj.shadow) currentStroke = obj.shadow.offsetX * 3 || 0;
-            if (obj.strokeWidth) currentStroke = obj.strokeWidth;
-            document.getElementById('strokeRange').value = currentStroke;
-            document.getElementById('strokeValue').textContent = currentStroke;
-            if(obj.type === 'i-text') { textProps.style.display = 'flex'; document.getElementById('fontFamilySelect').value = obj.fontFamily; }
-        }
-
-        // === 繪圖 ===
-        function updateEraser() { eraserSize = document.getElementById('eraserSize').value; if(currentMode === 'eraser') canvas.freeDrawingBrush.width = parseInt(eraserSize); }
-        function updateBrush() { brushColor = document.getElementById('brushColor').value; brushSize = document.getElementById('brushSize').value; if(currentMode === 'draw') { canvas.freeDrawingBrush.color = brushColor; canvas.freeDrawingBrush.width = parseInt(brushSize); } }
-        canvas.on('path:created', function(e) {
-            const path = e.path; saveHistory();
-            if (currentMode === 'eraser') { path.globalCompositeOperation = 'destination-out'; path.selectable = false; path.evented = false; }
-            else if (currentMode === 'draw') { path.selectable = true; }
-        });
-
-        // === 功能組 ===
-        function updateStroke(val) {
-            const width = parseInt(val); document.getElementById('strokeValue').textContent = width;
-            const obj = canvas.getActiveObject(); if(!obj) return;
-            if (obj.type === 'i-text' || obj.type === 'text') { obj.set({ stroke: '#fff', strokeWidth: width, paintFirst: 'stroke' }); }
-            else {
-                if (width === 0) obj.shadow = null;
-                else obj.set({ shadow: new fabric.Shadow({ color: '#ffffff', blur: 0, offsetX: width/3, offsetY: width/3, opacity: 1 }) });
-            }
-            canvas.requestRenderAll(); saveHistory();
-        }
-        function toggleGroup() {
-            const active = canvas.getActiveObject(); if (!active) return;
-            if (active.type === 'activeSelection') active.toGroup(); else if (active.type === 'group') active.toActiveSelection();
-            canvas.requestRenderAll(); saveHistory();
-        }
-
-        let historyStack = []; let historyProcessing = false;
-        function saveHistory() { if(historyProcessing) return; if(historyStack.length > 10) historyStack.shift(); historyStack.push(JSON.stringify(canvas)); }
-        function undo() { if (historyStack.length <= 1) return; historyProcessing = true; historyStack.pop(); const state = historyStack[historyStack.length - 1]; canvas.loadFromJSON(state, () => { canvas.renderAll(); historyProcessing = false; }); }
-
-        function triggerUpload() { document.getElementById('fileInput').click(); }
-        document.getElementById('fileInput').addEventListener('change', function(e) {
-            const file = e.target.files[0]; if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(f) {
-                fabric.Image.fromURL(f.target.result, function(img) {
-                    if (img.width > 250) img.scaleToWidth(250);
-                    canvas.add(img); canvas.centerObject(img); setMode('select'); saveHistory();
-                });
-            }; reader.readAsDataURL(file); this.value = '';
-        });
-        function addText() { const text = new fabric.IText('輸入文字', { left: 100, top: 100, fontFamily: 'Noto Sans TC', fill: '#333', fontSize: 40, fontWeight: '900' }); canvas.add(text); canvas.setActiveObject(text); setMode('select'); saveHistory(); }
-        function changeFont(font) { const obj = canvas.getActiveObject(); if(obj && obj.type === 'i-text') { obj.set("fontFamily", font); canvas.requestRenderAll(); saveHistory(); } }
-        function deleteObject() { const active = canvas.getActiveObjects(); if (active.length) { canvas.discardActiveObject(); active.forEach(obj => canvas.remove(obj)); saveHistory(); } }
-
-        const viewport = document.getElementById('viewport');
-        let isDragging = false, lastX, lastY, panX = 0, panY = 0, scale = 1;
-        viewport.addEventListener('wheel', (e) => { e.preventDefault(); scale = Math.min(Math.max(0.5, scale - e.deltaY * 0.001), 4); updateTransform(); }, { passive: false });
-        viewport.addEventListener('mousedown', (e) => { if (currentMode === 'pan') { isDragging = true; lastX = e.clientX; lastY = e.clientY; } });
-        window.addEventListener('mousemove', (e) => { if (isDragging && currentMode === 'pan') { panX += e.clientX - lastX; panY += e.clientY - lastY; lastX = e.clientX; lastY = e.clientY; updateTransform(); } });
-        window.addEventListener('mouseup', () => isDragging = false);
-        function updateTransform() { wrapper.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`; }
-
-        const bgColors = ['#849ebf', '#ffffff', '#1a1a1a', 'transparent']; let bgIndex = 0;
-        function toggleBackground() {
-            bgIndex = (bgIndex + 1) % bgColors.length; const color = bgColors[bgIndex]; wrapper.style.backgroundColor = color;
-            if(color === 'transparent') { wrapper.style.backgroundImage = 'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)'; wrapper.style.backgroundSize = '20px 20px'; wrapper.style.backgroundPosition = '0 0, 0 10px, 10px -10px, -10px 0px'; }
-            else { wrapper.style.backgroundImage = 'none'; }
-        }
-        function downloadPNG() {
-            canvas.discardActiveObject(); canvas.requestRenderAll();
-            // 下載時直接抓取目前的 canvas 內容，尺寸會依據 setDimensions 設定的大小
-            setTimeout(() => {
-                const dataURL = canvas.toDataURL({ format: 'png', quality: 1, multiplier: 1 });
-                const link = document.createElement('a'); link.download = `sticker-${canvasW}x${canvasH}-${Date.now()}.png`; link.href = dataURL; document.body.appendChild(link); link.click(); document.body.removeChild(link);
-            }, 50);
-        }
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Delete' || e.key === 'Backspace') { if(!canvas.getActiveObject()?.isEditing) deleteObject(); }
-            if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undo(); }
-        });
-        saveHistory();
+    // 背景與下載
+    const bgColors = ['#849ebf', '#ffffff', '#1a1a1a', 'transparent']; let bgIndex = 0;
+    function toggleBackground() {
+        bgIndex = (bgIndex + 1) % bgColors.length; const color = bgColors[bgIndex]; wrapper.style.backgroundColor = color;
+        if(color === 'transparent') { wrapper.style.backgroundImage = 'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)'; wrapper.style.backgroundSize = '20px 20px'; wrapper.style.backgroundPosition = '0 0, 0 10px, 10px -10px, -10px 0px'; }
+        else { wrapper.style.backgroundImage = 'none'; }
+    }
+    function downloadPNG() {
+        canvas.discardActiveObject(); canvas.requestRenderAll();
+        setTimeout(() => {
+            const dataURL = canvas.toDataURL({ format: 'png', quality: 1, multiplier: 1 });
+            const link = document.createElement('a'); link.download = `sticker-${canvasW}x${canvasH}-${Date.now()}.png`; link.href = dataURL; document.body.appendChild(link); link.click(); document.body.removeChild(link);
+        }, 50);
+    }
+    
+    saveHistory();
     </script>
 </body>
 </html>
+

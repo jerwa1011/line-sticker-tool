@@ -3,54 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sticker Master V16 - 橡皮擦修復版</title>
+    <title>Sticker Master V17 - 完美輸出版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&family=Noto+Serif+TC:wght@700&family=Mochiy+Pop+One&family=Caveat:wght@700&family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body { 
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "Noto Sans TC", sans-serif;
-            background-color: #111; 
-            color: #fff;
-            overflow: hidden; 
-            user-select: none;
-            -webkit-font-smoothing: antialiased;
+            background-color: #111; color: #fff; overflow: hidden; user-select: none; -webkit-font-smoothing: antialiased;
         }
 
-        /* 背景層：動態切換 Class */
+        /* 護眼低對比棋盤格 */
         #workspace-bg {
             position: absolute; inset: 0; z-index: 0;
-            background-size: 24px 24px;
-            background-position: 0 0, 0 12px, 12px -12px, -12px 0px;
-            pointer-events: none;
-        }
-
-        /* 暗色模式棋盤格 (預設) */
-        .bg-dark-check {
             background-color: #18181b; 
             background-image: 
-                linear-gradient(45deg, rgba(255,255,255,0.05) 25%, transparent 25%), 
-                linear-gradient(-45deg, rgba(255,255,255,0.05) 25%, transparent 25%), 
-                linear-gradient(45deg, transparent 75%, rgba(255,255,255,0.05) 75%), 
-                linear-gradient(-45deg, transparent 75%, rgba(255,255,255,0.05) 75%);
-        }
-
-        /* 亮色模式棋盤格 (檢查用) */
-        .bg-light-check {
-            background-color: #fff; 
-            background-image: 
-                linear-gradient(45deg, #ccc 25%, transparent 25%), 
-                linear-gradient(-45deg, #ccc 25%, transparent 25%), 
-                linear-gradient(45deg, transparent 75%, #ccc 75%), 
-                linear-gradient(-45deg, transparent 75%, #ccc 75%);
+                linear-gradient(45deg, rgba(255,255,255,0.03) 25%, transparent 25%), 
+                linear-gradient(-45deg, rgba(255,255,255,0.03) 25%, transparent 25%), 
+                linear-gradient(45deg, transparent 75%, rgba(255,255,255,0.03) 75%), 
+                linear-gradient(-45deg, transparent 75%, rgba(255,255,255,0.03) 75%);
+            background-size: 24px 24px;
+            background-position: 0 0, 0 12px, 12px -12px, -12px 0px;
         }
 
         .ios-glass {
-            background: rgba(30, 30, 30, 0.7);
+            background: rgba(30, 30, 30, 0.85);
             backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
         }
 
         .ios-btn {
@@ -64,24 +45,33 @@
         input[type="range"] { -webkit-appearance: none; background: transparent; height: 4px; border-radius: 2px; }
         input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: #fff; margin-top: -6px; box-shadow: 0 2px 4px rgba(0,0,0,0.5); }
         input[type="range"]::-webkit-slider-runnable-track { width: 100%; height: 4px; background: #4b5563; border-radius: 2px; }
+        
+        .dark-input { @apply bg-gray-900 border border-gray-600 rounded px-2 py-1 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none; }
 
         #floating-menu {
             display: none; position: absolute; z-index: 100;
             padding: 6px; gap: 8px; border-radius: 50px;
             transform: translate(-50%, -140%);
         }
+        
+        /* 輸出設定彈窗 */
+        #export-modal {
+            display: none; position: absolute; inset: 0; z-index: 200;
+            background: rgba(0,0,0,0.5); backdrop-filter: blur(5px);
+            justify-content: center; align-items: center;
+        }
     </style>
 </head>
 <body oncontextmenu="return false;">
 
-    <div id="workspace-bg" class="bg-dark-check"></div>
+    <div id="workspace-bg"></div>
     <div class="absolute inset-0 z-10"><canvas id="c"></canvas></div>
 
-    <nav class="absolute top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4 ios-glass px-6 py-3 rounded-full shadow-2xl transition-all hover:scale-105">
-        <div class="font-bold text-sm tracking-wide text-gray-200">Sticker V16</div>
+    <nav class="absolute top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4 ios-glass px-6 py-3 rounded-full shadow-2xl">
+        <div class="font-bold text-sm tracking-wide text-gray-200">Sticker V17</div>
         <div class="w-[1px] h-4 bg-gray-600"></div>
         <label class="ios-btn w-8 h-8 rounded-full" title="載入"><i class="fas fa-image text-lg"></i><input type="file" id="imgLoader" accept="image/*" class="hidden"></label>
-        <button onclick="downloadImage()" class="ios-btn w-8 h-8 rounded-full text-green-400" title="輸出"><i class="fas fa-file-export text-lg"></i></button>
+        <button onclick="openExportModal()" class="ios-btn w-8 h-8 rounded-full text-green-400" title="輸出設定"><i class="fas fa-file-export text-lg"></i></button>
         <div class="w-[1px] h-4 bg-gray-600"></div>
         <button onclick="undo()" id="btn-undo" class="ios-btn w-8 h-8 rounded-full disabled:opacity-30"><i class="fas fa-undo"></i></button>
         <button onclick="redo()" id="btn-redo" class="ios-btn w-8 h-8 rounded-full disabled:opacity-30"><i class="fas fa-redo"></i></button>
@@ -93,7 +83,7 @@
         <button onclick="addText()" class="ios-btn w-12 h-12 rounded-2xl flex-col gap-1 text-yellow-400"><i class="fas fa-font text-lg"></i><span class="text-[9px]">文字</span></button>
         <div class="w-[1px] h-8 bg-gray-600 mx-1"></div>
         <button onclick="setMode('draw')" id="btn-draw" class="ios-btn w-12 h-12 rounded-2xl flex-col gap-1"><i class="fas fa-pen text-lg"></i><span class="text-[9px]">畫筆</span></button>
-        <button onclick="setMode('eraser')" id="btn-eraser" class="ios-btn w-12 h-12 rounded-2xl flex-col gap-1 text-pink-400"><i class="fas fa-eraser text-lg"></i><span class="text-[9px]">橡皮擦</span></button>
+        <button onclick="setMode('eraser')" id="btn-eraser" class="ios-btn w-12 h-12 rounded-2xl flex-col gap-1 text-red-400"><i class="fas fa-eraser text-lg"></i><span class="text-[9px]">橡皮擦</span></button>
         <div class="w-[1px] h-8 bg-gray-600 mx-1"></div>
         <button onclick="deleteActiveObject()" class="ios-btn w-12 h-12 rounded-2xl flex-col gap-1 text-red-500 hover:bg-red-500/20"><i class="fas fa-trash-alt text-lg"></i><span class="text-[9px]">刪除</span></button>
         <button onclick="startCrop()" id="btn-crop" class="ios-btn w-12 h-12 rounded-2xl flex-col gap-1"><i class="fas fa-crop-alt text-lg"></i><span class="text-[9px]">裁切</span></button>
@@ -103,7 +93,7 @@
         <div class="flex justify-between items-center mb-4 pb-2 border-b border-gray-700/50">
             <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Settings</span>
             <div class="flex gap-2">
-                <button onclick="toggleBg()" class="text-[10px] bg-gray-700/50 hover:bg-gray-600 px-2 py-1 rounded-md text-yellow-300" title="切換背景亮暗"><i class="fas fa-lightbulb"></i></button>
+                <button onclick="toggleBg()" class="text-[10px] bg-gray-700/50 hover:bg-gray-600 px-2 py-1 rounded-md text-yellow-300"><i class="fas fa-lightbulb"></i></button>
                 <button onclick="resetViewport()" class="text-[10px] bg-gray-700/50 hover:bg-gray-600 px-2 py-1 rounded-md text-blue-300" id="zoom-val">100%</button>
             </div>
         </div>
@@ -152,17 +142,28 @@
                 <div>
                     <label class="text-[10px] text-gray-400 block mb-2 font-bold">FONT</label>
                     <select id="font-family" class="w-full bg-gray-800/50 text-white text-xs border border-gray-600 rounded-lg px-2 py-2 outline-none appearance-none" onchange="handleFontChange()">
-                        <optgroup label="Saved" id="saved-fonts-group"></optgroup>
-                        <optgroup label="System">
-                            <option value="Noto Sans TC">思源黑體</option>
-                            <option value="Mochiy Pop One">可愛圓體</option>
+                        <optgroup label="Web Fonts (免安裝)">
+                            <option value="Noto Sans TC">思源黑體 (粗)</option>
+                            <option value="Noto Serif TC">思源宋體 (文青)</option>
+                            <option value="Mochiy Pop One">Mochiy 圓體 (可愛)</option>
+                            <option value="ZCOOL KuaiLe">快樂體 (手寫)</option>
+                            <option value="Caveat">Caveat (英文手寫)</option>
+                        </optgroup>
+                        <optgroup label="System Fonts (本機)">
                             <option value="Microsoft JhengHei">微軟正黑體</option>
+                            <option value="PMingLiU">新細明體</option>
+                            <option value="DFKai-SB">標楷體</option>
+                            <option value="PingFang TC">蘋方黑體 (Mac)</option>
+                            <option value="Impact">Impact (迷因)</option>
+                            <option value="Comic Sans MS">Comic Sans</option>
                             <option value="Arial">Arial</option>
                         </optgroup>
-                        <option value="custom_input">+ Add Local Font...</option>
+                        <optgroup label="User">
+                            <option value="custom_input">➕ 手動輸入字型名稱...</option>
+                        </optgroup>
                     </select>
                     <div id="custom-font-area" class="hidden mt-2 flex gap-2">
-                        <input type="text" id="custom-font-input" placeholder="Font Name" class="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-xs text-white">
+                        <input type="text" id="custom-font-input" placeholder="例如: 華康少女文字W5" class="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-xs text-white">
                         <button onclick="saveCustomFont()" class="bg-blue-600 rounded px-3 text-xs"><i class="fas fa-check"></i></button>
                     </div>
                 </div>
@@ -186,6 +187,29 @@
         <div class="ios-btn w-9 h-9 rounded-full" onclick="ungroupObjects()" id="float-ungroup"><i class="fas fa-object-ungroup"></i></div>
         <div class="ios-btn w-9 h-9 rounded-full" onclick="bringToFront()"><i class="fas fa-arrow-up"></i></div>
         <div class="ios-btn w-9 h-9 rounded-full" onclick="sendToBack()"><i class="fas fa-arrow-down"></i></div>
+    </div>
+
+    <div id="export-modal" class="hidden">
+        <div class="ios-glass p-6 rounded-2xl w-80 text-center shadow-2xl">
+            <h3 class="text-lg font-bold mb-4 text-white">輸出設定</h3>
+            
+            <div class="flex items-center justify-center gap-2 mb-6">
+                <div class="text-left">
+                    <label class="text-[10px] text-gray-400 block mb-1">寬度 (px)</label>
+                    <input type="number" id="export-w" class="dark-input w-24 text-center text-lg font-mono" onchange="syncExportHeight()">
+                </div>
+                <div class="text-gray-500 pt-4">x</div>
+                <div class="text-left">
+                    <label class="text-[10px] text-gray-400 block mb-1">高度 (px)</label>
+                    <input type="number" id="export-h" class="dark-input w-24 text-center text-lg font-mono" readonly>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="closeExportModal()" class="bg-gray-700 hover:bg-gray-600 py-2 rounded-xl text-sm transition">取消</button>
+                <button onclick="confirmDownload()" class="bg-green-600 hover:bg-green-500 py-2 rounded-xl text-sm font-bold text-white transition shadow-lg">下載 PNG</button>
+            </div>
+        </div>
     </div>
 
     <div id="crop-controls" class="absolute bottom-24 left-1/2 -translate-x-1/2 z-50 flex gap-4 hidden ios-glass px-1 py-1 rounded-full shadow-2xl">
@@ -230,19 +254,19 @@
             if(guideFrame) centerArtboard();
         }
 
-        // V16: 切換背景
+        // V17: 切換背景亮暗
         function toggleBg() {
             const bg = document.getElementById('workspace-bg');
-            if (bg.classList.contains('bg-dark-check')) {
-                bg.classList.remove('bg-dark-check');
-                bg.classList.add('bg-light-check');
+            // 這裡簡單用 CSS filter 或更換背景圖來實現
+            if (bg.style.backgroundColor === 'rgb(221, 221, 221)') { // Light mode
+                bg.style.backgroundColor = '#18181b';
+                bg.style.backgroundImage = 'linear-gradient(45deg, rgba(255,255,255,0.03) 25%, transparent 25%), linear-gradient(-45deg, rgba(255,255,255,0.03) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(255,255,255,0.03) 75%), linear-gradient(-45deg, transparent 75%, rgba(255,255,255,0.03) 75%)';
             } else {
-                bg.classList.remove('bg-light-check');
-                bg.classList.add('bg-dark-check');
+                bg.style.backgroundColor = '#ddd';
+                bg.style.backgroundImage = 'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)';
             }
         }
 
-        // 虛線框
         function createGuideFrame() {
             if(guideFrame) canvas.remove(guideFrame);
             guideFrame = new fabric.Rect({
@@ -270,7 +294,18 @@
             updateZoomDisplay();
         }
 
-        // 刪除保護
+        function resizeCanvasDimension() {
+            artboardW = parseInt(document.getElementById('canvas-w').value);
+            artboardH = parseInt(document.getElementById('canvas-h').value);
+            guideFrame.set({ width: artboardW, height: artboardH });
+            centerArtboard();
+        }
+        function setStandardSize() {
+            document.getElementById('canvas-w').value = 370; document.getElementById('canvas-h').value = 320;
+            resizeCanvasDimension();
+        }
+
+        // --- 核心邏輯 ---
         function deleteActiveObject() {
             const obj = canvas.getActiveObject();
             if (obj && !obj.isEditing && obj.id !== 'guide-frame') {
@@ -282,24 +317,67 @@
             }
         }
 
-        // 輸出
+        // V17: 輸出流程重構
+        function openExportModal() {
+            document.getElementById('export-modal').style.display = 'flex';
+            document.getElementById('export-w').value = artboardW;
+            syncExportHeight();
+        }
+        
+        function closeExportModal() {
+            document.getElementById('export-modal').style.display = 'none';
+        }
+
+        function syncExportHeight() {
+            // 鎖定比例 (預設 Artboard 比例)
+            const w = parseInt(document.getElementById('export-w').value);
+            const ratio = artboardH / artboardW;
+            document.getElementById('export-h').value = Math.round(w * ratio);
+        }
+
         function downloadImage() {
+            // 現在改為打開 Modal
+            openExportModal();
+        }
+
+        function confirmDownload() {
             canvas.discardActiveObject();
             document.getElementById('floating-menu').style.display = 'none';
-            const originalVpt = canvas.viewportTransform.slice();
-            canvas.viewportTransform = [1, 0, 0, 1, 0, 0];
+            closeExportModal();
+
+            // 1. 獲取使用者設定的目標寬度
+            const targetW = parseInt(document.getElementById('export-w').value);
+            // 2. 計算縮放倍率 (Multiplier)
+            const multiplier = targetW / artboardW;
+
+            // 3. 強制隱藏虛線框
             if(guideFrame) guideFrame.visible = false;
+            
+            // 4. 強制同步渲染一次，確保狀態更新
             canvas.renderAll();
+
             setTimeout(() => {
                 const link = document.createElement('a'); 
                 link.download = `sticker-${Date.now()}.png`;
-                link.href = canvas.toDataURL({ format: 'png', quality: 1, multiplier: 1, left: 0, top: 0, width: artboardW, height: artboardH });
+                
+                // 5. 輸出時應用 Multiplier
+                link.href = canvas.toDataURL({ 
+                    format: 'png', 
+                    quality: 1, 
+                    multiplier: multiplier, // 關鍵：這會讓輸出圖片變大或變小
+                    left: 0, 
+                    top: 0, 
+                    width: artboardW, 
+                    height: artboardH 
+                });
                 link.click();
+                
+                // 6. 恢復
                 if(guideFrame) guideFrame.visible = true;
+                // 確保 Guide Frame 回到最上層
                 guideFrame.bringToFront();
-                canvas.viewportTransform = originalVpt;
                 canvas.requestRenderAll();
-            }, 50);
+            }, 50); // 給一點緩衝時間
         }
 
         // 導航
@@ -375,17 +453,14 @@
             canvas.requestRenderAll(); updatePanel();
         }
 
-        // V16 修正：橡皮擦完全不透明 (alpha 1)
         function updateBrush() {
             if (!canvas.freeDrawingBrush) return;
             const size = parseInt(document.getElementById('draw-width').value);
             document.getElementById('brush-size-val').innerText = size;
-            
             if (currentMode === 'eraser') {
                 canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
                 canvas.freeDrawingBrush.width = size;
-                // 關鍵：這裡使用不透明的白色，確保 destination-out 能夠 100% 挖空
-                canvas.freeDrawingBrush.color = 'rgba(255,255,255,1)'; 
+                canvas.freeDrawingBrush.color = 'rgba(255,255,255,1)'; // 不透明白
                 document.getElementById('brush-color-container').style.display = 'none';
             } else {
                 canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
@@ -394,7 +469,6 @@
                 document.getElementById('brush-color-container').style.display = 'block';
             }
         }
-        
         canvas.on('path:created', function(opt) {
             if (currentMode === 'eraser') {
                 const path = opt.path;

@@ -3,11 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sticker Studio Air - Pro</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&family=Zen+Maru+Gothic:wght@400;700;900&family=Biz+UDGothic&display=swap" rel="stylesheet">
-    
+    <title>Sticker Studio Ultimate</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&family=Zen+Maru+Gothic:wght@700;900&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
 
     <style>
@@ -15,8 +12,8 @@
             --bg-color: #e5e5e5;
             --panel-bg: rgba(255, 255, 255, 0.95);
             --accent-color: #007AFF;
+            --active-bg: #e0eaff;
             --danger-color: #FF3B30;
-            --text-color: #333;
         }
 
         body {
@@ -45,81 +42,45 @@
             padding: 6px;
             z-index: 100;
             display: flex;
-            gap: 8px;
+            gap: 6px;
             align-items: center;
         }
 
-        /* 1. 主工具列 (Top) */
-        .toolbar-main { top: 20px; height: 44px; }
+        /* 1. 主工具列 */
+        .toolbar-main { top: 15px; height: 50px; padding: 0 12px;}
         
-        /* 2. 屬性工具列 (Sub Top) - 動態顯示 */
+        /* 2. 屬性列 (動態顯示) */
         .toolbar-props { 
             top: 80px; 
             padding: 8px 16px;
-            min-width: 200px;
+            min-width: 250px;
             justify-content: center;
-            display: none; /* 預設隱藏 */
+            display: none; 
             animation: slideDown 0.2s ease-out;
         }
-
-        @keyframes slideDown {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 
         /* 3. 左側工具列 */
-        .toolbar-left { 
-            left: 20px; 
-            flex-direction: column; 
-            top: 50%; 
-            transform: translateY(-50%); 
-        }
+        .toolbar-left { left: 20px; flex-direction: column; top: 50%; transform: translateY(-50%); }
 
-        /* UI 元件樣式 */
+        /* 按鈕樣式 */
         button {
-            background: transparent;
-            border: none;
-            padding: 6px 10px;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: 0.2s;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            color: #555;
-            min-width: 48px;
+            background: transparent; border: none; padding: 6px;
+            border-radius: 6px; cursor: pointer; transition: 0.2s;
+            display: flex; flex-direction: column; align-items: center;
+            color: #555; min-width: 46px;
         }
         button:hover { background: rgba(0,0,0,0.05); color: var(--accent-color); }
-        button.active { background: #e0eaff; color: var(--accent-color); }
-        
-        button svg { width: 20px; height: 20px; margin-bottom: 2px;}
-        button span { font-size: 10px; font-weight: 500;}
+        button.active { background: var(--active-bg); color: var(--accent-color); font-weight: bold; }
+        button svg { width: 22px; height: 22px; margin-bottom: 2px; }
+        button span { font-size: 10px; font-weight: 500; }
 
-        /* 分隔線 */
         .divider { width:1px; height:24px; background:#ddd; margin: 0 4px; }
 
-        /* 選單與滑塊 */
-        select {
-            padding: 6px;
-            border-radius: 6px;
-            border: 1px solid #ddd;
-            font-size: 13px;
-            background: transparent;
-            color: #333;
-            outline: none;
-        }
-        
-        .slider-group {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 12px;
-            color: #555;
-        }
-        input[type=range] {
-            width: 100px;
-            accent-color: var(--accent-color);
-        }
+        /* 屬性控制元件 */
+        .prop-group { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+        input[type=range] { width: 100px; accent-color: var(--accent-color); cursor: pointer;}
+        select { padding: 4px; border-radius: 4px; border: 1px solid #ccc; font-size: 12px; }
 
         /* 畫布 */
         #viewport {
@@ -134,7 +95,6 @@
             transition: background-color 0.3s;
         }
 
-        /* 狀態列 */
         .status-bar {
             position: absolute; bottom: 20px; right: 20px;
             font-size: 12px; color: #666; background: var(--panel-bg);
@@ -147,37 +107,41 @@
     <input type="file" id="fileInput" accept="image/*" style="display:none">
 
     <div class="ui-panel toolbar-main">
-        <span style="font-weight:900; font-size:16px; margin: 0 10px; color:#333;">Sticker Pro</span>
-        <div class="divider"></div>
+        <button onclick="setMode('select')" id="btnSelect" class="active" title="選取物件">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/><path d="M13 13l6 6"/></svg>
+            <span>選取</span>
+        </button>
+        <button onclick="setMode('pan')" id="btnPan" title="移動畫布 (空白鍵)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v0"/><path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg>
+            <span>抓手</span>
+        </button>
         
-        <button onclick="triggerUpload()" title="上傳">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+        <div class="divider"></div>
+
+        <button onclick="triggerUpload()" title="匯入圖片">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
             <span>匯入</span>
         </button>
-        <button onclick="addText()" title="文字">
+        <button onclick="addText()" title="新增文字">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg>
             <span>文字</span>
         </button>
-        
-        <div class="divider"></div>
-
-        <button onclick="toggleEraser()" id="btnEraser" title="橡皮擦 (白色遮罩)">
+        <button onclick="setMode('draw')" id="btnDraw" title="手繪筆刷">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
+            <span>手繪</span>
+        </button>
+        <button onclick="setMode('eraser')" id="btnEraser" title="透明橡皮擦">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 20H7L3 16C2 15 2 13 3 12L13 2L22 11L20 20Z"/><line x1="11" y1="11" x2="14" y2="14"/></svg>
-            <span>橡皮擦</span>
-        </button>
-
-        <button onclick="removeWhite()" title="去除白色 (魔術棒)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 4V2m0 2v2m0-2h2m-2 0h-2M4 15l3 3 9-9-3-3-9 9z"/></svg>
-            <span>去背</span>
+            <span>擦除</span>
         </button>
 
         <div class="divider"></div>
 
-        <button onclick="undo()" title="復原 (Ctrl+Z)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
-            <span>復原</span>
+        <button onclick="toggleGroup()" title="群組/解散">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/><rect x="8" y="8" width="8" height="8" rx="1"/></svg>
+            <span>群組</span>
         </button>
-
+        
         <button onclick="downloadPNG()" style="color: var(--accent-color);">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
             <span>匯出</span>
@@ -185,17 +149,26 @@
     </div>
 
     <div class="ui-panel toolbar-props" id="propPanel">
-        <div id="textProps" style="display:none; align-items:center; gap:10px;">
+        <div id="brushProps" class="prop-group" style="display:none;">
+            <span>筆刷</span>
+            <input type="color" id="brushColor" value="#000000" onchange="updateBrush()">
+            <input type="range" id="brushSize" min="1" max="50" value="5" oninput="updateBrush()">
+        </div>
+        
+        <div id="eraserProps" class="prop-group" style="display:none;">
+            <span>擦除大小</span>
+            <input type="range" id="eraserSize" min="5" max="100" value="20" oninput="updateEraser()">
+        </div>
+
+        <div id="textProps" class="prop-group" style="display:none;">
             <select id="fontFamilySelect" onchange="changeFont(this.value)">
                 <option value="'Noto Sans TC'">思源黑體</option>
                 <option value="'Zen Maru Gothic'">可愛圓體</option>
-                <option value="'Biz UDGothic'">日系黑體</option>
-                <option value="Arial">Arial</option>
             </select>
             <div class="divider"></div>
         </div>
 
-        <div class="slider-group">
+        <div id="strokeProps" class="prop-group" style="display:none;">
             <span>白邊</span>
             <input type="range" id="strokeRange" min="0" max="15" value="0" step="1" oninput="updateStroke(this.value)">
             <span id="strokeValue">0</span>
@@ -203,11 +176,13 @@
     </div>
 
     <div class="ui-panel toolbar-left">
-        <button onclick="toggleBackground()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        <button onclick="undo()" title="復原 (Ctrl+Z)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
         </button>
-        
-        <button onclick="deleteObject()" style="color: var(--danger-color);">
+        <button onclick="toggleBackground()" title="背景">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/></svg>
+        </button>
+        <button onclick="deleteObject()" style="color: var(--danger-color);" title="刪除">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
         </button>
     </div>
@@ -218,21 +193,17 @@
         </div>
     </div>
 
-    <div class="status-bar">空白鍵拖曳 • 滾輪縮放 • Ctrl+Z 復原</div>
+    <div class="status-bar">選取模式下可框選物件 • 抓手模式移動視角</div>
 
     <script>
-        // === 1. 初始化 Fabric Canvas ===
+        // === 1. 初始化 ===
         const canvas = new fabric.Canvas('c', {
-            preserveObjectStacking: true,
-            isDrawingMode: false
+            preserveObjectStacking: true, // 保持圖層順序
+            isDrawingMode: false,
+            backgroundColor: null
         });
 
-        // 畫筆預設為白色 (橡皮擦效果)
-        canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
-        canvas.freeDrawingBrush.color = "white";
-        canvas.freeDrawingBrush.width = 20;
-
-        // 樣式設定
+        // 設定控制項樣式
         fabric.Object.prototype.set({
             transparentCorners: false,
             cornerColor: '#fff',
@@ -242,172 +213,234 @@
             cornerStyle: 'circle'
         });
 
-        // === 2. 歷史紀錄系統 (Undo) ===
-        let historyStack = [];
-        let historyProcessing = false;
+        // 狀態變數
+        let currentMode = 'select'; // select, pan, draw, eraser
+        let brushColor = '#000000';
+        let brushSize = 5;
+        let eraserSize = 20;
 
-        function saveHistory() {
-            if(historyProcessing) return;
-            if(historyStack.length > 10) historyStack.shift(); // 限制步數
-            historyStack.push(JSON.stringify(canvas));
-        }
-
-        // 監聽變更事件自動存檔
-        canvas.on('object:added', saveHistory);
-        canvas.on('object:modified', saveHistory);
-        canvas.on('object:removed', saveHistory);
-        // 初始化存第一步
-        saveHistory();
-
-        function undo() {
-            if (historyStack.length <= 1) return; // 至少保留最後狀態
-            
-            historyProcessing = true;
-            historyStack.pop(); // 移除當前狀態
-            const prevState = historyStack[historyStack.length - 1];
-            
-            canvas.loadFromJSON(prevState, function() {
-                canvas.renderAll();
-                historyProcessing = false;
-            });
-        }
-
-        // 監聽鍵盤 Ctrl+Z
-        document.addEventListener('keydown', (e) => {
-            if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
-                e.preventDefault();
-                undo();
-            }
-            if (e.key === 'Delete' || e.key === 'Backspace') {
-                if(!canvas.getActiveObject()?.isEditing) deleteObject();
-            }
-        });
-
-        // === 3. 橡皮擦功能 ===
-        let isEraserMode = false;
-        function toggleEraser() {
-            isEraserMode = !isEraserMode;
-            canvas.isDrawingMode = isEraserMode;
-            
-            const btn = document.getElementById('btnEraser');
-            if(isEraserMode) {
-                btn.classList.add('active');
-                canvas.defaultCursor = 'crosshair';
-            } else {
-                btn.classList.remove('active');
-                canvas.defaultCursor = 'default';
-            }
-        }
-
-        // 去除白色 (Magic Wand)
-        function removeWhite() {
-            const activeObj = canvas.getActiveObject();
-            // 如果沒選東西，就嘗試把整個畫布去背 (包含橡皮擦塗過的痕跡)
-            // 這裡為了簡單，我們針對選取的圖片做去背
-            if (activeObj && activeObj.type === 'image') {
-                const filter = new fabric.Image.filters.RemoveColor({
-                    threshold: 0.15,
-                    distance: 0.5
-                });
-                activeObj.filters.push(filter);
-                activeObj.applyFilters();
-                canvas.requestRenderAll();
-                saveHistory();
-            } else {
-                alert('請先選取一張圖片來執行去背');
-            }
-        }
-
-        // === 4. UI 互動與屬性控制 ===
+        // UI 參考
         const propPanel = document.getElementById('propPanel');
         const textProps = document.getElementById('textProps');
-        const strokeRange = document.getElementById('strokeRange');
-        const strokeValue = document.getElementById('strokeValue');
+        const strokeProps = document.getElementById('strokeProps');
+        const brushProps = document.getElementById('brushProps');
+        const eraserProps = document.getElementById('eraserProps');
+        
+        // === 2. 模式切換邏輯 ===
+        function setMode(mode) {
+            currentMode = mode;
+            
+            // 更新按鈕狀態
+            ['btnSelect', 'btnPan', 'btnDraw', 'btnEraser'].forEach(id => {
+                document.getElementById(id).classList.remove('active');
+            });
+            
+            const activeBtnMap = {
+                'select': 'btnSelect', 'pan': 'btnPan', 
+                'draw': 'btnDraw', 'eraser': 'btnEraser'
+            };
+            document.getElementById(activeBtnMap[mode]).classList.add('active');
 
-        // 當選取物件改變時
-        canvas.on('selection:created', updatePropsUI);
-        canvas.on('selection:updated', updatePropsUI);
-        canvas.on('selection:cleared', () => {
+            // 重置 Canvas 狀態
+            canvas.isDrawingMode = false;
+            canvas.selection = false;
+            canvas.defaultCursor = 'default';
+            canvas.discardActiveObject();
+            canvas.requestRenderAll();
+
+            // 隱藏所有屬性面板
             propPanel.style.display = 'none';
+            brushProps.style.display = 'none';
+            eraserProps.style.display = 'none';
+            textProps.style.display = 'none';
+            strokeProps.style.display = 'none';
+
+            // 依模式設定行為
+            if (mode === 'select') {
+                canvas.selection = true; // 允許框選
+            } 
+            else if (mode === 'pan') {
+                canvas.defaultCursor = 'grab';
+            } 
+            else if (mode === 'draw') {
+                canvas.isDrawingMode = true;
+                canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+                canvas.freeDrawingBrush.color = brushColor;
+                canvas.freeDrawingBrush.width = parseInt(brushSize);
+                // 顯示筆刷屬性
+                propPanel.style.display = 'flex';
+                brushProps.style.display = 'flex';
+            } 
+            else if (mode === 'eraser') {
+                canvas.isDrawingMode = true;
+                canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+                canvas.freeDrawingBrush.color = 'white'; // 在顯示上看似白色
+                canvas.freeDrawingBrush.width = parseInt(eraserSize);
+                // 關鍵：將組合模式設為「destination-out」，這會把重疊部分變透明
+                // 注意：這在 Fabric.js 中需要特殊的處理，我們在 path:created 事件中處理
+                
+                propPanel.style.display = 'flex';
+                eraserProps.style.display = 'flex';
+            }
+        }
+
+        // === 3. 繪圖與橡皮擦的核心邏輯 ===
+        
+        // 橡皮擦大小更新
+        function updateEraser() {
+            eraserSize = document.getElementById('eraserSize').value;
+            if(currentMode === 'eraser') {
+                canvas.freeDrawingBrush.width = parseInt(eraserSize);
+            }
+        }
+
+        // 筆刷更新
+        function updateBrush() {
+            brushColor = document.getElementById('brushColor').value;
+            brushSize = document.getElementById('brushSize').value;
+            if(currentMode === 'draw') {
+                canvas.freeDrawingBrush.color = brushColor;
+                canvas.freeDrawingBrush.width = parseInt(brushSize);
+            }
+        }
+
+        // 監聽路徑生成 (繪圖或擦除結束時)
+        canvas.on('path:created', function(e) {
+            const path = e.path;
+            saveHistory();
+
+            if (currentMode === 'eraser') {
+                // 真正的橡皮擦：將畫出來的路徑設為 destination-out
+                // 這會將下層的像素「挖空」變透明
+                path.globalCompositeOperation = 'destination-out';
+                // 為了讓它在選取時不被看到或移動，我們可以鎖定它
+                path.selectable = false;
+                path.evented = false;
+            } else if (currentMode === 'draw') {
+                // 手繪線條，設為可操作，這樣才能加白邊
+                path.selectable = true;
+            }
         });
 
-        function updatePropsUI() {
-            const obj = canvas.getActiveObject();
-            if(!obj) return;
 
-            propPanel.style.display = 'flex';
-            
-            // 判斷是否為文字
-            if(obj.type === 'i-text') {
-                textProps.style.display = 'flex';
-                // 同步 UI 數值
-                document.getElementById('fontFamilySelect').value = obj.fontFamily;
-                strokeRange.value = obj.strokeWidth || 0;
-                strokeValue.textContent = obj.strokeWidth || 0;
-            } else {
-                textProps.style.display = 'none';
-                // 圖片白邊判定
-                if(obj.shadow) {
-                    // 粗略用 offset 來回推數值
-                    strokeRange.value = obj.shadow.offsetX; 
-                    strokeValue.textContent = obj.shadow.offsetX;
-                } else {
-                    strokeRange.value = 0;
-                    strokeValue.textContent = 0;
-                }
-            }
-        }
-
-        // 更改字型
-        function changeFont(font) {
-            const obj = canvas.getActiveObject();
-            if(obj && obj.type === 'i-text') {
-                obj.set("fontFamily", font);
-                canvas.requestRenderAll();
-                saveHistory();
-            }
-        }
-
-        // 調整白邊 (核心邏輯)
+        // === 4. 白邊演算法 (模擬實心邊框) ===
         function updateStroke(val) {
             const width = parseInt(val);
-            strokeValue.textContent = width;
+            document.getElementById('strokeValue').textContent = width;
+            
             const obj = canvas.getActiveObject();
             if(!obj) return;
 
-            if (width === 0) {
-                obj.set({ strokeWidth: 0, stroke: null, shadow: null });
+            // 如果是群組，需要對群組內每個物件處理 (較複雜)，這裡暫只處理單一物件或 Group 整體
+            
+            if (obj.type === 'i-text' || obj.type === 'text') {
+                // 文字：使用原生 Stroke
+                obj.set({
+                    stroke: '#fff',
+                    strokeWidth: width,
+                    paintFirst: 'stroke'
+                });
             } else {
-                if (obj.type === 'i-text') {
-                    // 文字用原生的 stroke
-                    obj.set({
-                        stroke: '#fff',
-                        strokeWidth: width,
-                        paintFirst: 'stroke' // 讓描邊在字體後方
-                    });
+                // 圖片或手繪路徑：使用陰影模擬
+                if (width === 0) {
+                    obj.shadow = null;
                 } else {
-                    // 圖片：使用 "硬陰影" 模擬白邊 (blur: 0, opacity: 1)
-                    // 這比投影更像框線
+                    // 使用單一硬陰影，但我們把它設為不模糊
+                    // 為了要有「外框」的感覺，這在 Canvas 比較難
+                    // 我們使用 "Glow" 技巧：shadow blur 0, color white
+                    // 為了更像外框，我們可以用 4 個陰影疊加 (Fabric 不支援多陰影)
+                    // 所以我們用最接近的：大尺寸的硬陰影
+                    
                     obj.set({
                         shadow: new fabric.Shadow({
                             color: '#ffffff',
-                            blur: 0,    // 關鍵：無模糊，呈現實心
-                            offsetX: width/2, // 稍微偏移製造厚度
-                            offsetY: width/2,
+                            blur: 0,     // 0 模糊 = 硬邊
+                            offsetX: width / 3, // 稍微偏移製造厚度感
+                            offsetY: width / 3,
                             opacity: 1
                         })
                     });
                     
-                    // 備註：完美的圖片輪廓描邊在 Canvas 需要複雜運算 (Edge Detection)
-                    // 這裡使用硬陰影是網頁效能最好的模擬方案
+                    // 備註：如果要完美的輪廓描邊，通常需要複製物件放在後面
+                    // 但考慮到手繪路徑的複雜性，陰影是效能最好的選擇
                 }
             }
             canvas.requestRenderAll();
+            saveHistory();
         }
 
-        // === 5. 基礎功能 (上傳、下載、視窗控制) ===
-        // (保持原有的視窗控制邏輯)
+
+        // === 5. 群組功能 ===
+        function toggleGroup() {
+            const active = canvas.getActiveObject();
+            if (!active) return;
+
+            if (active.type === 'activeSelection') {
+                // 將多個選取物件轉為群組
+                active.toGroup();
+                canvas.requestRenderAll();
+                saveHistory();
+            } else if (active.type === 'group') {
+                // 將群組解散
+                active.toActiveSelection();
+                canvas.requestRenderAll();
+                saveHistory();
+            }
+        }
+
+
+        // === 6. 屬性面板連動 ===
+        canvas.on('selection:created', showProps);
+        canvas.on('selection:updated', showProps);
+        canvas.on('selection:cleared', () => {
+            if(currentMode === 'select') propPanel.style.display = 'none';
+        });
+
+        function showProps() {
+            if(currentMode !== 'select') return; // 只有選取模式才顯示物件屬性
+            
+            const obj = canvas.getActiveObject();
+            if(!obj) return;
+
+            propPanel.style.display = 'flex';
+            textProps.style.display = 'none';
+            strokeProps.style.display = 'flex'; // 所有物件都可以加白邊
+
+            // 初始化白邊滑桿
+            let currentStroke = 0;
+            if (obj.shadow) currentStroke = obj.shadow.offsetX * 3 || 0; // 粗略換算
+            if (obj.strokeWidth) currentStroke = obj.strokeWidth;
+            
+            document.getElementById('strokeRange').value = currentStroke;
+            document.getElementById('strokeValue').textContent = currentStroke;
+
+            if(obj.type === 'i-text') {
+                textProps.style.display = 'flex';
+            }
+        }
+
+
+        // === 7. 基礎功能 (上傳、復原、下載) ===
+        // 歷史紀錄
+        let historyStack = [];
+        let historyProcessing = false;
+        function saveHistory() {
+            if(historyProcessing) return;
+            if(historyStack.length > 10) historyStack.shift();
+            historyStack.push(JSON.stringify(canvas));
+        }
+        function undo() {
+            if (historyStack.length <= 1) return;
+            historyProcessing = true;
+            historyStack.pop();
+            const state = historyStack[historyStack.length - 1];
+            canvas.loadFromJSON(state, () => {
+                canvas.renderAll();
+                historyProcessing = false;
+            });
+        }
         
+        // 上傳
         function triggerUpload() { document.getElementById('fileInput').click(); }
         document.getElementById('fileInput').addEventListener('change', function(e) {
             const file = e.target.files[0];
@@ -418,36 +451,89 @@
                     if (img.width > 250) img.scaleToWidth(250);
                     canvas.add(img);
                     canvas.centerObject(img);
-                    canvas.setActiveObject(img);
-                    saveHistory(); // 存檔
+                    setMode('select'); // 上傳後自動切回選取模式
+                    saveHistory();
                 });
             };
             reader.readAsDataURL(file);
             this.value = '';
         });
 
+        // 文字
         function addText() {
             const text = new fabric.IText('輸入文字', {
-                left: 100, top: 100,
-                fontFamily: 'Noto Sans TC',
+                left: 100, top: 100, fontFamily: 'Noto Sans TC',
                 fill: '#333', fontSize: 40, fontWeight: '900'
             });
             canvas.add(text);
             canvas.setActiveObject(text);
+            setMode('select');
             saveHistory();
         }
 
-        function deleteObject() {
-            const activeObjects = canvas.getActiveObjects();
-            if (activeObjects.length) {
-                canvas.discardActiveObject();
-                activeObjects.forEach((obj) => canvas.remove(obj));
+        function changeFont(font) {
+            const obj = canvas.getActiveObject();
+            if(obj && obj.type === 'i-text') {
+                obj.set("fontFamily", font);
+                canvas.requestRenderAll();
                 saveHistory();
             }
         }
 
-        // 背景切換
+        // 刪除
+        function deleteObject() {
+            const active = canvas.getActiveObjects();
+            if (active.length) {
+                canvas.discardActiveObject();
+                active.forEach(obj => canvas.remove(obj));
+                saveHistory();
+            }
+        }
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+                if(!canvas.getActiveObject()?.isEditing) deleteObject();
+            }
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+                e.preventDefault(); undo();
+            }
+            if (e.code === 'Space') {
+                 // 暫時切換到 Pan 模式的邏輯可以保留，但現在有專屬按鈕了
+            }
+        });
+
+        // 視窗平移與縮放 (搭配 Pan 模式)
+        const viewport = document.getElementById('viewport');
         const wrapper = document.querySelector('.canvas-wrapper');
+        let isDragging = false, lastX, lastY;
+        let panX = 0, panY = 0, scale = 1;
+
+        viewport.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            scale = Math.min(Math.max(0.5, scale - e.deltaY * 0.001), 4);
+            updateTransform();
+        }, { passive: false });
+
+        viewport.addEventListener('mousedown', (e) => {
+            if (currentMode === 'pan') {
+                isDragging = true;
+                lastX = e.clientX; lastY = e.clientY;
+            }
+        });
+        viewport.addEventListener('mousemove', (e) => {
+            if (isDragging && currentMode === 'pan') {
+                panX += e.clientX - lastX;
+                panY += e.clientY - lastY;
+                lastX = e.clientX; lastY = e.clientY;
+                updateTransform();
+            }
+        });
+        window.addEventListener('mouseup', () => isDragging = false);
+
+        function updateTransform() {
+            wrapper.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+        }
+
+        // 背景與下載
         const bgColors = ['#849ebf', '#ffffff', '#1a1a1a', 'transparent'];
         let bgIndex = 0;
         function toggleBackground() {
@@ -458,9 +544,7 @@
                 wrapper.style.backgroundImage = 'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)';
                 wrapper.style.backgroundSize = '20px 20px';
                 wrapper.style.backgroundPosition = '0 0, 0 10px, 10px -10px, -10px 0px';
-            } else {
-                wrapper.style.backgroundImage = 'none';
-            }
+            } else { wrapper.style.backgroundImage = 'none'; }
         }
 
         function downloadPNG() {
@@ -477,52 +561,8 @@
             }, 50);
         }
 
-        // 視窗平移與縮放邏輯 (沿用)
-        const viewport = document.getElementById('viewport');
-        let isSpaceDown = false;
-        let isDragging = false;
-        let lastPosX, lastPosY;
-        let panX = 0, panY = 0, currentScale = 1;
-
-        viewport.addEventListener('wheel', (opt) => {
-            opt.preventDefault();
-            const delta = opt.deltaY * -0.001;
-            currentScale = Math.min(Math.max(0.5, currentScale + delta), 4);
-            wrapper.style.transform = `translate(${panX}px, ${panY}px) scale(${currentScale})`;
-        }, { passive: false });
-
-        document.addEventListener('keydown', (e) => {
-            if (e.code === 'Space') {
-                isSpaceDown = true;
-                viewport.style.cursor = 'grab';
-                canvas.selection = false;
-            }
-        });
-        document.addEventListener('keyup', (e) => {
-            if (e.code === 'Space') {
-                isSpaceDown = false;
-                viewport.style.cursor = 'default';
-                canvas.selection = true;
-            }
-        });
-        viewport.addEventListener('mousedown', (e) => {
-            if (isSpaceDown) {
-                isDragging = true;
-                viewport.style.cursor = 'grabbing';
-                lastPosX = e.clientX;
-                lastPosY = e.clientY;
-            }
-        });
-        viewport.addEventListener('mousemove', (e) => {
-            if (isDragging) {
-                panX += (e.clientX - lastPosX);
-                panY += (e.clientY - lastPosY);
-                lastPosX = e.clientX;
-                lastPosY = e.clientY;
-                wrapper.style.transform = `translate(${panX}px, ${panY}px) scale(${currentScale})`;
-            }
-        });
-        viewport.addEventListener('mouseup', () => isDragging = false);
+        // 初始化存檔
+        saveHistory();
 
     </script>
 </body>

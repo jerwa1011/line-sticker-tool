@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sticker Studio Ultimate v2</title>
+    <title>Sticker Studio Ultimate v3</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&family=Zen+Maru+Gothic:wght@700;900&family=Noto+Serif+TC:wght@700&family=Klee+One:wght@600&family=DotGothic16&family=Rampart+One&display=swap" rel="stylesheet">
-    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
 
     <style>
@@ -63,11 +62,8 @@
         }
         button:hover { background: rgba(0,0,0,0.05); color: var(--accent-color); }
         button.active { background: var(--active-bg); color: var(--accent-color); font-weight: bold; }
-        
-        /* 鎖定狀態的按鈕樣式 */
         button.locked { background: #fff8e6; color: var(--lock-color); }
         button.locked svg { fill: var(--lock-color); stroke: var(--lock-color); }
-
         button svg { width: 22px; height: 22px; margin-bottom: 2px; }
         button span { font-size: 10px; font-weight: 500; }
 
@@ -87,7 +83,8 @@
             box-shadow: 0 20px 60px rgba(0,0,0,0.2);
             border: 1px solid rgba(0,0,0,0.05);
             background-color: #849ebf; /* LINE 預設背景 */
-            transition: background-color 0.3s;
+            transition: width 0.3s, height 0.3s, background-color 0.3s; /* 增加尺寸變換動畫 */
+            display: flex; justify-content: center; align-items: center;
         }
 
         .status-bar {
@@ -95,6 +92,28 @@
             font-size: 12px; color: #666; background: var(--panel-bg);
             padding: 8px 16px; border-radius: 20px; pointer-events: none;
         }
+
+        /* 彈出視窗 (Modal) */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.2); backdrop-filter: blur(5px);
+            z-index: 200; display: none; justify-content: center; align-items: center;
+        }
+        .modal-box {
+            background: rgba(255,255,255,0.95);
+            padding: 20px 30px; border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            text-align: center; width: 200px;
+        }
+        .modal-title { font-size: 14px; font-weight: 700; margin-bottom: 15px; color: #333; }
+        .input-group { display: flex; align-items: center; margin-bottom: 10px; justify-content: space-between; font-size: 13px;}
+        .input-group input { 
+            width: 60px; padding: 4px; border: 1px solid #ccc; border-radius: 4px; text-align: center;
+        }
+        .modal-actions { margin-top: 20px; display: flex; justify-content: space-between; gap: 10px;}
+        .btn-primary { background: var(--accent-color); color: white; width: 100%; padding: 6px; border-radius: 6px; }
+        .btn-secondary { background: #eee; color: #333; width: 100%; padding: 6px; border-radius: 6px; }
+
     </style>
 </head>
 <body>
@@ -113,6 +132,10 @@
         
         <div class="divider"></div>
 
+        <button onclick="openResizeModal()" title="設定畫布大小">
+             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+            <span>尺寸</span>
+        </button>
         <button onclick="triggerUpload()" title="匯入圖片">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
             <span>匯入</span>
@@ -150,37 +173,30 @@
 
     <div class="ui-panel toolbar-props" id="propPanel">
         <div id="brushProps" class="prop-group" style="display:none;">
-            <span>筆刷</span>
-            <input type="color" id="brushColor" value="#000000" onchange="updateBrush()">
+            <span>筆刷</span> <input type="color" id="brushColor" value="#000000" onchange="updateBrush()">
             <input type="range" id="brushSize" min="1" max="50" value="5" oninput="updateBrush()">
         </div>
-        
         <div id="eraserProps" class="prop-group" style="display:none;">
-            <span>擦除大小</span>
-            <input type="range" id="eraserSize" min="5" max="100" value="20" oninput="updateEraser()">
+            <span>擦除大小</span> <input type="range" id="eraserSize" min="5" max="100" value="20" oninput="updateEraser()">
         </div>
-
         <div id="textProps" class="prop-group" style="display:none;">
             <select id="fontFamilySelect" onchange="changeFont(this.value)">
-                <option value="'Noto Sans TC'">思源黑體 (預設)</option>
+                <option value="'Noto Sans TC'">思源黑體</option>
                 <option value="'Zen Maru Gothic'">可愛圓體</option>
-                <option value="'Noto Serif TC'">思源宋體 (文青)</option>
-                <option value="'Klee One'">手寫楷體 (自然)</option>
-                <option value="'DotGothic16'">點陣體 (復古)</option>
-                <option value="'Rampart One'">立體字 (漫畫)</option>
+                <option value="'Noto Serif TC'">思源宋體</option>
+                <option value="'Klee One'">手寫楷體</option>
+                <option value="'DotGothic16'">點陣體</option>
+                <option value="'Rampart One'">立體字</option>
             </select>
             <div class="divider"></div>
         </div>
-
         <div id="strokeProps" class="prop-group" style="display:none;">
-            <span>白邊</span>
-            <input type="range" id="strokeRange" min="0" max="15" value="0" step="1" oninput="updateStroke(this.value)">
-            <span id="strokeValue">0</span>
+            <span>白邊</span> <input type="range" id="strokeRange" min="0" max="15" value="0" step="1" oninput="updateStroke(this.value)"> <span id="strokeValue">0</span>
         </div>
     </div>
 
     <div class="ui-panel toolbar-left">
-        <button onclick="undo()" title="復原 (Ctrl+Z)">
+        <button onclick="undo()" title="復原">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
         </button>
         <button onclick="toggleBackground()" title="切換背景">
@@ -189,6 +205,24 @@
         <button onclick="deleteObject()" style="color: var(--danger-color);" title="刪除">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
         </button>
+    </div>
+
+    <div class="modal-overlay" id="resizeModal">
+        <div class="modal-box">
+            <div class="modal-title">設定畫布尺寸</div>
+            <div class="input-group">
+                <label>寬度 (W)</label>
+                <input type="number" id="inputW" value="370">
+            </div>
+            <div class="input-group">
+                <label>高度 (H)</label>
+                <input type="number" id="inputH" value="320">
+            </div>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="closeResizeModal()">取消</button>
+                <button class="btn-primary" onclick="applyResize()">確定</button>
+            </div>
+        </div>
     </div>
 
     <div id="viewport">
@@ -206,24 +240,18 @@
             backgroundColor: null
         });
 
-        // 設定控制項
+        // 預設寬高
+        let canvasW = 370;
+        let canvasH = 320;
+
         fabric.Object.prototype.set({
-            transparentCorners: false,
-            cornerColor: '#fff',
-            cornerStrokeColor: '#007AFF',
-            borderColor: '#007AFF',
-            cornerSize: 10,
-            cornerStyle: 'circle',
-            // 自訂屬性
-            locked: false 
+            transparentCorners: false, cornerColor: '#fff', cornerStrokeColor: '#007AFF',
+            borderColor: '#007AFF', cornerSize: 10, cornerStyle: 'circle', locked: false 
         });
 
         let currentMode = 'select';
-        let brushColor = '#000000';
-        let brushSize = 5;
-        let eraserSize = 20;
+        let brushColor = '#000000'; let brushSize = 5; let eraserSize = 20;
 
-        // UI 參考
         const propPanel = document.getElementById('propPanel');
         const textProps = document.getElementById('textProps');
         const strokeProps = document.getElementById('strokeProps');
@@ -231,292 +259,173 @@
         const eraserProps = document.getElementById('eraserProps');
         const btnLock = document.getElementById('btnLock');
 
+        // === 尺寸設定功能 ===
+        const resizeModal = document.getElementById('resizeModal');
+        const wrapper = document.querySelector('.canvas-wrapper');
+        const inputW = document.getElementById('inputW');
+        const inputH = document.getElementById('inputH');
+
+        function openResizeModal() {
+            inputW.value = canvas.width;
+            inputH.value = canvas.height;
+            resizeModal.style.display = 'flex';
+        }
+
+        function closeResizeModal() {
+            resizeModal.style.display = 'none';
+        }
+
+        function applyResize() {
+            const newW = parseInt(inputW.value) || 370;
+            const newH = parseInt(inputH.value) || 320;
+            
+            // 更新 Canvas 邏輯尺寸
+            canvas.setDimensions({ width: newW, height: newH });
+            canvasW = newW;
+            canvasH = newH;
+
+            // 更新 DOM 容器尺寸以符合視覺
+            // 注意：Fabric 的 canvas 元素會自己變，但外層 wrapper 也要跟著變
+            // 因為 wrapper 負責背景色顯示
+            // 這裡不需要手動設 style.width，因為 canvas 撐開了，但我們可以強制更新一下介面
+            
+            closeResizeModal();
+            centerView(); // 調整後重置視角
+            saveHistory();
+        }
+        
+        function centerView() {
+            scale = 1; panX = 0; panY = 0;
+            updateTransform();
+        }
+
         // === 模式切換 ===
         function setMode(mode) {
             currentMode = mode;
-            ['btnSelect', 'btnPan', 'btnDraw', 'btnEraser'].forEach(id => {
-                document.getElementById(id).classList.remove('active');
-            });
-            
+            ['btnSelect', 'btnPan', 'btnDraw', 'btnEraser'].forEach(id => document.getElementById(id).classList.remove('active'));
             const activeBtnMap = {'select': 'btnSelect', 'pan': 'btnPan', 'draw': 'btnDraw', 'eraser': 'btnEraser'};
             document.getElementById(activeBtnMap[mode]).classList.add('active');
+            canvas.isDrawingMode = false; canvas.selection = false; canvas.defaultCursor = 'default';
+            canvas.discardActiveObject(); canvas.requestRenderAll();
+            propPanel.style.display = 'none'; brushProps.style.display = 'none'; eraserProps.style.display = 'none'; textProps.style.display = 'none'; strokeProps.style.display = 'none';
 
-            canvas.isDrawingMode = false;
-            canvas.selection = false;
-            canvas.defaultCursor = 'default';
-            canvas.discardActiveObject();
-            canvas.requestRenderAll();
-
-            propPanel.style.display = 'none';
-            brushProps.style.display = 'none';
-            eraserProps.style.display = 'none';
-            textProps.style.display = 'none';
-            strokeProps.style.display = 'none';
-
-            if (mode === 'select') {
-                canvas.selection = true;
-            } else if (mode === 'pan') {
-                canvas.defaultCursor = 'grab';
-            } else if (mode === 'draw') {
+            if (mode === 'select') canvas.selection = true;
+            else if (mode === 'pan') canvas.defaultCursor = 'grab';
+            else if (mode === 'draw') {
                 canvas.isDrawingMode = true;
                 canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
                 canvas.freeDrawingBrush.color = brushColor;
                 canvas.freeDrawingBrush.width = parseInt(brushSize);
-                propPanel.style.display = 'flex';
-                brushProps.style.display = 'flex';
+                propPanel.style.display = 'flex'; brushProps.style.display = 'flex';
             } else if (mode === 'eraser') {
                 canvas.isDrawingMode = true;
                 canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
                 canvas.freeDrawingBrush.color = 'white';
                 canvas.freeDrawingBrush.width = parseInt(eraserSize);
-                propPanel.style.display = 'flex';
-                eraserProps.style.display = 'flex';
+                propPanel.style.display = 'flex'; eraserProps.style.display = 'flex';
             }
         }
 
-        // === 鎖定功能 (New) ===
+        // === 鎖定 ===
         function toggleLock() {
-            const active = canvas.getActiveObject();
-            if (!active) return;
-
-            // 切換鎖定狀態
-            const isLocked = !active.lockMovementX; // 檢查目前是否鎖定
-            
-            // 設定 Fabric 鎖定屬性
+            const active = canvas.getActiveObject(); if (!active) return;
+            const isLocked = !active.lockMovementX;
             active.set({
-                lockMovementX: isLocked,
-                lockMovementY: isLocked,
-                lockRotation: isLocked,
-                lockScalingX: isLocked,
-                lockScalingY: isLocked,
-                // 視覺回饋：鎖定時邊框變色
-                borderColor: isLocked ? '#FF9500' : '#007AFF',
-                cornerStrokeColor: isLocked ? '#FF9500' : '#007AFF',
-                cornerColor: isLocked ? '#eee' : '#fff'
+                lockMovementX: isLocked, lockMovementY: isLocked, lockRotation: isLocked, lockScalingX: isLocked, lockScalingY: isLocked,
+                borderColor: isLocked ? '#FF9500' : '#007AFF', cornerStrokeColor: isLocked ? '#FF9500' : '#007AFF', cornerColor: isLocked ? '#eee' : '#fff'
             });
-
-            // 更新按鈕狀態
-            if (isLocked) {
-                btnLock.classList.add('locked');
-            } else {
-                btnLock.classList.remove('locked');
-            }
-
-            canvas.requestRenderAll();
-            saveHistory();
+            if (isLocked) btnLock.classList.add('locked'); else btnLock.classList.remove('locked');
+            canvas.requestRenderAll(); saveHistory();
         }
 
-        // === 屬性面板連動 (更新鎖定狀態顯示) ===
         canvas.on('selection:created', updatePropsUI);
         canvas.on('selection:updated', updatePropsUI);
-        canvas.on('selection:cleared', () => {
-            if(currentMode === 'select') propPanel.style.display = 'none';
-            btnLock.classList.remove('locked'); // 清除選取時重置按鈕
-        });
+        canvas.on('selection:cleared', () => { if(currentMode === 'select') propPanel.style.display = 'none'; btnLock.classList.remove('locked'); });
 
         function updatePropsUI() {
             if(currentMode !== 'select') return;
-            
-            const obj = canvas.getActiveObject();
-            if(!obj) return;
-
-            // 1. 更新鎖定按鈕狀態
-            if (obj.lockMovementX) {
-                btnLock.classList.add('locked');
-            } else {
-                btnLock.classList.remove('locked');
-            }
-
-            propPanel.style.display = 'flex';
-            textProps.style.display = 'none';
-            strokeProps.style.display = 'flex';
-
+            const obj = canvas.getActiveObject(); if(!obj) return;
+            if (obj.lockMovementX) btnLock.classList.add('locked'); else btnLock.classList.remove('locked');
+            propPanel.style.display = 'flex'; textProps.style.display = 'none'; strokeProps.style.display = 'flex';
             let currentStroke = 0;
             if (obj.shadow) currentStroke = obj.shadow.offsetX * 3 || 0;
             if (obj.strokeWidth) currentStroke = obj.strokeWidth;
-            
             document.getElementById('strokeRange').value = currentStroke;
             document.getElementById('strokeValue').textContent = currentStroke;
-
-            if(obj.type === 'i-text') {
-                textProps.style.display = 'flex';
-                // 同步字型選單
-                document.getElementById('fontFamilySelect').value = obj.fontFamily;
-            }
+            if(obj.type === 'i-text') { textProps.style.display = 'flex'; document.getElementById('fontFamilySelect').value = obj.fontFamily; }
         }
 
-        // === 繪圖邏輯 ===
-        function updateEraser() {
-            eraserSize = document.getElementById('eraserSize').value;
-            if(currentMode === 'eraser') canvas.freeDrawingBrush.width = parseInt(eraserSize);
-        }
-        function updateBrush() {
-            brushColor = document.getElementById('brushColor').value;
-            brushSize = document.getElementById('brushSize').value;
-            if(currentMode === 'draw') {
-                canvas.freeDrawingBrush.color = brushColor;
-                canvas.freeDrawingBrush.width = parseInt(brushSize);
-            }
-        }
+        // === 繪圖 ===
+        function updateEraser() { eraserSize = document.getElementById('eraserSize').value; if(currentMode === 'eraser') canvas.freeDrawingBrush.width = parseInt(eraserSize); }
+        function updateBrush() { brushColor = document.getElementById('brushColor').value; brushSize = document.getElementById('brushSize').value; if(currentMode === 'draw') { canvas.freeDrawingBrush.color = brushColor; canvas.freeDrawingBrush.width = parseInt(brushSize); } }
         canvas.on('path:created', function(e) {
-            const path = e.path;
-            saveHistory();
-            if (currentMode === 'eraser') {
-                path.globalCompositeOperation = 'destination-out';
-                path.selectable = false;
-                path.evented = false;
-            } else if (currentMode === 'draw') {
-                path.selectable = true;
-            }
+            const path = e.path; saveHistory();
+            if (currentMode === 'eraser') { path.globalCompositeOperation = 'destination-out'; path.selectable = false; path.evented = false; }
+            else if (currentMode === 'draw') { path.selectable = true; }
         });
 
-        // === 白邊、群組、字型、基礎功能 ===
+        // === 功能組 ===
         function updateStroke(val) {
-            const width = parseInt(val);
-            document.getElementById('strokeValue').textContent = width;
-            const obj = canvas.getActiveObject();
-            if(!obj) return;
-
-            if (obj.type === 'i-text' || obj.type === 'text') {
-                obj.set({ stroke: '#fff', strokeWidth: width, paintFirst: 'stroke' });
-            } else {
-                if (width === 0) {
-                    obj.shadow = null;
-                } else {
-                    obj.set({
-                        shadow: new fabric.Shadow({
-                            color: '#ffffff', blur: 0,
-                            offsetX: width / 3, offsetY: width / 3, opacity: 1
-                        })
-                    });
-                }
+            const width = parseInt(val); document.getElementById('strokeValue').textContent = width;
+            const obj = canvas.getActiveObject(); if(!obj) return;
+            if (obj.type === 'i-text' || obj.type === 'text') { obj.set({ stroke: '#fff', strokeWidth: width, paintFirst: 'stroke' }); }
+            else {
+                if (width === 0) obj.shadow = null;
+                else obj.set({ shadow: new fabric.Shadow({ color: '#ffffff', blur: 0, offsetX: width/3, offsetY: width/3, opacity: 1 }) });
             }
-            canvas.requestRenderAll();
-            saveHistory();
+            canvas.requestRenderAll(); saveHistory();
         }
-
         function toggleGroup() {
-            const active = canvas.getActiveObject();
-            if (!active) return;
-            if (active.type === 'activeSelection') {
-                active.toGroup();
-            } else if (active.type === 'group') {
-                active.toActiveSelection();
-            }
-            canvas.requestRenderAll();
-            saveHistory();
+            const active = canvas.getActiveObject(); if (!active) return;
+            if (active.type === 'activeSelection') active.toGroup(); else if (active.type === 'group') active.toActiveSelection();
+            canvas.requestRenderAll(); saveHistory();
         }
 
-        // 歷史紀錄
-        let historyStack = [];
-        let historyProcessing = false;
-        function saveHistory() {
-            if(historyProcessing) return;
-            if(historyStack.length > 10) historyStack.shift();
-            historyStack.push(JSON.stringify(canvas));
-        }
-        function undo() {
-            if (historyStack.length <= 1) return;
-            historyProcessing = true;
-            historyStack.pop();
-            const state = historyStack[historyStack.length - 1];
-            canvas.loadFromJSON(state, () => {
-                canvas.renderAll();
-                historyProcessing = false;
-            });
-        }
+        let historyStack = []; let historyProcessing = false;
+        function saveHistory() { if(historyProcessing) return; if(historyStack.length > 10) historyStack.shift(); historyStack.push(JSON.stringify(canvas)); }
+        function undo() { if (historyStack.length <= 1) return; historyProcessing = true; historyStack.pop(); const state = historyStack[historyStack.length - 1]; canvas.loadFromJSON(state, () => { canvas.renderAll(); historyProcessing = false; }); }
 
-        // 上傳與文字
         function triggerUpload() { document.getElementById('fileInput').click(); }
         document.getElementById('fileInput').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
+            const file = e.target.files[0]; if (!file) return;
             const reader = new FileReader();
             reader.onload = function(f) {
                 fabric.Image.fromURL(f.target.result, function(img) {
                     if (img.width > 250) img.scaleToWidth(250);
                     canvas.add(img); canvas.centerObject(img); setMode('select'); saveHistory();
                 });
-            };
-            reader.readAsDataURL(file); this.value = '';
+            }; reader.readAsDataURL(file); this.value = '';
         });
-        function addText() {
-            const text = new fabric.IText('輸入文字', {
-                left: 100, top: 100, fontFamily: 'Noto Sans TC',
-                fill: '#333', fontSize: 40, fontWeight: '900'
-            });
-            canvas.add(text); canvas.setActiveObject(text); setMode('select'); saveHistory();
-        }
-        function changeFont(font) {
-            const obj = canvas.getActiveObject();
-            if(obj && obj.type === 'i-text') {
-                obj.set("fontFamily", font);
-                canvas.requestRenderAll(); saveHistory();
-            }
-        }
-        function deleteObject() {
-            const active = canvas.getActiveObjects();
-            if (active.length) {
-                canvas.discardActiveObject();
-                active.forEach(obj => canvas.remove(obj));
-                saveHistory();
-            }
-        }
+        function addText() { const text = new fabric.IText('輸入文字', { left: 100, top: 100, fontFamily: 'Noto Sans TC', fill: '#333', fontSize: 40, fontWeight: '900' }); canvas.add(text); canvas.setActiveObject(text); setMode('select'); saveHistory(); }
+        function changeFont(font) { const obj = canvas.getActiveObject(); if(obj && obj.type === 'i-text') { obj.set("fontFamily", font); canvas.requestRenderAll(); saveHistory(); } }
+        function deleteObject() { const active = canvas.getActiveObjects(); if (active.length) { canvas.discardActiveObject(); active.forEach(obj => canvas.remove(obj)); saveHistory(); } }
 
-        // 視窗操作
         const viewport = document.getElementById('viewport');
-        const wrapper = document.querySelector('.canvas-wrapper');
         let isDragging = false, lastX, lastY, panX = 0, panY = 0, scale = 1;
-        
-        viewport.addEventListener('wheel', (e) => {
-            e.preventDefault();
-            scale = Math.min(Math.max(0.5, scale - e.deltaY * 0.001), 4);
-            updateTransform();
-        }, { passive: false });
-        
-        viewport.addEventListener('mousedown', (e) => {
-            if (currentMode === 'pan') { isDragging = true; lastX = e.clientX; lastY = e.clientY; }
-        });
-        window.addEventListener('mousemove', (e) => {
-            if (isDragging && currentMode === 'pan') {
-                panX += e.clientX - lastX; panY += e.clientY - lastY;
-                lastX = e.clientX; lastY = e.clientY; updateTransform();
-            }
-        });
+        viewport.addEventListener('wheel', (e) => { e.preventDefault(); scale = Math.min(Math.max(0.5, scale - e.deltaY * 0.001), 4); updateTransform(); }, { passive: false });
+        viewport.addEventListener('mousedown', (e) => { if (currentMode === 'pan') { isDragging = true; lastX = e.clientX; lastY = e.clientY; } });
+        window.addEventListener('mousemove', (e) => { if (isDragging && currentMode === 'pan') { panX += e.clientX - lastX; panY += e.clientY - lastY; lastX = e.clientX; lastY = e.clientY; updateTransform(); } });
         window.addEventListener('mouseup', () => isDragging = false);
         function updateTransform() { wrapper.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`; }
 
-        // 背景與下載
-        const bgColors = ['#849ebf', '#ffffff', '#1a1a1a', 'transparent'];
-        let bgIndex = 0;
+        const bgColors = ['#849ebf', '#ffffff', '#1a1a1a', 'transparent']; let bgIndex = 0;
         function toggleBackground() {
-            bgIndex = (bgIndex + 1) % bgColors.length;
-            const color = bgColors[bgIndex];
-            wrapper.style.backgroundColor = color;
-            if(color === 'transparent') {
-                wrapper.style.backgroundImage = 'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)';
-                wrapper.style.backgroundSize = '20px 20px';
-                wrapper.style.backgroundPosition = '0 0, 0 10px, 10px -10px, -10px 0px';
-            } else { wrapper.style.backgroundImage = 'none'; }
+            bgIndex = (bgIndex + 1) % bgColors.length; const color = bgColors[bgIndex]; wrapper.style.backgroundColor = color;
+            if(color === 'transparent') { wrapper.style.backgroundImage = 'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)'; wrapper.style.backgroundSize = '20px 20px'; wrapper.style.backgroundPosition = '0 0, 0 10px, 10px -10px, -10px 0px'; }
+            else { wrapper.style.backgroundImage = 'none'; }
         }
         function downloadPNG() {
             canvas.discardActiveObject(); canvas.requestRenderAll();
+            // 下載時直接抓取目前的 canvas 內容，尺寸會依據 setDimensions 設定的大小
             setTimeout(() => {
                 const dataURL = canvas.toDataURL({ format: 'png', quality: 1, multiplier: 1 });
-                const link = document.createElement('a');
-                link.download = `sticker-${Date.now()}.png`; link.href = dataURL;
-                document.body.appendChild(link); link.click(); document.body.removeChild(link);
+                const link = document.createElement('a'); link.download = `sticker-${canvasW}x${canvasH}-${Date.now()}.png`; link.href = dataURL; document.body.appendChild(link); link.click(); document.body.removeChild(link);
             }, 50);
         }
-        
-        // 鍵盤支援
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Delete' || e.key === 'Backspace') {
-                if(!canvas.getActiveObject()?.isEditing) deleteObject();
-            }
+            if (e.key === 'Delete' || e.key === 'Backspace') { if(!canvas.getActiveObject()?.isEditing) deleteObject(); }
             if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undo(); }
         });
-
         saveHistory();
     </script>
 </body>

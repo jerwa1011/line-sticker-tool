@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>💋 極致口技模擬</title>
+    <title>💋 極致口技 - 寫實版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
@@ -12,44 +12,52 @@
             position: relative;
             width: 380px;
             height: 380px;
-            background: radial-gradient(circle at 50% 60%, #4c1d95, #1a0033);
+            background: radial-gradient(circle at 50% 55%, #5b21b6, #1e0f2e);
             border-radius: 9999px;
-            box-shadow: 0 0 80px rgba(236, 72, 153, 0.8);
+            box-shadow: 0 0 90px rgba(236, 72, 153, 0.7);
             overflow: hidden;
             cursor: pointer;
+            filter: blur(1.8px) contrast(1.15); /* 柔焦真實感，可改數字調整清晰度 */
         }
-        .tongue { transition: all 0.1s; }
         .droplet {
             position: absolute;
             color: #67e8f9;
-            font-size: 28px;
+            font-size: 26px;
             pointer-events: none;
-            animation: drip 1.2s forwards;
+            animation: drip 1.4s forwards;
         }
         @keyframes drip {
-            0% { transform: translateY(0); opacity: 1; }
-            100% { transform: translateY(180px); opacity: 0; }
+            0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(220px) rotate(30deg); opacity: 0; }
         }
-        #climax { animation: pulse 0.4s infinite; }
     </style>
 </head>
 <body class="bg-gradient-to-br from-purple-950 via-pink-950 to-black text-white min-h-screen flex items-center justify-center">
     <div class="max-w-md mx-auto text-center">
-        <h1 class="text-5xl font-bold mb-3 flex items-center justify-center gap-4">💋 極致口技模擬</h1>
-        <p class="text-pink-400 text-xl mb-8">深喉挑戰・放鬆專用 18+</p>
+        <h1 class="text-5xl font-bold mb-3 flex items-center justify-center gap-4">💋 極致口技 - 寫實版</h1>
+        <p class="text-pink-400 text-xl mb-8">柔焦寫實・深喉放鬆 18+</p>
 
         <div class="mx-auto mb-8">
             <div id="mouth" class="mouth-container mx-auto flex items-center justify-center">
-                <!-- 大嘴巴 SVG -->
-                <svg width="320" height="320" viewBox="0 0 320 320" class="relative">
-                    <!-- 嘴唇 -->
-                    <path id="lips" d="M60 160 Q160 240 260 160 Q160 80 60 160" fill="#be185d" stroke="#9f1239" stroke-width="28"/>
-                    <!-- 嘴巴內部 -->
-                    <ellipse id="mouthInner" cx="160" cy="165" rx="68" ry="42" fill="#1f2937"/>
+                <svg width="340" height="340" viewBox="0 0 340 340" class="relative">
+                    <!-- 皮膚背景 -->
+                    <ellipse cx="170" cy="170" rx="145" ry="155" fill="#f8d0c0"/>
+                    <!-- 上唇 -->
+                    <path id="upperLip" d="M75 135 Q170 95 265 135 Q245 155 170 155 Q95 155 75 135" fill="#e11d48" stroke="#9f1239" stroke-width="18"/>
+                    <!-- 下唇 -->
+                    <path id="lowerLip" d="M75 185 Q170 235 265 185 Q240 205 170 205 Q100 205 75 185" fill="#e11d48" stroke="#9f1239" stroke-width="22"/>
+                    <!-- 嘴唇高光 -->
+                    <path d="M90 145 Q170 115 250 145" fill="none" stroke="#ffffff" stroke-width="9" stroke-opacity="0.45"/>
+                    <!-- 口腔 -->
+                    <ellipse id="mouthInner" cx="170" cy="175" rx="72" ry="48" fill="#1f2937"/>
+                    <!-- 牙齒 -->
+                    <rect x="130" y="150" width="18" height="12" fill="#f1f5f9" rx="2"/>
+                    <rect x="155" y="150" width="18" height="12" fill="#f1f5f9" rx="2"/>
+                    <rect x="180" y="150" width="18" height="12" fill="#f1f5f9" rx="2"/>
                     <!-- 舌頭 -->
-                    <path id="tongue" class="tongue" d="M110 165 Q160 210 210 165 Q180 185 140 185 Z" fill="#f472b6"/>
-                    <!-- 口水光澤 -->
-                    <ellipse cx="140" cy="155" rx="18" ry="8" fill="#67e8f9" opacity="0.4"/>
+                    <path id="tongue" d="M115 175 Q170 225 225 175 Q200 205 145 205 Z" fill="#f472b6"/>
+                    <!-- 舌頭高光（濕潤感） -->
+                    <path id="tongueGloss" d="M125 185 Q160 205 195 185" fill="none" stroke="#ffffff" stroke-width="11" stroke-opacity="0.55"/>
                 </svg>
             </div>
         </div>
@@ -61,48 +69,44 @@
                 <span id="pleasureText">0%</span>
             </div>
             <div class="h-6 bg-white/10 rounded-full overflow-hidden">
-                <div id="pleasureBar" class="h-full bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-400 transition-all" style="width:0%"></div>
+                <div id="pleasureBar" class="h-full bg-gradient-to-r from-pink-500 via-rose-500 to-purple-500 transition-all duration-200" style="width:0%"></div>
             </div>
         </div>
 
-        <div id="status" class="text-3xl font-bold h-12 text-pink-200 mb-6">來吧…用你的舌頭好好伺候我❤</div>
+        <div id="status" class="text-3xl font-bold h-12 text-pink-200 mb-6">來…用舌頭好好舔我❤</div>
 
         <div class="flex gap-4 justify-center">
-            <button onclick="toggleAuto()" id="autoBtn"
-                class="px-10 py-4 bg-white/10 hover:bg-pink-500 rounded-3xl text-xl font-bold transition">🔄 自動深喉</button>
-            <button onclick="resetGame()"
-                class="px-10 py-4 bg-white/10 hover:bg-pink-500 rounded-3xl text-xl font-bold transition">🔄 重置</button>
+            <button onclick="toggleAuto()" id="autoBtn" class="px-10 py-4 bg-white/10 hover:bg-pink-500 rounded-3xl text-xl font-bold transition">🔄 自動深喉</button>
+            <button onclick="resetGame()" class="px-10 py-4 bg-white/10 hover:bg-pink-500 rounded-3xl text-xl font-bold transition">🔄 重置</button>
         </div>
 
         <!-- 高潮畫面 -->
         <div id="climaxScreen" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-50">
             <div class="text-center">
-                <div id="climax" class="text-8xl mb-4">💦💦💦</div>
-                <div class="text-5xl font-black text-pink-400">高潮了！！！</div>
-                <div class="text-2xl mt-4">好棒…射滿我嘴巴了…❤</div>
-                <button onclick="resetGame()" class="mt-10 px-12 py-5 bg-pink-500 hover:bg-pink-600 rounded-full text-2xl font-bold">再來一次</button>
+                <div class="text-8xl mb-6 animate-bounce">💦💦💦</div>
+                <div class="text-5xl font-black text-pink-400 tracking-widest">射滿我了～！！</div>
+                <div class="text-2xl mt-4 text-pink-200">好燙…好多…❤</div>
+                <button onclick="resetGame()" class="mt-10 px-14 py-5 bg-pink-500 hover:bg-pink-600 rounded-full text-2xl font-bold">再來一次</button>
             </div>
         </div>
     </div>
 
     <script>
         let pleasure = 0;
-        let stage = 0;
-        let autoMode = false;
         let combo = 0;
         let lastClick = 0;
+        let autoMode = false;
+        let autoInterval;
 
         const pleasureBar = document.getElementById('pleasureBar');
         const pleasureText = document.getElementById('pleasureText');
         const statusEl = document.getElementById('status');
         const climaxScreen = document.getElementById('climaxScreen');
         const tongue = document.getElementById('tongue');
-        const lips = document.getElementById('lips');
+        const tongueGloss = document.getElementById('tongueGloss');
+        const upperLip = document.getElementById('upperLip');
+        const lowerLip = document.getElementById('lowerLip');
         const mouthInner = document.getElementById('mouthInner');
-
-        const reactions = [
-            "嗯…好會舔❤", "再深一點…", "舌頭好熱…", "啊…吸我…", "要射了…別停！", "深喉…好舒服…"
-        ];
 
         function updateBar() {
             pleasureBar.style.width = pleasure + '%';
@@ -113,78 +117,72 @@
             const drop = document.createElement('div');
             drop.className = 'droplet';
             drop.textContent = '💧';
-            drop.style.left = (120 + Math.random() * 80) + 'px';
-            drop.style.top = '180px';
+            drop.style.left = (130 + Math.random() * 80) + 'px';
+            drop.style.top = '175px';
             document.getElementById('mouth').appendChild(drop);
-            setTimeout(() => drop.remove(), 1500);
+            setTimeout(() => drop.remove(), 1600);
         }
 
-        function clickMouth(e) {
+        function clickMouth() {
             if (pleasure >= 100) return;
-            
+
             const now = Date.now();
-            if (now - lastClick < 80) combo++;
+            if (now - lastClick < 90) combo++;
             else combo = 1;
             lastClick = now;
 
-            let add = 3 + Math.min(combo * 0.8, 12);
+            let add = 4 + Math.min(combo * 1.1, 14);
             pleasure = Math.min(100, pleasure + add);
             updateBar();
 
-            // 舌頭動畫
-            tongue.setAttribute('d', 'M105 165 Q160 225 215 165 Q185 195 135 195 Z');
+            // 真實舌頭伸縮動畫
+            tongue.setAttribute('d', 'M108 175 Q170 245 232 175 Q205 215 140 215 Z');
+            tongueGloss.setAttribute('d', 'M120 190 Q165 225 205 190');
+            upperLip.setAttribute('d', 'M70 135 Q170 85 270 135 Q245 160 170 160 Q95 160 70 135');
+            lowerLip.setAttribute('d', 'M70 185 Q170 255 270 185 Q245 205 170 205 Q95 205 70 185');
+
             setTimeout(() => {
-                tongue.setAttribute('d', 'M110 165 Q160 210 210 165 Q180 185 140 185 Z');
-            }, 120);
+                tongue.setAttribute('d', 'M115 175 Q170 225 225 175 Q200 205 145 205 Z');
+                tongueGloss.setAttribute('d', 'M125 185 Q160 205 195 185');
+                upperLip.setAttribute('d', 'M75 135 Q170 95 265 135 Q245 155 170 155 Q95 155 75 135');
+                lowerLip.setAttribute('d', 'M75 185 Q170 235 265 185 Q240 205 170 205 Q100 205 75 185');
+            }, 180);
 
-            // 口水
-            if (Math.random() < 0.7) createDroplet();
+            if (Math.random() < 0.65) createDroplet();
 
-            // 隨機反應
-            if (Math.random() < 0.45) {
-                statusEl.textContent = reactions[Math.floor(Math.random() * reactions.length)];
-                setTimeout(() => { if (pleasure < 100) statusEl.textContent = ''; }, 1400);
+            // 反應文字
+            const msgs = ["嗯…好深❤", "舌頭再捲一點…", "啊…吸我…", "要射了別停！", "嘴巴好滿…"];
+            if (Math.random() < 0.5) {
+                statusEl.textContent = msgs[Math.floor(Math.random() * msgs.length)];
+                setTimeout(() => { if (pleasure < 100) statusEl.textContent = '來…繼續舔我❤'; }, 1300);
             }
 
-            // 階段變化
-            if (pleasure > 30 && stage === 0) {
-                stage = 1;
-                lips.setAttribute('fill', '#9f1239');
-                statusEl.textContent = '開始流口水了～😩';
-            }
-            if (pleasure > 65 && stage === 1) {
-                stage = 2;
-                mouthInner.setAttribute('ry', '58');
-                statusEl.textContent = '深喉模式開啟…❤';
-            }
-
-            // 高潮
             if (pleasure >= 100) {
                 setTimeout(() => {
                     climaxScreen.classList.remove('hidden');
                     createExplosion();
-                }, 200);
+                }, 250);
             }
         }
 
         function createExplosion() {
-            for (let i = 0; i < 80; i++) {
+            for (let i = 0; i < 90; i++) {
                 setTimeout(() => {
                     const p = document.createElement('div');
-                    p.textContent = ['💦','❤️','✨'][Math.floor(Math.random()*3)];
+                    p.textContent = Math.random() > 0.5 ? '💦' : '❤️';
                     p.style.position = 'fixed';
                     p.style.left = Math.random() * 100 + 'vw';
-                    p.style.top = '60vh';
-                    p.style.fontSize = (30 + Math.random() * 50) + 'px';
-                    p.style.zIndex = 60;
+                    p.style.top = (50 + Math.random() * 30) + 'vh';
+                    p.style.fontSize = (25 + Math.random() * 55) + 'px';
+                    p.style.zIndex = '999';
                     document.body.appendChild(p);
                     setTimeout(() => {
-                        p.style.transition = 'all 2s';
-                        p.style.transform = `translateY(-${500 + Math.random() * 600}px)`;
-                        p.style.opacity = 0;
-                    }, 10);
-                    setTimeout(() => p.remove(), 2200);
-                }, i * 8);
+                        p.style.transition = 'all 2.2s ease-out';
+                        p.style.transform = `translateY(-${700 + Math.random()*400}px)`;
+                        p.style.opacity = '0';
+                    }, 30);
+                    setTimeout(() => p.remove(), 2400);
+                }, i * 7);
             }
         }
 
@@ -194,9 +192,7 @@
             if (autoMode) {
                 btn.textContent = '⏹ 停止自動';
                 btn.classList.add('!bg-pink-600');
-                autoInterval = setInterval(() => {
-                    if (pleasure < 100) clickMouth();
-                }, 180);
+                autoInterval = setInterval(() => { if (pleasure < 100) clickMouth(); }, 165);
             } else {
                 btn.textContent = '🔄 自動深喉';
                 btn.classList.remove('!bg-pink-600');
@@ -206,21 +202,16 @@
 
         function resetGame() {
             pleasure = 0;
-            stage = 0;
             combo = 0;
             updateBar();
-            statusEl.textContent = '來吧…用你的舌頭好好伺候我❤';
+            statusEl.textContent = '來…用舌頭好好舔我❤';
             climaxScreen.classList.add('hidden');
-            lips.setAttribute('fill', '#be185d');
-            mouthInner.setAttribute('ry', '42');
             if (autoMode) toggleAuto();
         }
 
-        // 點擊事件
         document.getElementById('mouth').addEventListener('mousedown', clickMouth);
         document.getElementById('mouth').addEventListener('touchstart', e => { e.preventDefault(); clickMouth(); });
 
-        // Tailwind
         tailwind.config = { content: ["*"] };
         updateBar();
     </script>

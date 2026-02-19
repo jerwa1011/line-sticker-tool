@@ -3,132 +3,84 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>💖 指尖蜜語 - 極致放鬆</title>
+    <title>💋 極致口技模擬</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
         body { font-family: 'Noto Sans TC', sans-serif; }
-        .body-container {
+        .mouth-container {
             position: relative;
-            width: 340px;
-            height: 520px;
-            background: linear-gradient(#ffe4e1, #ffccdd);
+            width: 380px;
+            height: 380px;
+            background: radial-gradient(circle at 50% 60%, #4c1d95, #1a0033);
             border-radius: 9999px;
-            box-shadow: 0 0 60px rgba(255, 105, 180, 0.6);
+            box-shadow: 0 0 80px rgba(236, 72, 153, 0.8);
             overflow: hidden;
-        }
-        .zone {
-            position: absolute;
             cursor: pointer;
-            transition: all 0.2s;
         }
-        .zone:hover { background: rgba(255,255,255,0.15); }
-        .float-text {
+        .tongue { transition: all 0.1s; }
+        .droplet {
             position: absolute;
-            color: #ff69b4;
-            font-size: 22px;
-            font-weight: bold;
+            color: #67e8f9;
+            font-size: 28px;
             pointer-events: none;
-            animation: floatUp 1.8s forwards;
-            text-shadow: 0 0 10px white;
+            animation: drip 1.2s forwards;
         }
-        @keyframes floatUp {
-            0% { opacity: 1; transform: translateY(0); }
-            100% { opacity: 0; transform: translateY(-180px); }
+        @keyframes drip {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(180px); opacity: 0; }
         }
-        #climaxOverlay {
-            animation: climaxShake 0.6s infinite;
-        }
-        @keyframes climaxShake {
-            0%,100% { transform: translate(0,0); }
-            25% { transform: translate(8px, -8px); }
-            50% { transform: translate(-8px, 8px); }
-            75% { transform: translate(6px, -6px); }
-        }
+        #climax { animation: pulse 0.4s infinite; }
     </style>
 </head>
-<body class="bg-gradient-to-br from-purple-950 to-pink-950 text-white min-h-screen flex items-center justify-center">
+<body class="bg-gradient-to-br from-purple-950 via-pink-950 to-black text-white min-h-screen flex items-center justify-center">
     <div class="max-w-md mx-auto text-center">
-        <h1 class="text-5xl font-bold mb-2 flex items-center justify-center gap-3">
-            💖 指尖蜜語
-        </h1>
-        <p class="text-pink-300 text-xl mb-8">極致放鬆按摩・18+</p>
+        <h1 class="text-5xl font-bold mb-3 flex items-center justify-center gap-4">💋 極致口技模擬</h1>
+        <p class="text-pink-400 text-xl mb-8">深喉挑戰・放鬆專用 18+</p>
 
-        <div class="relative mx-auto mb-6" id="gameArea">
-            <!-- 女孩身體 -->
-            <div class="body-container mx-auto" id="girlBody">
-                <!-- SVG 女孩 -->
-                <svg width="340" height="520" viewBox="0 0 340 520" class="absolute inset-0">
-                    <!-- 頭 -->
-                    <circle cx="170" cy="100" r="68" fill="#ffe0d4"/>
-                    <!-- 頭髮 -->
-                    <ellipse cx="170" cy="78" rx="78" ry="55" fill="#4a2c5a"/>
-                    <!-- 脖子 -->
-                    <rect x="140" y="155" width="60" height="45" fill="#ffe0d4" rx="20"/>
-                    <!-- 身體（皮膚） -->
-                    <path id="torso" d="M110 190 Q170 320 230 190 L230 390 Q170 430 110 390 Z" fill="#ffe0d4"/>
-                    <!-- 胸部上衣（階段0） -->
-                    <g id="bra">
-                        <ellipse cx="135" cy="240" rx="38" ry="32" fill="#c026d3" opacity="0.95"/>
-                        <ellipse cx="205" cy="240" rx="38" ry="32" fill="#c026d3" opacity="0.95"/>
-                    </g>
-                    <!-- 內褲（階段<2） -->
-                    <g id="panties">
-                        <path d="M125 370 Q170 405 215 370 L215 400 Q170 425 125 400 Z" fill="#c026d3"/>
-                    </g>
-                    <!-- 腿 -->
-                    <rect x="115" y="400" width="45" height="120" fill="#ffe0d4" rx="22"/>
-                    <rect x="180" y="400" width="45" height="120" fill="#ffe0d4" rx="22"/>
-                    <!-- 私密處暗示（階段2後） -->
-                    <ellipse id="secret" cx="170" cy="385" rx="18" ry="12" fill="#9f1239" opacity="0"/>
+        <div class="mx-auto mb-8">
+            <div id="mouth" class="mouth-container mx-auto flex items-center justify-center">
+                <!-- 大嘴巴 SVG -->
+                <svg width="320" height="320" viewBox="0 0 320 320" class="relative">
+                    <!-- 嘴唇 -->
+                    <path id="lips" d="M60 160 Q160 240 260 160 Q160 80 60 160" fill="#be185d" stroke="#9f1239" stroke-width="28"/>
+                    <!-- 嘴巴內部 -->
+                    <ellipse id="mouthInner" cx="160" cy="165" rx="68" ry="42" fill="#1f2937"/>
+                    <!-- 舌頭 -->
+                    <path id="tongue" class="tongue" d="M110 165 Q160 210 210 165 Q180 185 140 185 Z" fill="#f472b6"/>
+                    <!-- 口水光澤 -->
+                    <ellipse cx="140" cy="155" rx="18" ry="8" fill="#67e8f9" opacity="0.4"/>
                 </svg>
-
-                <!-- 熱區（透明可點擊） -->
-                <div onclick="touchZone('neck')" class="zone w-20 h-16 top-[145px] left-[130px]"></div>
-                <div onclick="touchZone('leftBreast')" class="zone w-28 h-28 top-[195px] left-[75px]"></div>
-                <div onclick="touchZone('rightBreast')" class="zone w-28 h-28 top-[195px] left-[190px]"></div>
-                <div onclick="touchZone('belly')" class="zone w-40 h-40 top-[285px] left-[90px]"></div>
-                <div onclick="touchZone('thighs')" class="zone w-60 h-48 top-[380px] left-[60px]"></div>
-                <div onclick="touchZone('private')" class="zone w-32 h-20 top-[355px] left-[120px]"></div>
             </div>
         </div>
 
         <!-- 快感條 -->
-        <div class="mb-6">
-            <div class="flex justify-between text-sm mb-1 text-pink-300">
+        <div class="mb-6 px-8">
+            <div class="flex justify-between text-pink-300 mb-1">
                 <span>快感值</span>
                 <span id="pleasureText">0%</span>
             </div>
-            <div class="h-5 bg-white/20 rounded-full overflow-hidden">
-                <div id="pleasureBar" class="h-full bg-gradient-to-r from-pink-400 to-purple-500 transition-all duration-300" style="width: 0%"></div>
+            <div class="h-6 bg-white/10 rounded-full overflow-hidden">
+                <div id="pleasureBar" class="h-full bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-400 transition-all" style="width:0%"></div>
             </div>
         </div>
 
-        <!-- 狀態文字 -->
-        <div id="status" class="h-12 text-2xl font-bold text-pink-200 mb-4 min-h-[48px]"></div>
+        <div id="status" class="text-3xl font-bold h-12 text-pink-200 mb-6">來吧…用你的舌頭好好伺候我❤</div>
 
-        <!-- 控制按鈕 -->
         <div class="flex gap-4 justify-center">
             <button onclick="toggleAuto()" id="autoBtn"
-                class="px-8 py-3 bg-white/10 hover:bg-white/20 rounded-2xl text-lg font-bold transition">
-                🔄 自動撫摸
-            </button>
+                class="px-10 py-4 bg-white/10 hover:bg-pink-500 rounded-3xl text-xl font-bold transition">🔄 自動深喉</button>
             <button onclick="resetGame()"
-                class="px-8 py-3 bg-white/10 hover:bg-white/20 rounded-2xl text-lg font-bold transition">
-                🔄 重置
-            </button>
+                class="px-10 py-4 bg-white/10 hover:bg-pink-500 rounded-3xl text-xl font-bold transition">🔄 重置</button>
         </div>
 
-        <!-- 高潮遮罩 -->
-        <div id="climaxOverlay" class="hidden fixed inset-0 bg-pink-500/80 flex items-center justify-center z-50">
+        <!-- 高潮畫面 -->
+        <div id="climaxScreen" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-50">
             <div class="text-center">
-                <div class="text-7xl mb-6">💦</div>
-                <div class="text-5xl font-bold text-white drop-shadow-lg">高潮了～❤</div>
-                <div class="text-2xl mt-4 text-white/90">好棒…你好會按摩喔…</div>
-                <button onclick="resetGame()" 
-                    class="mt-8 px-10 py-4 bg-white text-pink-600 rounded-full text-xl font-bold hover:scale-110 transition">
-                    再來一次
-                </button>
+                <div id="climax" class="text-8xl mb-4">💦💦💦</div>
+                <div class="text-5xl font-black text-pink-400">高潮了！！！</div>
+                <div class="text-2xl mt-4">好棒…射滿我嘴巴了…❤</div>
+                <button onclick="resetGame()" class="mt-10 px-12 py-5 bg-pink-500 hover:bg-pink-600 rounded-full text-2xl font-bold">再來一次</button>
             </div>
         </div>
     </div>
@@ -136,129 +88,118 @@
     <script>
         let pleasure = 0;
         let stage = 0;
-        let autoInterval = null;
-        let isAuto = false;
+        let autoMode = false;
+        let combo = 0;
+        let lastClick = 0;
 
         const pleasureBar = document.getElementById('pleasureBar');
         const pleasureText = document.getElementById('pleasureText');
         const statusEl = document.getElementById('status');
-        const climaxOverlay = document.getElementById('climaxOverlay');
-        const bra = document.getElementById('bra');
-        const panties = document.getElementById('panties');
-        const secret = document.getElementById('secret');
+        const climaxScreen = document.getElementById('climaxScreen');
+        const tongue = document.getElementById('tongue');
+        const lips = document.getElementById('lips');
+        const mouthInner = document.getElementById('mouthInner');
 
-        const reactions = {
-            neck: ["嗯…脖子好敏感～", "輕一點…啊❤"],
-            leftBreast: ["胸部…不要停❤", "捏我…好舒服"],
-            rightBreast: ["另一邊也要…哈啊～", "乳頭硬了…"],
-            belly: ["小腹好癢…繼續往下", "嗯嗯…好癢喔❤"],
-            thighs: ["大腿內側…好會摸", "再往中間…"],
-            private: ["啊！那裡…太色了❤", "要…要去了…"]
-        };
+        const reactions = [
+            "嗯…好會舔❤", "再深一點…", "舌頭好熱…", "啊…吸我…", "要射了…別停！", "深喉…好舒服…"
+        ];
 
         function updateBar() {
             pleasureBar.style.width = pleasure + '%';
             pleasureText.textContent = Math.floor(pleasure) + '%';
         }
 
-        function showFloatText(text, x, y) {
-            const float = document.createElement('div');
-            float.className = 'float-text';
-            float.textContent = text;
-            float.style.left = x + 'px';
-            float.style.top = y + 'px';
-            document.getElementById('gameArea').appendChild(float);
-            setTimeout(() => float.remove(), 2000);
+        function createDroplet() {
+            const drop = document.createElement('div');
+            drop.className = 'droplet';
+            drop.textContent = '💧';
+            drop.style.left = (120 + Math.random() * 80) + 'px';
+            drop.style.top = '180px';
+            document.getElementById('mouth').appendChild(drop);
+            setTimeout(() => drop.remove(), 1500);
         }
 
-        function advanceStage() {
-            stage++;
-            if (stage === 1) {
-                bra.style.opacity = '0';
-                statusEl.textContent = '上衣脫掉了～😳';
-            } else if (stage === 2) {
-                panties.style.opacity = '0';
-                statusEl.textContent = '內褲也沒了…❤';
-            } else if (stage === 3) {
-                secret.style.opacity = '0.6';
-                statusEl.textContent = '完全赤裸了…你好壞喔～';
-            }
-            setTimeout(() => statusEl.textContent = '', 2200);
-        }
-
-        function touchZone(zone) {
+        function clickMouth(e) {
             if (pleasure >= 100) return;
+            
+            const now = Date.now();
+            if (now - lastClick < 80) combo++;
+            else combo = 1;
+            lastClick = now;
 
-            let add = 0;
-            switch(zone) {
-                case 'neck': add = 4; break;
-                case 'leftBreast': case 'rightBreast': add = 9; break;
-                case 'belly': add = 6; break;
-                case 'thighs': add = 7; break;
-                case 'private': add = 12; break;
-            }
-
+            let add = 3 + Math.min(combo * 0.8, 12);
             pleasure = Math.min(100, pleasure + add);
             updateBar();
 
-            // 隨機反應
-            const zoneReactions = reactions[zone];
-            const msg = zoneReactions[Math.floor(Math.random() * zoneReactions.length)];
-            const rx = Math.random() * 200 + 70;
-            const ry = Math.random() * 120 + 180;
-            showFloatText(msg, rx, ry);
+            // 舌頭動畫
+            tongue.setAttribute('d', 'M105 165 Q160 225 215 165 Q185 195 135 195 Z');
+            setTimeout(() => {
+                tongue.setAttribute('d', 'M110 165 Q160 210 210 165 Q180 185 140 185 Z');
+            }, 120);
 
-            // 階段推進
-            if (pleasure >= 25 && stage < 1) advanceStage();
-            if (pleasure >= 55 && stage < 2) advanceStage();
-            if (pleasure >= 80 && stage < 3) advanceStage();
+            // 口水
+            if (Math.random() < 0.7) createDroplet();
+
+            // 隨機反應
+            if (Math.random() < 0.45) {
+                statusEl.textContent = reactions[Math.floor(Math.random() * reactions.length)];
+                setTimeout(() => { if (pleasure < 100) statusEl.textContent = ''; }, 1400);
+            }
+
+            // 階段變化
+            if (pleasure > 30 && stage === 0) {
+                stage = 1;
+                lips.setAttribute('fill', '#9f1239');
+                statusEl.textContent = '開始流口水了～😩';
+            }
+            if (pleasure > 65 && stage === 1) {
+                stage = 2;
+                mouthInner.setAttribute('ry', '58');
+                statusEl.textContent = '深喉模式開啟…❤';
+            }
 
             // 高潮
             if (pleasure >= 100) {
                 setTimeout(() => {
-                    climaxOverlay.classList.remove('hidden');
-                    createHeartExplosion();
-                }, 300);
+                    climaxScreen.classList.remove('hidden');
+                    createExplosion();
+                }, 200);
             }
         }
 
-        function createHeartExplosion() {
-            for (let i = 0; i < 60; i++) {
+        function createExplosion() {
+            for (let i = 0; i < 80; i++) {
                 setTimeout(() => {
-                    const heart = document.createElement('div');
-                    heart.textContent = '❤️';
-                    heart.style.position = 'fixed';
-                    heart.style.left = Math.random() * 100 + 'vw';
-                    heart.style.top = '80vh';
-                    heart.style.fontSize = (20 + Math.random() * 40) + 'px';
-                    heart.style.opacity = '0.9';
-                    heart.style.zIndex = '60';
-                    heart.style.transition = 'all 2.5s cubic-bezier(0.25,0.1,0.25,1)';
-                    document.body.appendChild(heart);
-                    
+                    const p = document.createElement('div');
+                    p.textContent = ['💦','❤️','✨'][Math.floor(Math.random()*3)];
+                    p.style.position = 'fixed';
+                    p.style.left = Math.random() * 100 + 'vw';
+                    p.style.top = '60vh';
+                    p.style.fontSize = (30 + Math.random() * 50) + 'px';
+                    p.style.zIndex = 60;
+                    document.body.appendChild(p);
                     setTimeout(() => {
-                        heart.style.transform = `translateY(-${window.innerHeight + 300}px) rotate(${Math.random()*720-360}deg)`;
-                        heart.style.opacity = '0';
-                    }, 50);
-                    
-                    setTimeout(() => heart.remove(), 3000);
-                }, i * 12);
+                        p.style.transition = 'all 2s';
+                        p.style.transform = `translateY(-${500 + Math.random() * 600}px)`;
+                        p.style.opacity = 0;
+                    }, 10);
+                    setTimeout(() => p.remove(), 2200);
+                }, i * 8);
             }
         }
 
         function toggleAuto() {
-            isAuto = !isAuto;
+            autoMode = !autoMode;
             const btn = document.getElementById('autoBtn');
-            if (isAuto) {
+            if (autoMode) {
                 btn.textContent = '⏹ 停止自動';
-                btn.classList.add('!bg-pink-500', '!text-white');
+                btn.classList.add('!bg-pink-600');
                 autoInterval = setInterval(() => {
-                    const zones = ['neck','leftBreast','rightBreast','belly','thighs','private'];
-                    touchZone(zones[Math.floor(Math.random()*zones.length)]);
-                }, 280);
+                    if (pleasure < 100) clickMouth();
+                }, 180);
             } else {
-                btn.textContent = '🔄 自動撫摸';
-                btn.classList.remove('!bg-pink-500', '!text-white');
+                btn.textContent = '🔄 自動深喉';
+                btn.classList.remove('!bg-pink-600');
                 clearInterval(autoInterval);
             }
         }
@@ -266,21 +207,22 @@
         function resetGame() {
             pleasure = 0;
             stage = 0;
+            combo = 0;
             updateBar();
-            statusEl.textContent = '';
-            climaxOverlay.classList.add('hidden');
-            bra.style.opacity = '0.95';
-            panties.style.opacity = '1';
-            secret.style.opacity = '0';
-            if (isAuto) toggleAuto();
+            statusEl.textContent = '來吧…用你的舌頭好好伺候我❤';
+            climaxScreen.classList.add('hidden');
+            lips.setAttribute('fill', '#be185d');
+            mouthInner.setAttribute('ry', '42');
+            if (autoMode) toggleAuto();
         }
 
-        // Tailwind 初始化
-        tailwind.config = { content: ["*"] };
+        // 點擊事件
+        document.getElementById('mouth').addEventListener('mousedown', clickMouth);
+        document.getElementById('mouth').addEventListener('touchstart', e => { e.preventDefault(); clickMouth(); });
 
-        // 初始
+        // Tailwind
+        tailwind.config = { content: ["*"] };
         updateBar();
-        statusEl.textContent = '來吧～慢慢摸我❤';
     </script>
 </body>
 </html>

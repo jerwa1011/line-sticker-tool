@@ -3,34 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>藝術品店本地端財務管理系統 (自訂比例完美相容版)</title>
+    <title>ArtStudio 財務分帳、銷售雷達與資料庫排序系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 min-h-screen pb-12">
 
-    <!-- 頂部導覽列 -->
     <header class="bg-white border-b border-gray-200 sticky top-0 z-50 backdrop-blur-md bg-white/80">
         <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
             <h1 class="text-xl font-semibold tracking-tight text-gray-900 flex items-center gap-2">
-                💎 <span class="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent font-bold">ArtStudio</span> 財務自訂分帳系統
+                💎 <span class="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent font-bold">ArtStudio</span> 財務與銷售雷達
             </h1>
-            <nav class="flex gap-2 bg-gray-100 p-1 rounded-lg">
-                <button onclick="switchTab('upload-tab')" id="btn-upload-tab" class="tab-btn px-4 py-1.5 text-sm font-medium rounded-md bg-white text-gray-900 shadow-sm transition">📑 訂單處理與月份帳務</button>
-                <button onclick="switchTab('db-tab')" id="btn-db-tab" class="tab-btn px-4 py-1.5 text-sm font-medium rounded-md text-gray-600 hover:text-gray-900 transition">🗃️ 產品規則資料庫</button>
+            <nav class="flex gap-1 bg-gray-100 p-1 rounded-lg overflow-x-auto">
+                <button onclick="switchTab('upload-tab')" id="btn-upload-tab" class="tab-btn px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md bg-white text-gray-900 shadow-sm transition whitespace-nowrap">📑 訂單與分帳</button>
+                <button onclick="switchTab('radar-tab')" id="btn-radar-tab" class="tab-btn px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md text-gray-600 hover:text-gray-900 transition whitespace-nowrap">🏆 商品銷售雷達</button>
+                <button onclick="switchTab('chart-tab')" id="btn-chart-tab" class="tab-btn px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md text-gray-600 hover:text-gray-900 transition whitespace-nowrap">📊 營運統計圖表</button>
+                <button onclick="switchTab('db-tab')" id="btn-db-tab" class="tab-btn px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md text-gray-600 hover:text-gray-900 transition whitespace-nowrap">🗃️ 規則資料庫</button>
             </nav>
         </div>
     </header>
 
     <main class="max-w-7xl mx-auto px-6 mt-8">
         
-        <!-- TAB 1: 訂單上傳與月份帳務 -->
         <section id="upload-tab" class="tab-content space-y-6">
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- 左側：設定月份與上傳 -->
                 <div class="lg:col-span-1 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm flex flex-col justify-between space-y-4">
                     <div>
                         <h3 class="font-semibold text-lg mb-1 text-gray-900">1. 選擇與上傳帳務</h3>
@@ -55,7 +55,7 @@
                             <div class="flex flex-col items-center justify-center pt-4 pb-4">
                                 <span class="text-2xl mb-1">📊</span>
                                 <p class="text-xs text-gray-600 font-medium">上傳該月 Excel 覆蓋/更新資料</p>
-                                <p class="text-[10px] text-gray-400 mt-0.5">支援 .xlsx (如 202602.xlsx)</p>
+                                <p class="text-[10px] text-gray-400 mt-0.5">支援 .xlsx</p>
                             </div>
                             <input id="excel-file" type="file" accept=".xlsx, .xls" class="hidden" onchange="handleFile(this)" />
                         </label>
@@ -63,18 +63,13 @@
                     <div id="file-info" class="text-xs font-medium text-emerald-600 hidden bg-emerald-50 p-2 rounded-lg border border-emerald-200"></div>
                 </div>
 
-                <!-- 右側：當月分帳總覽卡片 -->
                 <div class="lg:col-span-2 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm flex flex-col justify-between">
                     <div>
                         <div class="flex justify-between items-center mb-4">
                             <h3 class="font-semibold text-lg text-gray-900"><span id="title-month-display" class="text-indigo-600 font-bold">2026-01</span> 利潤拆分總覽</h3>
                             <div class="flex gap-2">
-                                <button id="btn-clear-month" onclick="clearCurrentMonth()" class="text-xs text-red-600 hover:bg-red-50 border border-red-200 font-medium px-3 py-2 rounded-xl transition">
-                                    🗑️ 清除本月數據
-                                </button>
-                                <button id="btn-export" onclick="exportCalculatedExcel()" disabled class="bg-gray-100 text-gray-400 cursor-not-allowed font-medium text-sm px-4 py-2 rounded-xl transition flex items-center gap-1">
-                                    📥 匯出此月 Excel
-                                </button>
+                                <button onclick="clearCurrentMonth()" class="text-xs text-red-600 hover:bg-red-50 border border-red-200 font-medium px-3 py-2 rounded-xl transition">🗑️ 清除本月</button>
+                                <button id="btn-export" onclick="exportCalculatedExcel()" disabled class="bg-gray-100 text-gray-400 cursor-not-allowed font-medium text-sm px-4 py-2 rounded-xl transition flex items-center gap-1">📥 匯出 Excel</button>
                             </div>
                         </div>
                         <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -96,22 +91,14 @@
                             </div>
                         </div>
                     </div>
-                    <div class="text-[11px] text-gray-400 mt-4">
-                        * 提示：直接點擊下方訂單的「分帳比例標籤」，即可隨意輸入任意比例（例如：40:60 或 17:183），系統將自動即時按比例拆分金額。
-                    </div>
                 </div>
             </div>
 
-            <!-- 下方：當月訂單比對明細 -->
             <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
                 <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
                     <h3 class="font-semibold text-gray-900">訂單比對明細 <span id="order-count" class="text-xs font-normal text-gray-500 ml-1"></span></h3>
-                    <div class="flex gap-4 text-xs">
-                        <span class="flex items-center gap-1 text-emerald-600"><span class="w-2 h-2 rounded-full bg-emerald-500"></span>已對映 (點擊可直接修改任何比例)</span>
-                        <span class="flex items-center gap-1 text-amber-600"><span class="w-2 h-2 rounded-full bg-amber-500"></span>未對映 (需補設定)</span>
-                    </div>
                 </div>
-                <div class="overflow-x-auto max-h-[550px]">
+                <div class="overflow-x-auto max-h-[400px]">
                     <table class="w-full text-left text-sm border-collapse">
                         <thead class="bg-gray-100 text-gray-600 uppercase text-xs font-semibold sticky top-0 z-10 shadow-sm">
                             <tr>
@@ -124,241 +111,232 @@
                                 <th class="px-6 py-3 text-right text-amber-600">金祥吉</th>
                             </tr>
                         </thead>
-                        <tbody id="order-table-body" class="divide-y divide-gray-100">
-                            <!-- 動態載入 -->
-                        </tbody>
+                        <tbody id="order-table-body" class="divide-y divide-gray-100"></tbody>
                     </table>
                 </div>
             </div>
         </section>
 
-        <!-- TAB 2: 產品規則資料庫 -->
+        <section id="radar-tab" class="tab-content hidden space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+                    <p class="text-xs font-medium text-gray-500">不重複總訂單數</p>
+                    <p id="radar-total-orders" class="text-2xl font-bold text-gray-900 mt-1">0 筆</p>
+                </div>
+                <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+                    <p class="text-xs font-medium text-gray-500">平均客單價 (AOV)</p>
+                    <p id="radar-aov" class="text-2xl font-bold text-indigo-600 mt-1">$0</p>
+                </div>
+                <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+                    <p class="text-xs font-medium text-gray-500">多品項綑綁購買率</p>
+                    <p id="radar-bundle-rate" class="text-2xl font-bold text-emerald-600 mt-1">0%</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+                    <h3 class="font-bold text-gray-900 mb-4 flex items-center gap-1">📦 商品銷量排行榜 <span class="text-xs font-normal text-gray-400">(Top 10)</span></h3>
+                    <div class="overflow-hidden border border-gray-100 rounded-xl">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-gray-50 font-semibold text-gray-600 border-b border-gray-100">
+                                <tr><th class="px-4 py-2.5 text-center w-12">名次</th><th class="px-4 py-2.5">商品組合名稱 [規格]</th><th class="px-4 py-2.5 text-right w-20">累積數量</th></tr>
+                            </thead>
+                            <tbody id="radar-qty-tbody" class="divide-y divide-gray-50"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+                    <h3 class="font-bold text-gray-900 mb-4 flex items-center gap-1">💰 商品營收貢獻排行榜 <span class="text-xs font-normal text-gray-400">(Top 10)</span></h3>
+                    <div class="overflow-hidden border border-gray-100 rounded-xl">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-gray-50 font-semibold text-gray-600 border-b border-gray-100">
+                                <tr><th class="px-4 py-2.5 text-center w-12">名次</th><th class="px-4 py-2.5">商品組合名稱 [規格]</th><th class="px-4 py-2.5 text-right w-24">累積營業額</th></tr>
+                            </thead>
+                            <tbody id="radar-rev-tbody" class="divide-y divide-gray-50"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="font-bold text-gray-900">🗂️ 獨家商品 SKU 規格交叉透視</h3>
+                        <select id="radar-sku-selector" onchange="renderSKUAnalysis()" class="text-xs px-2 py-1 border border-gray-300 rounded-lg bg-white font-medium"></select>
+                    </div>
+                    <div class="overflow-hidden border border-gray-100 rounded-xl">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-gray-50 font-semibold text-gray-600 border-b border-gray-100">
+                                <tr><th class="px-4 py-2.5">規格選項名稱</th><th class="px-4 py-2.5 text-right">銷售件數</th><th class="px-4 py-2.5 text-right">總營收</th><th class="px-4 py-2.5 text-right">營收佔比</th></tr>
+                            </thead>
+                            <tbody id="radar-sku-tbody" class="divide-y divide-gray-50"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <h3 class="font-bold text-gray-900 mb-2">🔗 常見客群購物籃「關聯綑綁」</h3>
+                        <div id="radar-bundle-container" class="space-y-2.5"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="chart-tab" class="tab-content hidden space-y-6">
+            <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+                <h3 class="font-semibold text-lg text-gray-900 mb-2">📈 2026 年度營運與出資獲利趨勢</h3>
+                <div class="w-full h-80 relative"><canvas id="trendChart"></canvas></div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm flex flex-col items-center">
+                    <div class="w-full text-left mb-4">
+                        <h3 class="font-semibold text-base text-gray-900"><span id="pie-month-display" class="text-indigo-600 font-bold"></span> 獲利出資結構佔比</h3>
+                    </div>
+                    <div class="w-full max-w-[220px] h-[220px] relative"><canvas id="structurePieChart"></canvas></div>
+                </div>
+            </div>
+        </section>
+
         <section id="db-tab" class="tab-content hidden space-y-6">
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- 左側：手動新增/編輯規則 -->
                 <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm h-fit">
                     <h3 id="form-title" class="font-semibold text-lg mb-4 text-gray-900">手動新增產品規則</h3>
                     <form id="product-form" onsubmit="saveProduct(event)" class="space-y-4">
                         <input type="hidden" id="edit-old-key">
                         <div>
                             <label class="block text-xs font-medium text-gray-600 mb-1">商品名稱 *</label>
-                            <input type="text" id="form-name" required placeholder="例如：自訂款手作戒指" class="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <input type="text" id="form-name" required class="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
                         </div>
                         <div>
-                            <label class="block text-xs font-medium text-gray-600 mb-1">商品選項名稱 (若無填「無」) *</label>
-                            <input type="text" id="form-option" required placeholder="例如：黃金 / 國際圍12號" class="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <label class="block text-xs font-medium text-gray-600 mb-1">規格選項 *</label>
+                            <input type="text" id="form-option" required class="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
                         </div>
-                        
-                        <!-- 設定出資比例權重 -->
                         <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3">
-                            <label class="block text-xs font-bold text-gray-700">設定出資分帳權重比例：</label>
+                            <label class="block text-xs font-bold text-gray-700">設定分帳比例數字：</label>
                             <div class="grid grid-cols-3 gap-2">
-                                <div>
-                                    <label class="block text-[11px] text-gray-500 mb-0.5">哲華</label>
-                                    <input type="number" id="form-w-zh" min="0" step="any" value="0" class="w-full text-sm px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                                </div>
-                                <div>
-                                    <label class="block text-[11px] text-gray-500 mb-0.5">川容</label>
-                                    <input type="number" id="form-w-cr" min="0" step="any" value="0" class="w-full text-sm px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                                </div>
-                                <div>
-                                    <label class="block text-[11px] text-gray-500 mb-0.5">金祥吉</label>
-                                    <input type="number" id="form-w-jxj" min="0" step="any" value="0" class="w-full text-sm px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                                </div>
+                                <div><label class="block text-[11px] text-gray-500">哲華</label><input type="number" id="form-w-zh" min="0" step="any" value="0" class="w-full text-sm px-2 py-1.5 border border-gray-300 rounded-md"></div>
+                                <div><label class="block text-[11px] text-gray-500">川容</label><input type="number" id="form-w-cr" min="0" step="any" value="0" class="w-full text-sm px-2 py-1.5 border border-gray-300 rounded-md"></div>
+                                <div><label class="block text-[11px] text-gray-500">金祥吉</label><input type="number" id="form-w-jxj" min="0" step="any" value="0" class="w-full text-sm px-2 py-1.5 border border-gray-300 rounded-md"></div>
                             </div>
-                            <p class="text-[10px] text-gray-400 leading-tight">* 註：您可以填百分比（如 40, 60, 0）或任意出資比例（如 17, 183, 0）。系統會自動依比例總和進行百分比化拆帳。</p>
                         </div>
-
-                        <div class="flex gap-2 pt-2">
-                            <button type="submit" class="flex-1 bg-indigo-600 text-white text-sm font-medium py-2 rounded-lg hover:bg-indigo-700 transition">儲存規則</button>
-                            <button type="button" onclick="resetForm()" class="bg-gray-100 text-gray-600 text-sm font-medium px-3 py-2 rounded-lg hover:bg-gray-200 transition">取消</button>
-                        </div>
+                        <div class="flex gap-2"><button type="submit" class="flex-1 bg-indigo-600 text-white text-sm font-medium py-2 rounded-lg">儲存</button><button type="button" onclick="resetForm()" class="bg-gray-100 text-gray-600 text-sm px-3 py-2 rounded-lg">取消</button></div>
                     </form>
                 </div>
-
-                <!-- 右側：資料庫列表與備份 -->
                 <div class="lg:col-span-2 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm space-y-4">
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div>
-                            <h3 class="font-semibold text-lg text-gray-900">已建立之規則資料庫</h3>
-                            <p class="text-xs text-gray-500">主資料庫（支援任何自訂分帳權重）</p>
-                        </div>
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-semibold text-lg text-gray-900">規則資料庫清單</h3>
                         <div class="flex gap-2">
-                            <button onclick="exportDB()" class="text-xs font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg transition">📤 備份資料庫(JSON)</button>
-                            <label class="text-xs font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg transition cursor-pointer">
-                                📥 還原資料庫
-                                <input type="file" accept=".json" class="hidden" onchange="importDB(this)">
-                            </label>
+                            <button onclick="exportDB()" class="text-xs font-medium bg-gray-100 px-3 py-2 rounded-lg">📤 備份</button>
+                            <label class="text-xs font-bold bg-gradient-to-r from-indigo-500 to-violet-500 text-white px-3 py-2 rounded-lg cursor-pointer shadow-sm">📥 智慧合併<input type="file" accept=".json" class="hidden" onchange="importAndMergeDB(this)"></label>
                         </div>
                     </div>
-
-                    <div class="relative">
-                        <input type="text" id="search-db" oninput="renderDBTable()" placeholder="搜尋商品名稱或選項..." class="w-full text-sm pl-9 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        <span class="absolute left-3 top-2.5 text-gray-400">🔍</span>
-                    </div>
-
-                    <div class="overflow-x-auto max-h-[400px] border border-gray-100 rounded-xl">
+                    <div class="relative"><input type="text" id="search-db" oninput="renderDBTable()" placeholder="搜尋商品名稱..." class="w-full text-sm pl-9 pr-4 py-2 border border-gray-300 rounded-lg"><span class="absolute left-3 top-2.5">🔍</span></div>
+                    
+                    <div class="overflow-x-auto max-h-[420px] border border-gray-100 rounded-xl">
                         <table class="w-full text-left text-sm border-collapse">
-                            <thead class="bg-gray-50 text-gray-600 text-xs font-semibold sticky top-0 border-b border-gray-100">
+                            <thead class="bg-gray-50 text-xs font-semibold border-b text-gray-600 sticky top-0 z-10 shadow-sm">
                                 <tr>
-                                    <th class="px-4 py-3">唯一鍵 (商品名稱 + 選項名稱)</th>
-                                    <th class="px-4 py-3 text-center">分帳比例配比 (哲 : 川 : 金)</th>
-                                    <th class="px-4 py-3 text-center">操作</th>
+                                    <th onclick="toggleDBSort('name')" class="px-4 py-3 cursor-pointer hover:bg-gray-100 transition select-none">
+                                        商品組合名稱 <span id="sort-icon-name" class="text-gray-400 ml-1">↕</span>
+                                    </th>
+                                    <th onclick="toggleDBSort('ratio')" class="px-4 py-3 text-center cursor-pointer hover:bg-gray-100 transition select-none w-44">
+                                        分帳配比 (點擊排序) <span id="sort-icon-ratio" class="text-gray-400 ml-1">↕</span>
+                                    </th>
+                                    <th class="px-4 py-3 text-center w-24">操作</th>
                                 </tr>
                             </thead>
-                            <tbody id="db-table-body" class="divide-y divide-gray-100">
-                                <!-- 動態渲染 -->
-                            </tbody>
+                            <tbody id="db-table-body"></tbody>
                         </table>
                     </div>
+                    <div class="text-[10px] text-gray-400 mt-1">* 提示：點擊「商品組合名稱」或「分帳配比」欄位標題，即可在 升冪 / 降冪 / 預設 順序之間來回切換。</div>
                 </div>
             </div>
         </section>
-
     </main>
 
-    <!-- 彈出視窗：直接在訂單列自由修改或新增「任意分帳比例」 -->
     <div id="quick-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center hidden">
-        <div class="bg-white w-full max-w-md p-6 rounded-2xl shadow-xl border border-gray-100 animate-in fade-in zoom-in-95 duration-150">
-            <h3 class="font-bold text-lg mb-2 text-gray-900">設定自訂分帳比例</h3>
-            <p class="text-xs text-gray-500 mb-4 bg-gray-50 border border-gray-200 text-gray-800 p-2 rounded-lg font-mono" id="modal-key-display"></p>
+        <div class="bg-white w-full max-w-md p-6 rounded-2xl shadow-xl">
+            <h3 class="font-bold text-lg mb-2">設定自訂分帳比例</h3>
+            <p class="text-xs text-gray-500 mb-4 bg-gray-50 border p-2 rounded-lg font-mono" id="modal-key-display"></p>
             <div class="space-y-4">
                 <input type="hidden" id="modal-key-hidden">
-                
-                <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3">
-                    <label class="block text-xs font-semibold text-gray-700">請輸入此商品各出資人佔的權重或比例：</label>
-                    <div class="grid grid-cols-3 gap-2">
-                        <div>
-                            <label class="block text-xs text-gray-500 mb-0.5">哲華</label>
-                            <input type="number" id="modal-w-zh" min="0" step="any" class="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        </div>
-                        <div>
-                            <label class="block text-xs text-gray-500 mb-0.5">川容</label>
-                            <input type="number" id="modal-w-cr" min="0" step="any" class="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        </div>
-                        <div>
-                            <label class="block text-xs text-gray-500 mb-0.5">金祥吉</label>
-                            <input type="number" id="modal-w-jxj" min="0" step="any" class="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        </div>
-                    </div>
+                <div class="grid grid-cols-3 gap-2">
+                    <div><label class="text-xs text-gray-500">哲華</label><input type="number" id="modal-w-zh" min="0" step="any" class="w-full text-sm px-3 py-2 border rounded-lg"></div>
+                    <div><label class="text-xs text-gray-500">川容</label><input type="number" id="modal-w-cr" min="0" step="any" class="w-full text-sm px-3 py-2 border rounded-lg"></div>
+                    <div><label class="text-xs text-gray-500">金祥吉</label><input type="number" id="modal-w-jxj" min="0" step="any" class="w-full text-sm px-3 py-2 border rounded-lg"></div>
                 </div>
-
-                <div class="flex gap-2 justify-end pt-2">
-                    <button onclick="closeQuickModal()" class="px-4 py-2 text-sm bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition">取消</button>
-                    <button onclick="saveQuickProduct()" class="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition">儲存並即時計算</button>
-                </div>
+                <div class="flex gap-2 justify-end"><button onclick="closeQuickModal()" class="px-4 py-2 text-sm bg-gray-100 rounded-lg">取消</button><button onclick="saveQuickProduct()" class="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg">儲存並重新整理</button></div>
             </div>
         </div>
     </div>
 
     <script>
-        // 全局核心資料庫變數
         let productDB = {};
+        let activeCalculatedOrders = [];
+        let trendChartInstance = null, pieChartInstance = null;
 
-        // 【資料庫標準化核心函數】
-        // 無論是從 LocalStorage 讀取，還是點擊「還原資料庫」讀取 JSON 檔案，都必定強制跑這台機器，把舊字串轉換成新格式
-        function loadAndNormalizeDB(sourceData) {
-            let targetObj = {};
-            if (!sourceData) return targetObj;
-            
-            for (let key in sourceData) {
-                let val = sourceData[key];
-                if (typeof val === 'string') {
-                    // 若是舊版 Python 腳本產出的格式，在此精準轉型
-                    if (val === 'zh100') targetObj[key] = { zh: 1, cr: 0, jxj: 0 };
-                    else if (val === 'cr100') targetObj[key] = { zh: 0, cr: 1, jxj: 0 };
-                    else if (val === 'mix50') targetObj[key] = { zh: 50, cr: 50, jxj: 0 };
-                    else if (val === 'jxj100') targetObj[key] = { zh: 0, cr: 0, jxj: 1 };
-                    else targetObj[key] = { zh: 1, cr: 0, jxj: 0 };
-                } else {
-                    // 本身就是新版格式，直接留用
-                    targetObj[key] = val;
-                }
+        // 排序狀態快取追蹤器：'none' | 'asc' | 'desc'
+        let currentSortField = 'none'; 
+        let currentSortOrder = 'none';
+
+        function normalizeIncomingData(src) {
+            let tgt = {}; if (!src) return tgt;
+            for (let k in src) {
+                let v = src[k];
+                if (typeof v === 'string') {
+                    if (v === 'zh100') tgt[k] = { zh: 1, cr: 0, jxj: 0 };
+                    else if (v === 'cr100') tgt[k] = { zh: 0, cr: 1, jxj: 0 };
+                    else if (v === 'mix50') tgt[k] = { zh: 50, cr: 50, jxj: 0 };
+                    else if (v === 'jxj100') tgt[k] = { zh: 0, cr: 0, jxj: 1 };
+                    else tgt[k] = { zh: 1, cr: 0, jxj: 0 };
+                } else { tgt[k] = v; }
             }
-            return targetObj;
+            return tgt;
         }
 
-        // 核心動態拆帳演算法
-        function calculateShares(price, ruleObj) {
-            if (!ruleObj) return { zh: 0, cr: 0, jxj: 0, text: "未對映" };
+        function calculateShares(price, obj) {
+            if (!obj) return { zh: 0, cr: 0, jxj: 0, text: "未對映" };
+            let z = parseFloat(obj.zh) || 0, c = parseFloat(obj.cr) || 0, j = parseFloat(obj.jxj) || 0;
+            let tot = z + c + j; if (tot === 0) return { zh: 0, cr: 0, jxj: 0, text: "未設比例" };
             
-            let w_zh = parseFloat(ruleObj.zh) || 0;
-            let w_cr = parseFloat(ruleObj.cr) || 0;
-            let w_jxj = parseFloat(ruleObj.jxj) || 0;
-            let totalW = w_zh + w_cr + w_jxj;
+            let pParts = [];
+            if (z > 0) pParts.push(`哲${Math.round((z/tot)*100)}%`);
+            if (c > 0) pParts.push(`川${Math.round((c/tot)*100)}%`);
+            if (j > 0) pParts.push(`金${Math.round((j/tot)*100)}%`);
 
-            if (totalW === 0) return { zh: 0, cr: 0, jxj: 0, text: "未指定比例" };
-
-            // 按權重比例精準拆分金額
-            let zhShare = (price * w_zh) / totalW;
-            let crShare = (price * w_cr) / totalW;
-            let jxjShare = (price * w_jxj) / totalW;
-
-            // 格式化顯示標籤的文字
-            let textParts = [];
-            if (w_zh > 0) textParts.push(`哲${Math.round((w_zh/totalW)*100)}%`);
-            if (w_cr > 0) textParts.push(`川${Math.round((w_cr/totalW)*100)}%`);
-            if (w_jxj > 0) textParts.push(`金${Math.round((w_jxj/totalW)*100)}%`);
-            
-            let labelText = textParts.join(' + ');
-            if (w_zh > 0 && w_cr === 0 && w_jxj === 0) labelText = "哲華 100%";
-            if (w_zh === 0 && w_cr > 0 && w_jxj === 0) labelText = "川容 100%";
-            if (w_zh === 0 && w_cr === 0 && w_jxj > 0) labelText = "金祥吉 100%";
-
-            return {
-                zh: Math.round(zhShare * 100) / 100, // 保留小數點確保數據最精準
-                cr: Math.round(crShare * 100) / 100,
-                jxj: Math.round(jxjShare * 100) / 100,
-                text: labelText
-            };
+            return { zh: (price*z)/tot, cr: (price*c)/tot, jxj: (price*j)/tot, text: pParts.join('+') };
         }
 
-        // 初始化頁面
         window.onload = function() {
-            let localData = JSON.parse(localStorage.getItem('art_product_db')) || {};
-            productDB = loadAndNormalizeDB(localData); // 啟動初始化轉換
+            productDB = normalizeIncomingData(JSON.parse(localStorage.getItem('art_product_db')) || {});
             localStorage.setItem('art_product_db', JSON.stringify(productDB));
-            
-            renderDBTable();
-            loadMonthData(); 
+            renderDBTable(); loadMonthData(); 
         };
 
-        let activeCalculatedOrders = [];
-
-        function switchTab(tabId) {
+        function switchTab(id) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-            document.getElementById(tabId).classList.remove('hidden');
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.remove('bg-white', 'text-gray-900', 'shadow-sm');
-                btn.classList.add('text-gray-600', 'hover:text-gray-900');
-            });
-            document.getElementById(`btn-${tabId}`).classList.add('bg-white', 'text-gray-900', 'shadow-sm');
+            document.getElementById(id).classList.remove('hidden');
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('bg-white', 'text-gray-900', 'shadow-sm'));
+            document.getElementById(`btn-${id}`).classList.add('bg-white', 'text-gray-900', 'shadow-sm');
+            if (id === 'chart-tab') updateCharts();
+            if (id === 'radar-tab') runProductRadarAnalysis();
         }
 
-        function generateKey(name, option) {
-            return `${String(name || '').replace(/\s+/g, ' ').trim()}_${String(option || '').replace(/\s+/g, ' ').trim()}`;
+        function generateKey(n, o) {
+            return `${String(n||'').replace(/\s+/g,' ').trim()}_${String(o||'').replace(/\s+/g,' ').trim()}`;
         }
 
-        // 讀取指定月份帳務
         function loadMonthData() {
-            const month = document.getElementById('selected-month').value;
-            document.getElementById('title-month-display').innerText = month;
-            document.getElementById('file-info').classList.add('hidden');
-            
-            const savedOrders = localStorage.getItem(`orders_month_${month}`);
-            if (savedOrders) {
-                calculateAndRenderOrders(JSON.parse(savedOrders), false);
-            } else {
-                resetMonthDisplay();
-            }
+            const m = document.getElementById('selected-month').value;
+            document.getElementById('title-month-display').innerText = m;
+            const saved = localStorage.getItem(`orders_month_${m}`);
+            if (saved) calculateAndRenderOrders(JSON.parse(saved), false);
+            else resetMonthDisplay();
         }
 
         function clearCurrentMonth() {
-            const month = document.getElementById('selected-month').value;
-            if(confirm(`確定要清空 ${month} 月的帳務訂單數據嗎？`)) {
-                localStorage.removeItem(`orders_month_${month}`);
-                loadMonthData();
-            }
+            const m = document.getElementById('selected-month').value;
+            if(confirm(`確定清除 ${m} 月帳務？`)) { localStorage.removeItem(`orders_month_${m}`); loadMonthData(); }
         }
 
         function resetMonthDisplay() {
@@ -366,306 +344,298 @@
             document.getElementById('summary-zh').innerText = '$0';
             document.getElementById('summary-cr').innerText = '$0';
             document.getElementById('summary-jxj').innerText = '$0';
-            document.getElementById('order-count').innerText = '(暫無此月數據)';
-            document.getElementById('order-table-body').innerHTML = `<tr><td colspan="7" class="text-center py-12 text-gray-400">此月份目前無帳務資料。請在左側選擇檔案並上傳。</td></tr>`;
-            document.getElementById('btn-export').disabled = true;
-            document.getElementById('btn-export').className = "bg-gray-100 text-gray-400 cursor-not-allowed font-medium text-sm px-4 py-2 rounded-xl transition flex items-center gap-1";
+            document.getElementById('order-table-body').innerHTML = `<tr><td colspan="7" class="text-center py-8 text-gray-400">目前無資料，請上傳 Excel。</td></tr>`;
+            document.getElementById('btn-export').disabled = true; activeCalculatedOrders = [];
         }
 
         function handleFile(input) {
-            const file = input.files[0];
-            if (!file) return;
-
-            const month = document.getElementById('selected-month').value;
-            document.getElementById('file-info').innerText = `已成功讀取並歸類至 ${month}：${file.name}`;
-            document.getElementById('file-info').classList.remove('hidden');
-
+            const file = input.files[0]; if (!file) return;
+            const m = document.getElementById('selected-month').value;
             const reader = new FileReader();
             reader.onload = function(e) {
                 const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-                const rawRows = XLSX.utils.sheet_to_json(worksheet);
-                
-                localStorage.setItem(`orders_month_${month}`, JSON.stringify(rawRows));
-                calculateAndRenderOrders(rawRows, true);
+                const wb = XLSX.read(data, { type: 'array' });
+                const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+                localStorage.setItem(`orders_month_${m}`, JSON.stringify(rows));
+                calculateAndRenderOrders(rows, true);
             };
-            reader.readAsArrayBuffer(file);
-            input.value = '';
+            reader.readAsArrayBuffer(file); input.value = '';
         }
 
-        // 計算並渲染表格與卡片數字
-        function calculateAndRenderOrders(rawRows, triggerAlert = false) {
-            activeCalculatedOrders = [];
-            let totalRevenue = 0, totalZH = 0, totalCR = 0, totalJXJ = 0;
-            let missingRulesCount = 0;
-
-            rawRows.forEach(row => {
+        function calculateAndRenderOrders(rows, alertUser) {
+            activeCalculatedOrders = []; let r=0, z=0, c=0, j=0, missing=0;
+            rows.forEach(row => {
                 if (!row['商品名稱'] && !row['訂單編號']) return;
-
-                const orderId = row['訂單編號'] || '無編號';
-                const pName = row['商品名稱'] || '';
-                const pOption = row['商品選項名稱'] || '';
-                const price = parseFloat(row['價格']) || 0;
-
-                const key = generateKey(pName, pOption);
-                const ruleObj = productDB[key] || null;
-
-                if (!ruleObj) missingRulesCount++;
-
-                const res = calculateShares(price, ruleObj);
-
-                totalRevenue += price;
-                totalZH += res.zh;
-                totalCR += res.cr;
-                totalJXJ += res.jxj;
-
+                const price = parseFloat(row['價格']) || 0, qty = parseFloat(row['數量']) || 1;
+                const k = generateKey(row['商品名稱'], row['商品選項名稱']);
+                const rule = productDB[k]; if(!rule) missing++;
+                const res = calculateShares(price, rule);
+                r += price; z += res.zh; c += res.cr; j += res.jxj;
                 activeCalculatedOrders.push({
-                    orderId, pName, pOption, price, key, ruleObj, 
-                    zhShare: res.zh, crShare: res.cr, jxjShare: res.jxj, labelText: res.text, originalRow: row
+                    orderId: row['訂單編號']||'無', pName: row['商品名稱']||'', pOption: row['商品選項名稱']||'',
+                    price, qty, key: k, ruleObj: rule, zhShare: res.zh, crShare: res.cr, jxjShare: res.jxj, labelText: res.text, originalRow: row
                 });
             });
-
-            document.getElementById('summary-total').innerText = `$${Math.round(totalRevenue).toLocaleString()}`;
-            document.getElementById('summary-zh').innerText = `$${Math.round(totalZH).toLocaleString()}`;
-            document.getElementById('summary-cr').innerText = `$${Math.round(totalCR).toLocaleString()}`;
-            document.getElementById('summary-jxj').innerText = `$${Math.round(totalJXJ).toLocaleString()}`;
-
-            const btnExport = document.getElementById('btn-export');
-            if (activeCalculatedOrders.length > 0) {
-                btnExport.disabled = false;
-                btnExport.className = "bg-indigo-600 text-white hover:bg-indigo-700 font-medium text-sm px-4 py-2 rounded-xl transition flex items-center gap-1 shadow-sm";
-            }
-
-            const tbody = document.getElementById('order-table-body');
-            const month = document.getElementById('selected-month').value;
-            document.getElementById('order-count').innerText = `(${month} 月共 ${activeCalculatedOrders.length} 筆明細)`;
-            tbody.innerHTML = '';
-
+            document.getElementById('summary-total').innerText = `$${Math.round(r).toLocaleString()}`;
+            document.getElementById('summary-zh').innerText = `$${Math.round(z).toLocaleString()}`;
+            document.getElementById('summary-cr').innerText = `$${Math.round(c).toLocaleString()}`;
+            document.getElementById('summary-jxj').innerText = `$${Math.round(j).toLocaleString()}`;
+            const btn = document.getElementById('btn-export');
+            if(activeCalculatedOrders.length > 0) { btn.disabled = false; btn.className = "bg-indigo-600 text-white font-medium text-sm px-4 py-2 rounded-xl transition shadow-sm"; }
+            const tbody = document.getElementById('order-table-body'); tbody.innerHTML = '';
             activeCalculatedOrders.forEach(item => {
                 const tr = document.createElement('tr');
-                
-                let badgeStyle = "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100";
-                let displayLabel = item.labelText;
-
-                if (!item.ruleObj) {
-                    tr.className = "bg-amber-50/70 hover:bg-amber-100/70 transition";
-                    badgeStyle = "bg-white text-amber-700 border-amber-300 hover:bg-amber-50 font-semibold";
-                    displayLabel = "⚠️ 點擊補比例";
-                } else {
-                    tr.className = "hover:bg-gray-50 transition";
-                    if(item.ruleObj.zh > 0 && item.ruleObj.cr === 0 && item.ruleObj.jxj === 0) badgeStyle = "bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100";
-                    else if(item.ruleObj.cr > 0 && item.ruleObj.zh === 0 && item.ruleObj.jxj === 0) badgeStyle = "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100";
-                    else if(item.ruleObj.jxj > 0 && item.ruleObj.zh === 0 && item.ruleObj.cr === 0) badgeStyle = "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100";
-                    else badgeStyle = "bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100"; // 混和自訂比例
-                }
-
+                tr.className = !item.ruleObj ? "bg-amber-50/70 hover:bg-amber-100/70 transition" : "hover:bg-gray-50 transition";
+                let bStyle = item.ruleObj ? "bg-purple-50 text-purple-700 border-purple-200" : "bg-white text-amber-700 border-amber-300 font-bold";
+                let lbl = item.ruleObj ? item.labelText : "⚠️ 補比例";
                 tr.innerHTML = `
-                    <td class="px-6 py-3 text-xs text-gray-500 font-mono">${item.orderId}</td>
-                    <td class="px-6 py-3">
-                        <div class="font-medium text-gray-900 max-w-xs truncate" title="${item.pName}">${item.pName}</div>
-                        <div class="text-xs text-gray-400 max-w-xs truncate">規格: ${item.pOption || '無'}</div>
-                    </td>
-                    <td class="px-6 py-3 text-right font-semibold text-gray-900">$${item.price}</td>
-                    <td class="px-6 py-3 text-center">
-                        <button onclick="openQuickModal('${encodeURIComponent(item.key)}')" class="text-xs px-2.5 py-1 rounded-full border ${badgeStyle} shadow-sm transition font-medium">${displayLabel}</button>
-                    </td>
-                    <td class="px-6 py-3 text-right font-medium text-indigo-600">${item.ruleObj ? '$' + item.zhShare.toLocaleString() : '-'}</td>
-                    <td class="px-6 py-3 text-right font-medium text-rose-600">${item.ruleObj ? '$' + item.crShare.toLocaleString() : '-'}</td>
-                    <td class="px-6 py-3 text-right font-medium text-amber-600">${item.ruleObj ? '$' + item.jxjShare.toLocaleString() : '-'}</td>
-                `;
+                    <td class="px-6 py-2.5 text-xs font-mono">${item.orderId}</td>
+                    <td class="px-6 py-2.5"><div class="font-medium text-gray-900 max-w-xs truncate">${item.pName}</div><div class="text-xs text-gray-400">規格: ${item.pOption||'無'}</div></td>
+                    <td class="px-6 py-2.5 text-right font-semibold">$${item.price}</td>
+                    <td class="px-6 py-2.5 text-center"><button onclick="openQuickModal('${encodeURIComponent(item.key)}')" class="text-xs px-2 py-0.5 rounded-full border ${bStyle}">${lbl}</button></td>
+                    <td class="px-6 py-2.5 text-right text-indigo-600">${item.ruleObj?'$'+Math.round(item.zhShare).toLocaleString():'-'}</td>
+                    <td class="px-6 py-2.5 text-right text-rose-600">${item.ruleObj?'$'+Math.round(item.crShare).toLocaleString():'-'}</td>
+                    <td class="px-6 py-2.5 text-right text-amber-600">${item.ruleObj?'$'+Math.round(item.jxjShare).toLocaleString():'-'}</td>`;
                 tbody.appendChild(tr);
             });
+            if (alertUser && missing > 0) alert(`📊 匯入成功！本月有 ${missing} 筆新商品尚未定義比例，已亮黃燈標出。`);
+        }
 
-            if(triggerAlert && missingRulesCount > 0) {
-                alert(`📊 捕捉成功！本月有 ${missingRulesCount} 項商品無規則，已自動標為黃色，您可以直接點選表格中的標籤進行自由比例配分！`);
+        let radarProductMap = {};
+        function runProductRadarAnalysis() {
+            if (activeCalculatedOrders.length === 0) return;
+            let uniqueOrders = new Set(), totalRevenue = 0, orderItemsCountMap = {}, orderListMap = {}, aggregation = {}; radarProductMap = {};
+            activeCalculatedOrders.forEach(item => {
+                uniqueOrders.add(item.orderId); totalRevenue += item.price;
+                orderItemsCountMap[item.orderId] = (orderItemsCountMap[item.orderId] || 0) + 1;
+                if(!orderListMap[item.orderId]) orderListMap[item.orderId] = [];
+                orderListMap[item.orderId].push(item.pName.replace(/\s+/g,' ').trim());
+                let fullTitle = `${item.pName.replace(/\s+/g,' ').trim()} [${(item.pOption||'無').replace(/\s+/g,' ').trim()}]`;
+                if (!aggregation[fullTitle]) aggregation[fullTitle] = { qty: 0, rev: 0 };
+                aggregation[fullTitle].qty += item.qty; aggregation[fullTitle].rev += item.price;
+                let mainName = item.pName.replace(/\s+/g,' ').trim(), optName = (item.pOption || '無').replace(/\s+/g,' ').trim();
+                if (!radarProductMap[mainName]) radarProductMap[mainName] = [];
+                let existingOpt = radarProductMap[mainName].find(o => o.opt === optName);
+                if (existingOpt) { existingOpt.qty += item.qty; existingOpt.rev += item.price; } 
+                else { radarProductMap[mainName].push({ opt: optName, qty: item.qty, rev: item.price }); }
+            });
+            let orderCount = uniqueOrders.size, aov = totalRevenue / orderCount, bundleOrders = Object.values(orderItemsCountMap).filter(c => c > 1).length, bundleRate = (bundleOrders / orderCount) * 100;
+            document.getElementById('radar-total-orders').innerText = `${orderCount.toLocaleString()} 筆`;
+            document.getElementById('radar-aov').innerText = `$${Math.round(aov).toLocaleString()}`;
+            document.getElementById('radar-bundle-rate').innerText = `${bundleRate.toFixed(1)}%`;
+            let arr = Object.keys(aggregation).map(k => ({ title: k, qty: aggregation[k].qty, rev: aggregation[k].rev }));
+            let sortedByQty = [...arr].sort((a,b) => b.qty - a.qty).slice(0, 10), sortedByRev = [...arr].sort((a,b) => b.rev - a.rev).slice(0, 10);
+            const qtyTbody = document.getElementById('radar-qty-tbody'); qtyTbody.innerHTML = '';
+            sortedByQty.forEach((item, index) => { let badge = index < 3 ? ['🥇','🥈','🥉'][index] : index + 1; qtyTbody.innerHTML += `<tr><td class="px-4 py-2 text-center font-bold text-gray-500">${badge}</td><td class="px-4 py-2 font-medium text-gray-800 truncate max-w-xs" title="${item.title}">${item.title}</td><td class="px-4 py-2 text-right font-bold text-indigo-600">${item.qty} 件</td></tr>`; });
+            const revTbody = document.getElementById('radar-rev-tbody'); revTbody.innerHTML = '';
+            sortedByRev.forEach((item, index) => { let badge = index < 3 ? ['🥇','🥈','🥉'][index] : index + 1; revTbody.innerHTML += `<tr><td class="px-4 py-2 text-center font-bold text-gray-500">${badge}</td><td class="px-4 py-2 font-medium text-gray-800 truncate max-w-xs" title="${item.title}">${item.title}</td><td class="px-4 py-2 text-right font-bold text-rose-600">$${Math.round(item.rev).toLocaleString()}</td></tr>`; });
+            const selector = document.getElementById('radar-sku-selector'); selector.innerHTML = '';
+            let sortedMainProducts = Object.keys(radarProductMap).sort((a,b) => { return radarProductMap[b].reduce((s,o)=>s+o.rev, 0) - radarProductMap[a].reduce((s,o)=>s+o.rev, 0); });
+            sortedMainProducts.forEach(p => { selector.innerHTML += `<option value="${encodeURIComponent(p)}">${p.substring(0,22)}...</option>`; });
+            renderSKUAnalysis();
+            let pairCounter = {};
+            Object.values(orderListMap).forEach(list => {
+                let uniqueList = Array.from(new Set(list)).sort();
+                if(uniqueList.length > 1) {
+                    for(let i=0; i<uniqueList.length; i++) {
+                        for(let j=i+1; j<uniqueList.length; j++) { let pairKey = `${uniqueList[i]} ➕ ${uniqueList[j]}`; pairCounter[pairKey] = (pairCounter[pairKey] || 0) + 1; }
+                    }
+                }
+            });
+            let sortedPairs = Object.keys(pairCounter).map(k => ({ pair: k, count: pairCounter[k] })).sort((a,b)=>b.count-a.count).slice(0, 4);
+            const bundleContainer = document.getElementById('radar-bundle-container'); bundleContainer.innerHTML = '';
+            sortedPairs.forEach(p => { let items = p.pair.split(' ➕ '); bundleContainer.innerHTML += `<div class="p-2.5 bg-gray-50 border border-gray-100 rounded-xl text-xs space-y-1"><div class="flex justify-between font-bold text-gray-700"><span>📦 熱門合購組合</span> <span class="text-emerald-600">共現 ${p.count} 次</span></div><div class="text-gray-500 truncate">A: ${items[0]}</div><div class="text-gray-500 truncate">B: ${items[1]}</div></div>`; });
+        }
+
+        function renderSKUAnalysis() {
+            const selector = document.getElementById('radar-sku-selector'); if(!selector.value) return;
+            const mainName = decodeURIComponent(selector.value); const variants = radarProductMap[mainName] || [];
+            let totalMainRev = variants.reduce((s, o) => s + o.rev, 0); let sortedVariants = [...variants].sort((a,b)=>b.rev - a.rev);
+            const tbody = document.getElementById('radar-sku-tbody'); tbody.innerHTML = '';
+            sortedVariants.forEach(v => {
+                let pct = totalMainRev > 0 ? Math.round((v.rev / totalMainRev) * 100) : 0;
+                tbody.innerHTML += `<tr><td class="px-4 py-2 font-mono font-medium text-gray-700">${v.opt}</td><td class="px-4 py-2 text-right font-semibold text-gray-600">${v.qty} 件</td><td class="px-4 py-2 text-right font-bold text-gray-900">$${Math.round(v.rev).toLocaleString()}</td><td class="px-4 py-2 text-right text-gray-500"><span class="px-1.5 py-0.5 bg-gray-100 border rounded text-[10px] font-bold">${pct}%</span></td></tr>`;
+            });
+        }
+
+        // 【新增：點擊欄位切換排序核心演算法】
+        function toggleDBSort(field) {
+            if (currentSortField === field) {
+                // 狀態機循環：預設 -> 升冪 -> 降冪 -> 預設
+                if (currentSortOrder === 'asc') currentSortOrder = 'desc';
+                else if (currentSortOrder === 'desc') { currentSortOrder = 'none'; currentSortField = 'none'; }
+                else currentSortOrder = 'asc';
+            } else {
+                currentSortField = field;
+                currentSortOrder = 'asc';
             }
+            
+            // 刷新變更雙向箭頭的 UI 圖示
+            document.getElementById('sort-icon-name').innerText = (currentSortField === 'name' && currentSortOrder === 'asc') ? '▲' : ((currentSortField === 'name' && currentSortOrder === 'desc') ? '▼' : '↕');
+            document.getElementById('sort-icon-ratio').innerText = (currentSortField === 'ratio' && currentSortOrder === 'asc') ? '▲' : ((currentSortField === 'ratio' && currentSortOrder === 'desc') ? '▼' : '↕');
+            
+            renderDBTable(); // 重新整理排序後的表格
         }
 
-        function openQuickModal(encodedKey) {
-            const key = decodeURIComponent(encodedKey);
-            const parts = key.split('_');
-            
-            document.getElementById('modal-key-hidden').value = encodedKey;
-            document.getElementById('modal-key-display').innerText = `商品：${parts[0]}\n規格：${parts.slice(1).join('_') || '無'}`;
-            
-            const current = productDB[key] || { zh: 0, cr: 0, jxj: 0 };
-            document.getElementById('modal-w-zh').value = current.zh;
-            document.getElementById('modal-w-cr').value = current.cr;
-            document.getElementById('modal-w-jxj').value = current.jxj;
-            
-            document.getElementById('quick-modal').classList.remove('hidden');
-        }
+        // 修改後的表格渲染邏輯（抽離資料轉陣列，以便進行精準 Array Sort）
+        function renderDBTable() {
+            const tbody = document.getElementById('db-table-body');
+            const kw = document.getElementById('search-db').value.toLowerCase();
+            tbody.innerHTML = '';
 
-        function closeQuickModal() {
-            document.getElementById('quick-modal').classList.add('hidden');
-        }
+            // 1. 將產品物件轉換成可排序的 Array 結構
+            let dbRows = [];
+            for (let k in productDB) {
+                if (kw && !k.toLowerCase().includes(kw)) continue;
+                
+                const cur = productDB[k];
+                const parts = k.split('_');
+                const pName = parts[0];
+                const pOpt = parts.slice(1).join('_') || '無';
+                const res = calculateShares(100, cur);
 
-        function saveQuickProduct() {
-            const encodedKey = document.getElementById('modal-key-hidden').value;
-            const key = decodeURIComponent(encodedKey);
-            
-            const zh = parseFloat(document.getElementById('modal-w-zh').value) || 0;
-            const cr = parseFloat(document.getElementById('modal-w-cr').value) || 0;
-            const jxj = parseFloat(document.getElementById('modal-w-jxj').value) || 0;
+                // 計算主股東特徵分值（用於分帳配比排序：由哲華、川容、金祥吉順序權重組合）
+                let totalW = (cur.zh||0) + (cur.cr||0) + (cur.jxj||0);
+                let zhPct = totalW > 0 ? (cur.zh||0)/totalW : 0;
+                let crPct = totalW > 0 ? (cur.cr||0)/totalW : 0;
+                let jxjPct = totalW > 0 ? (cur.jxj||0)/totalW : 0;
+                
+                dbRows.push({
+                    key: k, name: pName, option: pOpt, ruleObj: cur, labelText: res.text,
+                    sortValueRatio: (zhPct * 10000) + (crPct * 100) + jxjPct // 降維權重得分，確保平滑分群
+                });
+            }
 
-            if(zh + cr + jxj === 0) {
-                alert('請至少指定一位出資人的比例數值！');
+            // 2. 執行排序演算法
+            if (currentSortField === 'name' && currentSortOrder !== 'none') {
+                dbRows.sort((a, b) => {
+                    return currentSortOrder === 'asc' ? a.name.localeCompare(b.name, 'zh-Hant') : b.name.localeCompare(a.name, 'zh-Hant');
+                });
+            } else if (currentSortField === 'ratio' && currentSortOrder !== 'none') {
+                dbRows.sort((a, b) => {
+                    return currentSortOrder === 'asc' ? a.sortValueRatio - b.sortValueRatio : b.sortValueRatio - a.sortValueRatio;
+                });
+            }
+
+            // 3. 將最終結果繪製到畫面上
+            if (dbRows.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" class="text-center py-6 text-gray-400">查無資料</td></tr>`;
                 return;
             }
 
-            productDB[key] = { zh, cr, jxj };
-            localStorage.setItem('art_product_db', JSON.stringify(productDB));
-            
-            renderDBTable();
-            closeQuickModal();
-
-            const month = document.getElementById('selected-month').value;
-            const savedOrders = localStorage.getItem(`orders_month_${month}`);
-            if (savedOrders) calculateAndRenderOrders(JSON.parse(savedOrders), false);
-        }
-
-        function exportCalculatedExcel() {
-            if (activeCalculatedOrders.length === 0) return;
-            const month = document.getElementById('selected-month').value;
-
-            const exportRows = activeCalculatedOrders.map(item => {
-                const base = Object.assign({}, item.originalRow);
-                base['分帳比例說明'] = item.labelText;
-                base['哲華'] = item.zhShare;
-                base['川容'] = item.crShare;
-                base['金祥吉'] = item.jxjShare;
-                return base;
+            dbRows.forEach(item => {
+                tbody.innerHTML += `
+                    <tr class="hover:bg-gray-50 text-xs border-b">
+                        <td class="px-4 py-2.5"><strong>${item.name}</strong><div class="text-gray-400">規格: ${item.option}</div></td>
+                        <td class="px-4 py-2.5 text-center"><span class="px-2 py-0.5 bg-gray-100 border rounded font-mono text-[11px] font-semibold text-gray-700">${item.labelText}</span></td>
+                        <td class="px-4 py-2.5 text-center"><button onclick="editProduct('${encodeURIComponent(item.key)}')" class="text-indigo-600 font-semibold mr-3">修改</button><button onclick="deleteProduct('${encodeURIComponent(item.key)}')" class="text-red-600 font-semibold">刪除</button></td>
+                    </tr>`;
             });
-
-            const worksheet = XLSX.utils.json_to_sheet(exportRows);
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "拆帳結果");
-            XLSX.writeFile(workbook, `ArtStudio_${month}_精準分帳報表.xlsx`);
         }
 
-        // --- 主資料庫維護邏輯 ---
-        function renderDBTable() {
-            const tbody = document.getElementById('db-table-body');
-            const searchKeyword = document.getElementById('search-db').value.toLowerCase();
-            tbody.innerHTML = '';
+        function openQuickModal(encodedKey) {
+            const k = decodeURIComponent(encodedKey); const parts = k.split('_');
+            document.getElementById('modal-key-hidden').value = encodedKey;
+            document.getElementById('modal-key-display').innerText = `商品：${parts[0]}\n規格：${parts.slice(1).join('_')||'無'}`;
+            const cur = productDB[k] || { zh: 0, cr: 0, jxj: 0 };
+            document.getElementById('modal-w-zh').value = cur.zh; document.getElementById('modal-w-cr').value = cur.cr; document.getElementById('modal-w-jxj').value = cur.jxj;
+            document.getElementById('quick-modal').classList.remove('hidden');
+        }
+        function closeQuickModal() { document.getElementById('quick-modal').classList.add('hidden'); }
+        function saveQuickProduct() {
+            const k = decodeURIComponent(document.getElementById('modal-key-hidden').value);
+            const z = parseFloat(document.getElementById('modal-w-zh').value)||0; const c = parseFloat(document.getElementById('modal-w-cr').value)||0; const j = parseFloat(document.getElementById('modal-w-jxj').value)||0;
+            if(z+c+j===0) return; productDB[k] = { zh: z, cr: c, jxj: j };
+            localStorage.setItem('art_product_db', JSON.stringify(productDB));
+            renderDBTable(); closeQuickModal();
+            const m = document.getElementById('selected-month').value; const saved = localStorage.getItem(`orders_month_${m}`);
+            if (saved) calculateAndRenderOrders(JSON.parse(saved), false);
+        }
 
-            let count = 0;
-            for (let key in productDB) {
-                if (searchKeyword && !key.toLowerCase().includes(searchKeyword)) continue;
-                count++;
-                
-                const current = productDB[key];
-                const parts = key.split('_');
-                const demo = calculateShares(100, current);
-
-                const tr = document.createElement('tr');
-                tr.className = "hover:bg-gray-50 transition text-xs";
-                tr.innerHTML = `
-                    <td class="px-4 py-2.5">
-                        <div class="font-medium text-gray-900">${parts[0]}</div>
-                        <div class="text-gray-400">選項: ${parts.slice(1).join('_') || '無'}</div>
-                    </td>
-                    <td class="px-4 py-2.5 text-center">
-                        <span class="px-2.5 py-1 rounded-full border border-gray-200 bg-gray-50 text-gray-700 font-medium font-mono">${demo.text} (${current.zh} : ${current.cr} : ${current.jxj})</span>
-                    </td>
-                    <td class="px-4 py-2.5 text-center space-x-3">
-                        <button onclick="editProduct('${encodeURIComponent(key)}')" class="text-indigo-600 hover:text-indigo-900 font-medium">修改</button>
-                        <button onclick="deleteProduct('${encodeURIComponent(key)}')" class="text-red-600 hover:text-red-900 font-medium">刪除</button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            }
-            if (count === 0) tbody.innerHTML = `<tr><td colspan="3" class="text-center py-6 text-gray-400">查無資料</td></tr>`;
+        function updateCharts() {
+            const mList = ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06", "2026-07", "2026-08", "2026-09", "2026-10", "2026-11", "2026-12"];
+            let zData = Array(12).fill(0), cData = Array(12).fill(0), jData = Array(12).fill(0);
+            mList.forEach((m, idx) => {
+                const saved = localStorage.getItem(`orders_month_${m}`);
+                if (saved) {
+                    JSON.parse(saved).forEach(row => {
+                        if (!row['商品名稱'] && !row['訂單編號']) return;
+                        const k = generateKey(row['商品名稱'], row['商品選項名稱']); const price = parseFloat(row['價格']) || 0; const rule = productDB[k];
+                        if (rule) { const res = calculateShares(price, rule); zData[idx] += res.zh; cData[idx] += res.cr; jData[idx] += res.jxj; }
+                    });
+                }
+            });
+            const ctxTrend = document.getElementById('trendChart').getContext('2d');
+            if (trendChartInstance) trendChartInstance.destroy();
+            trendChartInstance = new Chart(ctxTrend, {
+                type: 'bar',
+                data: {
+                    labels: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'],
+                    datasets: [{ label: '哲華', data: zData.map(v=>Math.round(v)), backgroundColor: '#4f46e5' }, { label: '川容', data: cData.map(v=>Math.round(v)), backgroundColor: '#e11d48' }, { label: '金祥吉', data: jData.map(v=>Math.round(v)), backgroundColor: '#d97706' }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { x:{stacked:true}, y:{stacked:true} } }
+            });
+            const curM = document.getElementById('selected-month').value; document.getElementById('pie-month-display').innerText = curM;
+            const mIdx = mList.indexOf(curM); const cz = Math.round(zData[mIdx]), cc = Math.round(cData[mIdx]), cj = Math.round(jData[mIdx]);
+            const ctxPie = document.getElementById('structurePieChart').getContext('2d'); if (pieChartInstance) pieChartInstance.destroy();
+            if (cz+cc+cj === 0) { pieChartInstance = new Chart(ctxPie, { type: 'pie', data: { labels: ['無數據'], datasets: [{ data: [1], backgroundColor: ['#e5e7eb'] }] } }); } 
+            else { pieChartInstance = new Chart(ctxPie, { type: 'pie', data: { labels: ['哲華', '川容', '金祥吉'], datasets: [{ data: [cz, cc, cj], backgroundColor: ['#4f46e5', '#e11d48', '#d97706'] }] }, options: { responsive: true, maintainAspectRatio: false } }); }
         }
 
         function saveProduct(e) {
             e.preventDefault();
-            const name = document.getElementById('form-name').value;
-            const option = document.getElementById('form-option').value;
-            const zh = parseFloat(document.getElementById('form-w-zh').value) || 0;
-            const cr = parseFloat(document.getElementById('form-w-cr').value) || 0;
-            const jxj = parseFloat(document.getElementById('form-w-jxj').value) || 0;
-            const oldKey = document.getElementById('edit-old-key').value;
-
-            if (zh + cr + jxj === 0) {
-                alert('比例總和不可為 0');
-                return;
-            }
-
-            const newKey = generateKey(name, option);
-            if (oldKey && oldKey !== newKey) delete productDB[decodeURIComponent(oldKey)];
-
-            productDB[newKey] = { zh, cr, jxj };
-            localStorage.setItem('art_product_db', JSON.stringify(productDB));
-            
-            renderDBTable();
-            resetForm();
-            loadMonthData();
+            const n = document.getElementById('form-name').value; const o = document.getElementById('form-option').value;
+            const z = parseFloat(document.getElementById('form-w-zh').value)||0; const c = parseFloat(document.getElementById('form-w-cr').value)||0; const j = parseFloat(document.getElementById('form-w-jxj').value)||0;
+            const old = document.getElementById('edit-old-key').value;
+            if(z+c+j===0) return; const nK = generateKey(n, o); if(old && old !== nK) delete productDB[decodeURIComponent(old)];
+            productDB[nK] = { zh: z, cr: c, jxj: j }; localStorage.setItem('art_product_db', JSON.stringify(productDB));
+            renderDBTable(); resetForm(); loadMonthData();
         }
 
         function editProduct(encodedKey) {
-            const key = decodeURIComponent(encodedKey);
-            const current = productDB[key];
-            const parts = key.split('_');
-            
-            document.getElementById('form-title').innerText = "編輯產品比例規則";
-            document.getElementById('form-name').value = parts[0];
-            document.getElementById('form-option').value = parts.slice(1).join('_');
-            document.getElementById('form-w-zh').value = current.zh;
-            document.getElementById('form-w-cr').value = current.cr;
-            document.getElementById('form-w-jxj').value = current.jxj;
+            const k = decodeURIComponent(encodedKey); const cur = productDB[k]; const parts = k.split('_');
+            document.getElementById('form-title').innerText = "編輯產品規則";
+            document.getElementById('form-name').value = parts[0]; document.getElementById('form-option').value = parts.slice(1).join('_');
+            document.getElementById('form-w-zh').value = cur.zh; document.getElementById('form-w-cr').value = cur.cr; document.getElementById('form-w-jxj').value = cur.jxj;
             document.getElementById('edit-old-key').value = encodedKey;
-            
-            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
         function deleteProduct(encodedKey) {
-            if(confirm(`確定刪除此規則嗎？`)) {
-                delete productDB[decodeURIComponent(encodedKey)];
-                localStorage.setItem('art_product_db', JSON.stringify(productDB));
-                renderDBTable();
-                loadMonthData();
-            }
+            if(confirm('確定刪除？')) { delete productDB[decodeURIComponent(encodedKey)]; localStorage.setItem('art_product_db', JSON.stringify(productDB)); renderDBTable(); loadMonthData(); }
         }
 
-        function resetForm() {
-            document.getElementById('form-title').innerText = "手動新增產品規則";
-            document.getElementById('product-form').reset();
-            document.getElementById('form-w-zh').value = 0;
-            document.getElementById('form-w-cr').value = 0;
-            document.getElementById('form-w-jxj').value = 0;
-            document.getElementById('edit-old-key').value = '';
-        }
-
-        function exportDB() {
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(productDB, null, 2));
-            const dl = document.createElement('a');
-            dl.setAttribute("href", dataStr);
-            dl.setAttribute("download", "art_custom_ratio_database.json");
-            dl.click();
-        }
-
-        // 【修正核心】：還原資料庫時，立刻強制調用 loadAndNormalizeDB 進行相容轉型
-        function importDB(input) {
-            const file = input.files[0];
-            if (!file) return;
+        function exportDB() { const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(productDB, null, 2)); const dl = document.createElement('a'); dl.setAttribute("href", dataStr); dl.setAttribute("download", "art_custom_ratio_database.json"); dl.click(); }
+        function importAndMergeDB(input) {
+            const file = input.files[0]; if (!file) return;
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
-                    let jsonRaw = JSON.parse(e.target.result);
-                    
-                    // 關鍵修正：在匯入當下立刻做格式升級轉換！
-                    productDB = loadAndNormalizeDB(jsonRaw); 
-                    
+                    let incoming = normalizeIncomingData(JSON.parse(e.target.result));
+                    let overwrite = null, ins = 0, upd = 0, skp = 0;
+                    for (let k in incoming) {
+                        if (productDB[k]) {
+                            if (overwrite === null) overwrite = confirm(`⚠️ 偵測到重複規則，是否覆蓋本地原有比例？`);
+                            if (overwrite) { productDB[k] = incoming[k]; upd++; } else { skp++; }
+                        } else { productDB[k] = incoming[k]; ins++; }
+                    }
                     localStorage.setItem('art_product_db', JSON.stringify(productDB));
-                    renderDBTable();
-                    loadMonthData();
-                    alert('🎉 自由分帳比例資料庫已完全轉換並成功還原！');
-                } catch(err) { alert('導入失敗，請確認檔案格式。'); }
+                    renderDBTable(); loadMonthData();
+                    alert(`🎉 智慧合併成功！新增 ${ins} 筆，覆蓋 ${upd} 筆，保留 ${skp} 筆。`);
+                } catch(err) { alert('合併失敗。'); }
             };
-            reader.readAsText(file);
-            input.value = '';
+            reader.readAsText(file); input.value = '';
+        }
+
+        function exportCalculatedExcel() {
+            if (activeCalculatedOrders.length === 0) return;
+            const m = document.getElementById('selected-month').value;
+            const exportRows = activeCalculatedOrders.map(item => {
+                const base = Object.assign({}, item.originalRow);
+                base['分帳比例說明'] = item.labelText;
+                base['哲華'] = Math.round(item.zhShare); base['川容'] = Math.round(item.crShare); base['金祥吉'] = Math.round(item.jxjShare);
+                return base;
+            });
+            const ws = XLSX.utils.json_to_sheet(exportRows); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "拆帳結果"); XLSX.writeFile(workbook = wb, `ArtStudio_${m}_分帳報表.xlsx`);
         }
     </script>
 </body>

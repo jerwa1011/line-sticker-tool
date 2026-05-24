@@ -3,719 +3,670 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>金工材料分帳工具 - 哲華 / 川容 / 金祥吉</title>
+    <title>藝術品店本地端財務管理系統 (自訂比例完美相容版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
-        body { font-family: 'Noto Sans TC', system-ui, sans-serif; }
-        .tab-active { border-bottom: 3px solid #10b981; color: #10b981; }
-        th.sortable { cursor: pointer; }
-        th.sortable:hover { background-color: #f1f5f9; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
     </style>
 </head>
-<body class="bg-gray-50">
+<body class="bg-gray-50 text-gray-800 min-h-screen pb-12">
 
-<div class="max-w-7xl mx-auto min-h-screen">
-
-    <!-- Header -->
-    <div class="bg-white border-b sticky top-0 z-50 shadow-sm">
-        <div class="px-8 py-5 flex justify-between items-center">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 bg-emerald-600 text-white rounded-2xl flex items-center justify-center text-2xl">🛠️</div>
-                <h1 class="text-3xl font-bold">金工材料分帳工具</h1>
-            </div>
+    <!-- 頂部導覽列 -->
+    <header class="bg-white border-b border-gray-200 sticky top-0 z-50 backdrop-blur-md bg-white/80">
+        <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+            <h1 class="text-xl font-semibold tracking-tight text-gray-900 flex items-center gap-2">
+                💎 <span class="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent font-bold">ArtStudio</span> 財務自訂分帳系統
+            </h1>
+            <nav class="flex gap-2 bg-gray-100 p-1 rounded-lg">
+                <button onclick="switchTab('upload-tab')" id="btn-upload-tab" class="tab-btn px-4 py-1.5 text-sm font-medium rounded-md bg-white text-gray-900 shadow-sm transition">📑 訂單處理與月份帳務</button>
+                <button onclick="switchTab('db-tab')" id="btn-db-tab" class="tab-btn px-4 py-1.5 text-sm font-medium rounded-md text-gray-600 hover:text-gray-900 transition">🗃️ 產品規則資料庫</button>
+            </nav>
         </div>
+    </header>
 
-        <div class="px-8 flex border-t text-sm font-medium">
-            <button onclick="switchTab(0)" id="tab-0" class="tab-active px-8 py-4">📊 儀表板</button>
-            <button onclick="switchTab(1)" id="tab-1" class="px-8 py-4 hover:text-emerald-600">📦 產品資料庫</button>
-            <button onclick="switchTab(2)" id="tab-2" class="px-8 py-4 hover:text-emerald-600">📤 訂單處理</button>
-            <button onclick="switchTab(3)" id="tab-3" class="px-8 py-4 hover:text-emerald-600">📋 報表</button>
-        </div>
-    </div>
+    <main class="max-w-7xl mx-auto px-6 mt-8">
+        
+        <!-- TAB 1: 訂單上傳與月份帳務 -->
+        <section id="upload-tab" class="tab-content space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- 左側：設定月份與上傳 -->
+                <div class="lg:col-span-1 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm flex flex-col justify-between space-y-4">
+                    <div>
+                        <h3 class="font-semibold text-lg mb-1 text-gray-900">1. 選擇與上傳帳務</h3>
+                        <div class="mb-4">
+                            <label class="block text-xs font-medium text-gray-600 mb-1">指定此訂單的帳務月份：</label>
+                            <select id="selected-month" onchange="loadMonthData()" class="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="2026-01">2026 年 01 月</option>
+                                <option value="2026-02">2026 年 02 月</option>
+                                <option value="2026-03">2026 年 03 月</option>
+                                <option value="2026-04">2026 年 04 月</option>
+                                <option value="2026-05">2026 年 05 月</option>
+                                <option value="2026-06">2026 年 06 月</option>
+                                <option value="2026-07">2026 年 07 月</option>
+                                <option value="2026-08">2026 年 08 月</option>
+                                <option value="2026-09">2026 年 09 月</option>
+                                <option value="2026-10">2026 年 10 月</option>
+                                <option value="2026-11">2026 年 11 月</option>
+                                <option value="2026-12">2026 年 12 月</option>
+                            </select>
+                        </div>
+                        <label class="flex flex-col items-center justify-center w-full h-36 border-2 border-gray-300 border-dashed rounded-xl cursor-pointer bg-gray-50 hover:bg-gray-100 transition">
+                            <div class="flex flex-col items-center justify-center pt-4 pb-4">
+                                <span class="text-2xl mb-1">📊</span>
+                                <p class="text-xs text-gray-600 font-medium">上傳該月 Excel 覆蓋/更新資料</p>
+                                <p class="text-[10px] text-gray-400 mt-0.5">支援 .xlsx (如 202602.xlsx)</p>
+                            </div>
+                            <input id="excel-file" type="file" accept=".xlsx, .xls" class="hidden" onchange="handleFile(this)" />
+                        </label>
+                    </div>
+                    <div id="file-info" class="text-xs font-medium text-emerald-600 hidden bg-emerald-50 p-2 rounded-lg border border-emerald-200"></div>
+                </div>
 
-    <div class="p-8" id="tab-content">
-
-        <!-- TAB 0: 儀表板 -->
-        <div id="content-0">
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div class="bg-white rounded-3xl p-8 shadow">
-                    <div class="text-emerald-600">總銷售額</div>
-                    <div id="total-sales" class="text-5xl font-bold mt-3">NT$ 0</div>
-                </div>
-                <div class="bg-white rounded-3xl p-8 shadow">
-                    <div class="flex justify-between"><div class="text-blue-600">哲華</div><div class="text-5xl">👤</div></div>
-                    <div id="zhehua-total" class="text-4xl font-bold mt-2">NT$ 0</div>
-                </div>
-                <div class="bg-white rounded-3xl p-8 shadow">
-                    <div class="flex justify-between"><div class="text-purple-600">川容</div><div class="text-5xl">👤</div></div>
-                    <div id="chuanrong-total" class="text-4xl font-bold mt-2">NT$ 0</div>
-                </div>
-                <div class="bg-white rounded-3xl p-8 shadow">
-                    <div class="flex justify-between"><div class="text-amber-600">金祥吉</div><div class="text-5xl">👤</div></div>
-                    <div id="jinxiangji-total" class="text-4xl font-bold mt-2">NT$ 0</div>
-                </div>
-            </div>
-            <div class="mt-8 bg-white rounded-3xl p-8 shadow">
-                <h3 class="text-lg font-semibold mb-4">銷售趨勢（每月總額）</h3>
-                <canvas id="trendChart" height="320"></canvas>
-            </div>
-            <div class="mt-8 bg-white rounded-3xl p-8 shadow">
-                <h3 class="text-lg font-semibold mb-4">分帳比例總覽</h3>
-                <canvas id="pieChart" height="320"></canvas>
-            </div>
-        </div>
-
-        <!-- TAB 1: 產品資料庫 -->
-        <div id="content-1" class="hidden">
-            <div class="flex justify-between items-center mb-6">
-                <div class="flex gap-3">
-                    <button onclick="exportJSONBackup()" class="px-6 py-3 bg-blue-600 text-white rounded-3xl hover:bg-blue-700 flex items-center gap-2">📤 匯出 JSON 備份</button>
-                    <label class="px-6 py-3 bg-purple-600 text-white rounded-3xl hover:bg-purple-700 flex items-center gap-2 cursor-pointer">
-                        📥 匯入 JSON 備份
-                        <input type="file" id="json-import" accept=".json" class="hidden" onchange="importJSONBackup(event)">
-                    </label>
-                </div>
-                <div class="flex gap-3">
-                    <input id="search-product" type="text" placeholder="模糊搜尋（支援多關鍵字）" 
-                           class="w-96 px-5 py-4 border rounded-3xl focus:outline-none focus:border-emerald-500"
-                           onkeyup="filterProducts()">
-                    <button onclick="addNewProduct()" class="px-8 py-4 bg-emerald-600 text-white rounded-3xl hover:bg-emerald-700">+ 新增商品</button>
-                </div>
-            </div>
-            <div class="bg-white rounded-3xl shadow overflow-hidden">
-                <table class="w-full">
-                    <thead class="bg-gray-100">
-                        <tr>
-                            <th onclick="sortTable(0)" class="sortable text-left px-8 py-5">商品名稱 <span id="sort-0"></span></th>
-                            <th onclick="sortTable(1)" class="sortable text-left px-8 py-5">選項名稱 <span id="sort-1"></span></th>
-                            <th onclick="sortTable(2)" class="sortable px-8 py-5">分帳類型 <span id="sort-2"></span></th>
-                            <th onclick="sortTable(3)" class="sortable px-8 py-5">分類 <span id="sort-3"></span></th>
-                            <th class="px-8 py-5 w-32">操作</th>
-                        </tr>
-                    </thead>
-                    <tbody id="product-table" class="divide-y"></tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- TAB 2: 訂單處理 -->
-        <div id="content-2" class="hidden">
-            <div class="max-w-2xl mx-auto bg-white rounded-3xl p-12 shadow text-center">
-                <p class="text-5xl mb-6">📤</p>
-                <h2 class="text-2xl font-semibold mb-2">上傳訂單 Excel</h2>
-                <p class="text-gray-500 mb-8">支援任意 .xlsx 檔案</p>
-                <div id="dropzone" onclick="document.getElementById('excel-upload').click()" 
-                     class="border-2 border-dashed border-emerald-400 rounded-3xl py-16 cursor-pointer hover:border-emerald-600">
-                    <p class="font-medium">點擊或拖曳 .xlsx 檔案到此處</p>
-                </div>
-                <input type="file" id="excel-upload" accept=".xlsx" class="hidden" onchange="handleExcelUpload(event)">
-            </div>
-
-            <div id="order-preview-section" class="hidden mt-10">
-                <div class="flex justify-between items-end mb-4">
-                    <h3 class="font-semibold text-xl">訂單解析結果</h3>
-                    <div class="flex items-center gap-4">
-                        <select id="order-month-select" class="border rounded-2xl px-4 py-3"></select>
-                        <button onclick="saveCurrentOrder()" class="px-8 py-3 bg-emerald-600 text-white rounded-3xl hover:bg-emerald-700">
-                            ✅ 確認儲存本筆訂單
-                        </button>
+                <!-- 右側：當月分帳總覽卡片 -->
+                <div class="lg:col-span-2 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-semibold text-lg text-gray-900"><span id="title-month-display" class="text-indigo-600 font-bold">2026-01</span> 利潤拆分總覽</h3>
+                            <div class="flex gap-2">
+                                <button id="btn-clear-month" onclick="clearCurrentMonth()" class="text-xs text-red-600 hover:bg-red-50 border border-red-200 font-medium px-3 py-2 rounded-xl transition">
+                                    🗑️ 清除本月數據
+                                </button>
+                                <button id="btn-export" onclick="exportCalculatedExcel()" disabled class="bg-gray-100 text-gray-400 cursor-not-allowed font-medium text-sm px-4 py-2 rounded-xl transition flex items-center gap-1">
+                                    📥 匯出此月 Excel
+                                </button>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                            <div class="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                                <p class="text-xs font-medium text-gray-500">當月總營業額</p>
+                                <p id="summary-total" class="text-xl font-bold mt-1 text-gray-900">$0</p>
+                            </div>
+                            <div class="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
+                                <p class="text-xs font-medium text-indigo-600">👨‍🎨 哲華 應得</p>
+                                <p id="summary-zh" class="text-xl font-bold mt-1 text-indigo-700">$0</p>
+                            </div>
+                            <div class="bg-rose-50/50 p-4 rounded-xl border border-rose-100">
+                                <p class="text-xs font-medium text-rose-600">👩‍🎨 川容 應得</p>
+                                <p id="summary-cr" class="text-xl font-bold mt-1 text-rose-700">$0</p>
+                            </div>
+                            <div class="bg-amber-50/50 p-4 rounded-xl border border-amber-100">
+                                <p class="text-xs font-medium text-amber-600">👨‍💼 金祥吉 應得</p>
+                                <p id="summary-jxj" class="text-xl font-bold mt-1 text-amber-700">$0</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-[11px] text-gray-400 mt-4">
+                        * 提示：直接點擊下方訂單的「分帳比例標籤」，即可隨意輸入任意比例（例如：40:60 或 17:183），系統將自動即時按比例拆分金額。
                     </div>
                 </div>
-                <div class="bg-white rounded-3xl shadow overflow-auto max-h-[600px]">
-                    <table class="w-full text-sm">
-                        <thead class="sticky top-0 bg-white">
+            </div>
+
+            <!-- 下方：當月訂單比對明細 -->
+            <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
+                    <h3 class="font-semibold text-gray-900">訂單比對明細 <span id="order-count" class="text-xs font-normal text-gray-500 ml-1"></span></h3>
+                    <div class="flex gap-4 text-xs">
+                        <span class="flex items-center gap-1 text-emerald-600"><span class="w-2 h-2 rounded-full bg-emerald-500"></span>已對映 (點擊可直接修改任何比例)</span>
+                        <span class="flex items-center gap-1 text-amber-600"><span class="w-2 h-2 rounded-full bg-amber-500"></span>未對映 (需補設定)</span>
+                    </div>
+                </div>
+                <div class="overflow-x-auto max-h-[550px]">
+                    <table class="w-full text-left text-sm border-collapse">
+                        <thead class="bg-gray-100 text-gray-600 uppercase text-xs font-semibold sticky top-0 z-10 shadow-sm">
                             <tr>
-                                <th class="px-6 py-4 text-left">訂單編號</th>
-                                <th class="px-6 py-4 text-left">商品</th>
-                                <th class="px-6 py-4 text-left">選項</th>
-                                <th class="px-6 py-4">總計</th>
-                                <th class="px-6 py-4">分帳類型</th>
-                                <th class="px-6 py-4">哲華</th>
-                                <th class="px-6 py-4">川容</th>
-                                <th class="px-6 py-4">金祥吉</th>
-                                <th class="px-6 py-4 w-28">操作</th>
+                                <th class="px-6 py-3">訂單編號</th>
+                                <th class="px-6 py-3">商品名稱 + 選項</th>
+                                <th class="px-6 py-3 text-right">總價</th>
+                                <th class="px-6 py-3 text-center">分帳權重比例 (點擊修改)</th>
+                                <th class="px-6 py-3 text-right text-indigo-600">哲華</th>
+                                <th class="px-6 py-3 text-right text-rose-600">川容</th>
+                                <th class="px-6 py-3 text-right text-amber-600">金祥吉</th>
                             </tr>
                         </thead>
-                        <tbody id="order-preview-table" class="divide-y"></tbody>
+                        <tbody id="order-table-body" class="divide-y divide-gray-100">
+                            <!-- 動態載入 -->
+                        </tbody>
                     </table>
                 </div>
             </div>
-        </div>
+        </section>
 
-        <!-- TAB 3: 報表 -->
-        <div id="content-3" class="hidden">
-            <div class="flex justify-between items-center mb-6">
-                <select id="month-select" class="border rounded-2xl px-5 py-3" onchange="renderReport()"></select>
-                <button onclick="exportReportExcel()" class="px-6 py-3 bg-emerald-600 text-white rounded-3xl hover:bg-emerald-700 flex items-center gap-2">
-                    📤 匯出本月報表為 Excel
-                </button>
-            </div>
+        <!-- TAB 2: 產品規則資料庫 -->
+        <section id="db-tab" class="tab-content hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- 左側：手動新增/編輯規則 -->
+                <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm h-fit">
+                    <h3 id="form-title" class="font-semibold text-lg mb-4 text-gray-900">手動新增產品規則</h3>
+                    <form id="product-form" onsubmit="saveProduct(event)" class="space-y-4">
+                        <input type="hidden" id="edit-old-key">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">商品名稱 *</label>
+                            <input type="text" id="form-name" required placeholder="例如：自訂款手作戒指" class="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">商品選項名稱 (若無填「無」) *</label>
+                            <input type="text" id="form-option" required placeholder="例如：黃金 / 國際圍12號" class="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        
+                        <!-- 設定出資比例權重 -->
+                        <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3">
+                            <label class="block text-xs font-bold text-gray-700">設定出資分帳權重比例：</label>
+                            <div class="grid grid-cols-3 gap-2">
+                                <div>
+                                    <label class="block text-[11px] text-gray-500 mb-0.5">哲華</label>
+                                    <input type="number" id="form-w-zh" min="0" step="any" value="0" class="w-full text-sm px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] text-gray-500 mb-0.5">川容</label>
+                                    <input type="number" id="form-w-cr" min="0" step="any" value="0" class="w-full text-sm px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] text-gray-500 mb-0.5">金祥吉</label>
+                                    <input type="number" id="form-w-jxj" min="0" step="any" value="0" class="w-full text-sm px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                </div>
+                            </div>
+                            <p class="text-[10px] text-gray-400 leading-tight">* 註：您可以填百分比（如 40, 60, 0）或任意出資比例（如 17, 183, 0）。系統會自動依比例總和進行百分比化拆帳。</p>
+                        </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div class="bg-white rounded-3xl p-6 shadow">
-                    <h3 class="text-lg font-semibold mb-4">本月分帳柱狀圖</h3>
-                    <canvas id="monthlyChart" height="320"></canvas>
+                        <div class="flex gap-2 pt-2">
+                            <button type="submit" class="flex-1 bg-indigo-600 text-white text-sm font-medium py-2 rounded-lg hover:bg-indigo-700 transition">儲存規則</button>
+                            <button type="button" onclick="resetForm()" class="bg-gray-100 text-gray-600 text-sm font-medium px-3 py-2 rounded-lg hover:bg-gray-200 transition">取消</button>
+                        </div>
+                    </form>
                 </div>
-                <div class="bg-white rounded-3xl p-6 shadow" id="report-detail"></div>
-            </div>
 
-            <div class="mt-10">
-                <h3 class="text-lg font-semibold mb-4">商品銷售排行 Top 10</h3>
-                <div class="bg-white rounded-3xl shadow overflow-hidden">
-                    <table class="w-full">
-                        <thead class="bg-gray-100">
-                            <tr>
-                                <th class="px-6 py-4 text-left">排名</th>
-                                <th class="px-6 py-4 text-left">商品名稱</th>
-                                <th class="px-6 py-4 text-left">選項</th>
-                                <th class="px-6 py-4 text-right">銷售額</th>
-                            </tr>
-                        </thead>
-                        <tbody id="ranking-table" class="divide-y"></tbody>
-                    </table>
+                <!-- 右側：資料庫列表與備份 -->
+                <div class="lg:col-span-2 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <h3 class="font-semibold text-lg text-gray-900">已建立之規則資料庫</h3>
+                            <p class="text-xs text-gray-500">主資料庫（支援任何自訂分帳權重）</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="exportDB()" class="text-xs font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg transition">📤 備份資料庫(JSON)</button>
+                            <label class="text-xs font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg transition cursor-pointer">
+                                📥 還原資料庫
+                                <input type="file" accept=".json" class="hidden" onchange="importDB(this)">
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="relative">
+                        <input type="text" id="search-db" oninput="renderDBTable()" placeholder="搜尋商品名稱或選項..." class="w-full text-sm pl-9 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <span class="absolute left-3 top-2.5 text-gray-400">🔍</span>
+                    </div>
+
+                    <div class="overflow-x-auto max-h-[400px] border border-gray-100 rounded-xl">
+                        <table class="w-full text-left text-sm border-collapse">
+                            <thead class="bg-gray-50 text-gray-600 text-xs font-semibold sticky top-0 border-b border-gray-100">
+                                <tr>
+                                    <th class="px-4 py-3">唯一鍵 (商品名稱 + 選項名稱)</th>
+                                    <th class="px-4 py-3 text-center">分帳比例配比 (哲 : 川 : 金)</th>
+                                    <th class="px-4 py-3 text-center">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="db-table-body" class="divide-y divide-gray-100">
+                                <!-- 動態渲染 -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
+        </section>
 
-            <div class="mt-10">
-                <h3 class="text-lg font-semibold mb-4">全部月份總覽</h3>
-                <div class="bg-white rounded-3xl shadow overflow-hidden">
-                    <table class="w-full">
-                        <thead class="bg-gray-100">
-                            <tr>
-                                <th class="px-6 py-4 text-left">月份</th>
-                                <th class="px-6 py-4 text-right">總銷售額</th>
-                                <th class="px-6 py-4 text-right">哲華</th>
-                                <th class="px-6 py-4 text-right">川容</th>
-                                <th class="px-6 py-4 text-right">金祥吉</th>
-                                <th class="px-6 py-4 w-32">操作</th>
-                            </tr>
-                        </thead>
-                        <tbody id="all-months-table" class="divide-y"></tbody>
-                    </table>
+    </main>
+
+    <!-- 彈出視窗：直接在訂單列自由修改或新增「任意分帳比例」 -->
+    <div id="quick-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+        <div class="bg-white w-full max-w-md p-6 rounded-2xl shadow-xl border border-gray-100 animate-in fade-in zoom-in-95 duration-150">
+            <h3 class="font-bold text-lg mb-2 text-gray-900">設定自訂分帳比例</h3>
+            <p class="text-xs text-gray-500 mb-4 bg-gray-50 border border-gray-200 text-gray-800 p-2 rounded-lg font-mono" id="modal-key-display"></p>
+            <div class="space-y-4">
+                <input type="hidden" id="modal-key-hidden">
+                
+                <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3">
+                    <label class="block text-xs font-semibold text-gray-700">請輸入此商品各出資人佔的權重或比例：</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-0.5">哲華</label>
+                            <input type="number" id="modal-w-zh" min="0" step="any" class="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-0.5">川容</label>
+                            <input type="number" id="modal-w-cr" min="0" step="any" class="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-0.5">金祥吉</label>
+                            <input type="number" id="modal-w-jxj" min="0" step="any" class="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex gap-2 justify-end pt-2">
+                    <button onclick="closeQuickModal()" class="px-4 py-2 text-sm bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition">取消</button>
+                    <button onclick="saveQuickProduct()" class="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition">儲存並即時計算</button>
                 </div>
             </div>
         </div>
     </div>
-</div>
 
-<!-- 商品 Modal -->
-<div id="product-modal" onclick="if(event.target===this)hideModal()" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-    <div onclick="event.stopImmediatePropagation()" class="bg-white rounded-3xl w-full max-w-lg mx-4 p-8">
-        <h2 id="modal-title" class="text-2xl font-bold mb-6">新增 / 編輯商品</h2>
-        <input id="modal-product-name" placeholder="商品名稱" class="w-full border rounded-2xl px-5 py-4 mb-3">
-        <input id="modal-option-name" placeholder="商品選項名稱" class="w-full border rounded-2xl px-5 py-4 mb-3">
-        <select id="modal-split-type" class="w-full border rounded-2xl px-5 py-4 mb-3" onchange="toggleCustomSplit()">
-            <option value="哲華100">哲華 100%</option>
-            <option value="川容100">川容 100%</option>
-            <option value="50/50">哲華 50% + 川容 50%</option>
-            <option value="金祥吉100">金祥吉 100%</option>
-            <option value="custom">自訂比例 (哲華 + 川容)</option>
-        </select>
-        <div id="custom-split-fields" class="hidden grid grid-cols-2 gap-4 mb-6">
-            <div><label class="block text-xs text-gray-500 mb-1">哲華比例 (%)</label><input id="custom-zhehua" type="number" step="0.01" class="w-full border rounded-2xl px-5 py-4" value="50"></div>
-            <div><label class="block text-xs text-gray-500 mb-1">川容比例 (%)</label><input id="custom-chuanrong" type="number" step="0.01" class="w-full border rounded-2xl px-5 py-4" value="50"></div>
-        </div>
-        <input id="modal-category" placeholder="分類" class="w-full border rounded-2xl px-5 py-4 mb-6">
-        <div class="flex gap-3">
-            <button onclick="hideModal()" class="flex-1 py-4 border rounded-3xl">取消</button>
-            <button onclick="saveProductModal()" class="flex-1 py-4 bg-emerald-600 text-white rounded-3xl">儲存</button>
-        </div>
-    </div>
-</div>
+    <script>
+        // 全局核心資料庫變數
+        let productDB = {};
 
-<script>
-// ==================== 變數 ====================
-let PRODUCTS = [];
-let ORDERS_HISTORY = [];
-let CURRENT_PREVIEW = [];
-let sortColumn = -1;
-let sortDirection = 1;
-let monthlyChartInstance = null;
-let trendChartInstance = null;
-
-const SPLIT_RULES = {
-    "哲華100": { zhehua: 1, chuanrong: 0, jinxiangji: 0, color: "bg-blue-100 text-blue-700" },
-    "川容100": { zhehua: 0, chuanrong: 1, jinxiangji: 0, color: "bg-purple-100 text-purple-700" },
-    "50/50":   { zhehua: 0.5, chuanrong: 0.5, jinxiangji: 0, color: "bg-emerald-100 text-emerald-700" },
-    "金祥吉100": { zhehua: 0, chuanrong: 0, jinxiangji: 1, color: "bg-amber-100 text-amber-700" }
-};
-
-function generateKey(name, option) {
-    return `${(name||'').trim()} | ${(option||'').trim()}`;
-}
-
-// ==================== 儲存 ====================
-function saveToLocalStorage() {
-    localStorage.setItem('goldsmith_products', JSON.stringify(PRODUCTS));
-    localStorage.setItem('goldsmith_orders', JSON.stringify(ORDERS_HISTORY));
-}
-
-function loadFromLocalStorage() {
-    PRODUCTS = JSON.parse(localStorage.getItem('goldsmith_products')) || [];
-    ORDERS_HISTORY = JSON.parse(localStorage.getItem('goldsmith_orders')) || [];
-}
-
-// ==================== Tab 切換（重點修正） ====================
-function switchTab(n) {
-    document.querySelectorAll('#tab-content > div').forEach(d => d.classList.add('hidden'));
-    document.getElementById(`content-${n}`).classList.remove('hidden');
-    document.querySelectorAll('button[id^="tab-"]').forEach(b => b.classList.remove('tab-active'));
-    document.getElementById(`tab-${n}`).classList.add('tab-active');
-
-    if (n === 1) { sortColumn = -1; renderProductTable(); }
-    if (n === 2) { setTimeout(() => populateMonthSelect('order-month-select'), 100); }
-    if (n === 3) { setTimeout(() => { populateMonthSelect('month-select'); renderReport(); }, 100); }
-    if (n === 0) refreshDashboard();
-}
-
-// ==================== 月份選單 ====================
-function populateMonthSelect(id) {
-    const select = document.getElementById(id);
-    if (!select) return;
-    select.innerHTML = '<option value="">-- 請選擇月份 --</option>';
-    for (let m = 1; m <= 12; m++) {
-        const val = `2026-${String(m).padStart(2, '0')}`;
-        const opt = document.createElement('option');
-        opt.value = val;
-        opt.textContent = val;
-        select.appendChild(opt);
-    }
-    // 已有資料時預設選最新月份
-    const existing = [...new Set(ORDERS_HISTORY.map(o => o.month))].sort().reverse();
-    if (existing.length > 0) select.value = existing[0];
-}
-
-// ==================== 模糊搜尋 ====================
-function fuzzyMatch(text, query) {
-    if (!query) return true;
-    const words = query.toLowerCase().trim().split(/\s+/);
-    return words.every(word => (text || '').toLowerCase().includes(word));
-}
-
-// ==================== 產品資料庫 ====================
-function sortTable(col) {
-    if (sortColumn === col) sortDirection *= -1;
-    else { sortColumn = col; sortDirection = 1; }
-    renderProductTable();
-}
-
-function renderProductTable(filtered = PRODUCTS) {
-    let data = filtered.length ? filtered : PRODUCTS;
-    if (sortColumn >= 0) {
-        data = [...data].sort((a, b) => {
-            let va, vb;
-            if (sortColumn === 0) { va = a.productName || ''; vb = b.productName || ''; }
-            else if (sortColumn === 1) { va = a.optionName || ''; vb = b.optionName || ''; }
-            else if (sortColumn === 2) { va = a.splitType || ''; vb = b.splitType || ''; }
-            else if (sortColumn === 3) { va = a.category || ''; vb = b.category || ''; }
-            return (va < vb ? -1 : va > vb ? 1 : 0) * sortDirection;
-        });
-    }
-    const tbody = document.getElementById('product-table');
-    tbody.innerHTML = data.map((p) => {
-        let display = p.splitType;
-        let colorClass = SPLIT_RULES[p.splitType] ? SPLIT_RULES[p.splitType].color : "bg-teal-100 text-teal-700";
-        if (p.splitType && p.splitType.startsWith('custom:')) {
-            const [z,c] = p.splitType.replace('custom:','').split('/');
-            display = `自訂 ${z}/${c}`;
-            colorClass = "bg-teal-100 text-teal-700";
-        }
-        return `<tr class="hover:bg-emerald-50">
-            <td class="px-8 py-5">${p.productName}</td>
-            <td class="px-8 py-5 text-gray-600">${p.optionName||''}</td>
-            <td class="px-8 py-5"><span class="px-4 py-1 text-xs rounded-3xl ${colorClass}">${display}</span></td>
-            <td class="px-8 py-5">${p.category||''}</td>
-            <td class="px-8 py-5">
-                <button onclick="editProduct(${PRODUCTS.indexOf(p)})" class="text-emerald-600 hover:underline mr-4">編輯</button>
-                <button onclick="deleteProduct(${PRODUCTS.indexOf(p)})" class="text-red-500 hover:underline">刪除</button>
-            </td>
-        </tr>`;
-    }).join('') || `<tr><td colspan="5" class="px-8 py-12 text-center text-gray-400">尚無資料</td></tr>`;
-
-    for (let i = 0; i < 4; i++) {
-        const el = document.getElementById(`sort-${i}`);
-        if (el) el.textContent = (sortColumn === i) ? (sortDirection === 1 ? ' ▲' : ' ▼') : '';
-    }
-}
-
-function filterProducts() {
-    const term = document.getElementById('search-product').value;
-    const filtered = PRODUCTS.filter(p => fuzzyMatch(p.productName, term) || fuzzyMatch(p.optionName, term) || fuzzyMatch(p.category, term));
-    renderProductTable(filtered);
-}
-
-function addNewProduct() { showModal(-1); }
-function editProduct(i) { showModal(i); }
-
-function showModal(index) {
-    window.editingIndex = index;
-    document.getElementById('modal-title').textContent = index >= 0 ? '編輯商品' : '新增商品';
-    const modal = document.getElementById('product-modal');
-    if (index >= 0) {
-        const p = PRODUCTS[index];
-        document.getElementById('modal-product-name').value = p.productName || '';
-        document.getElementById('modal-option-name').value = p.optionName || '';
-        document.getElementById('modal-category').value = p.category || '';
-        if (p.splitType && p.splitType.startsWith('custom:')) {
-            document.getElementById('modal-split-type').value = 'custom';
-            const [z,c] = p.splitType.replace('custom:','').split('/').map(Number);
-            document.getElementById('custom-zhehua').value = z;
-            document.getElementById('custom-chuanrong').value = c;
-            document.getElementById('custom-split-fields').classList.remove('hidden');
-        } else {
-            document.getElementById('modal-split-type').value = p.splitType || '50/50';
-            document.getElementById('custom-split-fields').classList.add('hidden');
-        }
-    } else {
-        document.getElementById('modal-product-name').value = '';
-        document.getElementById('modal-option-name').value = '';
-        document.getElementById('modal-split-type').value = '50/50';
-        document.getElementById('modal-category').value = '';
-        document.getElementById('custom-split-fields').classList.add('hidden');
-    }
-    modal.classList.remove('hidden');
-}
-
-function hideModal() { document.getElementById('product-modal').classList.add('hidden'); }
-
-function saveProductModal() {
-    const name = document.getElementById('modal-product-name').value.trim();
-    const option = document.getElementById('modal-option-name').value.trim();
-    if (!name) return alert('請填寫商品名稱');
-    let splitType = document.getElementById('modal-split-type').value;
-    if (splitType === 'custom') {
-        const z = parseFloat(document.getElementById('custom-zhehua').value) || 0;
-        const c = parseFloat(document.getElementById('custom-chuanrong').value) || 0;
-        if (Math.abs(z + c - 100) > 0.01) return alert('比例總和必須為 100%');
-        splitType = `custom:${z}/${c}`;
-    }
-    const item = { key: generateKey(name, option), productName: name, optionName: option, splitType, category: document.getElementById('modal-category').value.trim() };
-    if (window.editingIndex >= 0) PRODUCTS[window.editingIndex] = item;
-    else PRODUCTS.unshift(item);
-    saveToLocalStorage();
-    hideModal();
-    renderProductTable();
-}
-
-function deleteProduct(i) {
-    if (confirm('確定刪除此商品？')) {
-        PRODUCTS.splice(i, 1);
-        saveToLocalStorage();
-        renderProductTable();
-    }
-}
-
-// ==================== JSON 備份 ====================
-function exportJSONBackup() {
-    const data = { products: PRODUCTS, orders: ORDERS_HISTORY, exportDate: new Date().toISOString() };
-    const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `金工分帳備份_${new Date().toISOString().slice(0,10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    alert('✅ 備份已下載！');
-}
-
-function importJSONBackup(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = function(ev) {
-        try {
-            const data = JSON.parse(ev.target.result);
-            if (confirm('匯入後將覆蓋目前所有資料，確定繼續？')) {
-                PRODUCTS = data.products || [];
-                ORDERS_HISTORY = data.orders || [];
-                saveToLocalStorage();
-                renderProductTable();
-                alert('✅ 資料已成功匯入！');
+        // 【資料庫標準化核心函數】
+        // 無論是從 LocalStorage 讀取，還是點擊「還原資料庫」讀取 JSON 檔案，都必定強制跑這台機器，把舊字串轉換成新格式
+        function loadAndNormalizeDB(sourceData) {
+            let targetObj = {};
+            if (!sourceData) return targetObj;
+            
+            for (let key in sourceData) {
+                let val = sourceData[key];
+                if (typeof val === 'string') {
+                    // 若是舊版 Python 腳本產出的格式，在此精準轉型
+                    if (val === 'zh100') targetObj[key] = { zh: 1, cr: 0, jxj: 0 };
+                    else if (val === 'cr100') targetObj[key] = { zh: 0, cr: 1, jxj: 0 };
+                    else if (val === 'mix50') targetObj[key] = { zh: 50, cr: 50, jxj: 0 };
+                    else if (val === 'jxj100') targetObj[key] = { zh: 0, cr: 0, jxj: 1 };
+                    else targetObj[key] = { zh: 1, cr: 0, jxj: 0 };
+                } else {
+                    // 本身就是新版格式，直接留用
+                    targetObj[key] = val;
+                }
             }
-        } catch (err) { alert('JSON 格式錯誤'); }
-    };
-    reader.readAsText(file);
-}
+            return targetObj;
+        }
 
-// ==================== 快速新增 ====================
-function quickAddToDatabase(key, productName, optionName) {
-    hideModal();
-    window.editingIndex = -1;
-    document.getElementById('modal-product-name').value = productName;
-    document.getElementById('modal-option-name').value = optionName;
-    document.getElementById('modal-split-type').value = '50/50';
-    document.getElementById('modal-category').value = '';
-    document.getElementById('modal-title').textContent = '新增商品到資料庫';
-    document.getElementById('custom-split-fields').classList.add('hidden');
-    document.getElementById('product-modal').classList.remove('hidden');
-}
+        // 核心動態拆帳演算法
+        function calculateShares(price, ruleObj) {
+            if (!ruleObj) return { zh: 0, cr: 0, jxj: 0, text: "未對映" };
+            
+            let w_zh = parseFloat(ruleObj.zh) || 0;
+            let w_cr = parseFloat(ruleObj.cr) || 0;
+            let w_jxj = parseFloat(ruleObj.jxj) || 0;
+            let totalW = w_zh + w_cr + w_jxj;
 
-// ==================== Excel 上傳 ====================
-function handleExcelUpload(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = function(ev) {
-        const data = new Uint8Array(ev.target.result);
-        const wb = XLSX.read(data, {type: 'array'});
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        const json = XLSX.utils.sheet_to_json(ws, {header: 1});
-        const headers = json[0].map(h => (h||'').toString().trim());
-        const rows = json.slice(1);
+            if (totalW === 0) return { zh: 0, cr: 0, jxj: 0, text: "未指定比例" };
 
-        CURRENT_PREVIEW = rows.map(row => {
-            const obj = {};
-            headers.forEach((h, i) => obj[h] = (row[i]||'').toString().trim());
-            const productName = obj['商品名稱'] || '';
-            const optionName = obj['商品選項名稱'] || '';
-            let total = parseFloat(obj['總計']) || 0;
-            if (!total) total = parseFloat(obj['商品原價'] || 0) * parseFloat(obj['數量'] || 0);
+            // 按權重比例精準拆分金額
+            let zhShare = (price * w_zh) / totalW;
+            let crShare = (price * w_cr) / totalW;
+            let jxjShare = (price * w_jxj) / totalW;
+
+            // 格式化顯示標籤的文字
+            let textParts = [];
+            if (w_zh > 0) textParts.push(`哲${Math.round((w_zh/totalW)*100)}%`);
+            if (w_cr > 0) textParts.push(`川${Math.round((w_cr/totalW)*100)}%`);
+            if (w_jxj > 0) textParts.push(`金${Math.round((w_jxj/totalW)*100)}%`);
+            
+            let labelText = textParts.join(' + ');
+            if (w_zh > 0 && w_cr === 0 && w_jxj === 0) labelText = "哲華 100%";
+            if (w_zh === 0 && w_cr > 0 && w_jxj === 0) labelText = "川容 100%";
+            if (w_zh === 0 && w_cr === 0 && w_jxj > 0) labelText = "金祥吉 100%";
+
             return {
-                orderNo: obj['訂單編號'] || '',
-                productName,
-                optionName,
-                totalPrice: total,
-                key: generateKey(productName, optionName)
+                zh: Math.round(zhShare * 100) / 100, // 保留小數點確保數據最精準
+                cr: Math.round(crShare * 100) / 100,
+                jxj: Math.round(jxjShare * 100) / 100,
+                text: labelText
             };
-        }).filter(r => r.totalPrice > 0);
+        }
 
-        renderOrderPreview();
-        document.getElementById('order-preview-section').classList.remove('hidden');
-    };
-    reader.readAsArrayBuffer(file);
-}
+        // 初始化頁面
+        window.onload = function() {
+            let localData = JSON.parse(localStorage.getItem('art_product_db')) || {};
+            productDB = loadAndNormalizeDB(localData); // 啟動初始化轉換
+            localStorage.setItem('art_product_db', JSON.stringify(productDB));
+            
+            renderDBTable();
+            loadMonthData(); 
+        };
 
-function renderOrderPreview() {
-    populateMonthSelect('order-month-select');
-    const tbody = document.getElementById('order-preview-table');
-    tbody.innerHTML = CURRENT_PREVIEW.map(item => {
-        const prod = PRODUCTS.find(p => p.key === item.key);
-        let splitType = prod ? prod.splitType : '未匹配';
-        let z = 0, c = 0, j = 0;
-        let colorClass = 'bg-gray-100 text-gray-600';
-        if (prod) {
-            if (prod.splitType && prod.splitType.startsWith('custom:')) {
-                const [zh, cr] = prod.splitType.replace('custom:','').split('/').map(Number);
-                z = item.totalPrice * (zh/100);
-                c = item.totalPrice * (cr/100);
-                colorClass = 'bg-teal-100 text-teal-700';
-                splitType = `自訂 ${zh}/${cr}`;
+        let activeCalculatedOrders = [];
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(tabId).classList.remove('hidden');
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('bg-white', 'text-gray-900', 'shadow-sm');
+                btn.classList.add('text-gray-600', 'hover:text-gray-900');
+            });
+            document.getElementById(`btn-${tabId}`).classList.add('bg-white', 'text-gray-900', 'shadow-sm');
+        }
+
+        function generateKey(name, option) {
+            return `${String(name || '').replace(/\s+/g, ' ').trim()}_${String(option || '').replace(/\s+/g, ' ').trim()}`;
+        }
+
+        // 讀取指定月份帳務
+        function loadMonthData() {
+            const month = document.getElementById('selected-month').value;
+            document.getElementById('title-month-display').innerText = month;
+            document.getElementById('file-info').classList.add('hidden');
+            
+            const savedOrders = localStorage.getItem(`orders_month_${month}`);
+            if (savedOrders) {
+                calculateAndRenderOrders(JSON.parse(savedOrders), false);
             } else {
-                const rule = SPLIT_RULES[prod.splitType] || {zhehua:0, chuanrong:0, jinxiangji:0};
-                z = item.totalPrice * rule.zhehua;
-                c = item.totalPrice * rule.chuanrong;
-                j = item.totalPrice * rule.jinxiangji;
-                colorClass = rule.color;
+                resetMonthDisplay();
             }
         }
-        const action = !prod ? `<button onclick="quickAddToDatabase('${item.key}', '${item.productName.replace(/'/g,"\\'")}', '${item.optionName.replace(/'/g,"\\'")}')" class="text-blue-600 hover:underline text-xs">+ 新增到資料庫</button>` : '';
-        return `<tr class="${prod ? 'bg-emerald-50' : 'bg-orange-50'}">
-            <td class="px-6 py-4">${item.orderNo}</td>
-            <td class="px-6 py-4">${item.productName}</td>
-            <td class="px-6 py-4 text-gray-500">${item.optionName}</td>
-            <td class="px-6 py-4 font-medium">NT$ ${item.totalPrice}</td>
-            <td class="px-6 py-4"><span class="px-3 py-1 text-xs rounded-3xl ${colorClass}">${splitType}</span></td>
-            <td class="px-6 py-4">${z.toFixed(2)}</td>
-            <td class="px-6 py-4">${c.toFixed(2)}</td>
-            <td class="px-6 py-4">${j.toFixed(2)}</td>
-            <td class="px-6 py-4">${action}</td>
-        </tr>`;
-    }).join('');
-}
 
-// ==================== 儲存訂單 ====================
-function saveCurrentOrder() {
-    const month = document.getElementById('order-month-select').value;
-    if (!month) return alert('請選擇歸屬月份');
-    let totalSales = 0, zSum = 0, cSum = 0, jSum = 0;
-    CURRENT_PREVIEW.forEach(item => {
-        const prod = PRODUCTS.find(p => p.key === item.key);
-        let rule = {zhehua:0, chuanrong:0, jinxiangji:0};
-        if (prod) {
-            if (prod.splitType && prod.splitType.startsWith('custom:')) {
-                const [z,c] = prod.splitType.replace('custom:','').split('/').map(Number);
-                rule = {zhehua: z/100, chuanrong: c/100, jinxiangji: 0};
-            } else {
-                rule = SPLIT_RULES[prod.splitType] || rule;
+        function clearCurrentMonth() {
+            const month = document.getElementById('selected-month').value;
+            if(confirm(`確定要清空 ${month} 月的帳務訂單數據嗎？`)) {
+                localStorage.removeItem(`orders_month_${month}`);
+                loadMonthData();
             }
         }
-        totalSales += item.totalPrice;
-        zSum += item.totalPrice * rule.zhehua;
-        cSum += item.totalPrice * rule.chuanrong;
-        jSum += item.totalPrice * rule.jinxiangji;
-    });
-    ORDERS_HISTORY.unshift({ month, totalSales, zhehua: zSum, chuanrong: cSum, jinxiangji: jSum, items: [...CURRENT_PREVIEW] });
-    saveToLocalStorage();
-    alert(`✅ 已儲存到 ${month} 月`);
-    CURRENT_PREVIEW = [];
-    document.getElementById('order-preview-section').classList.add('hidden');
-    refreshDashboard();
-}
 
-// ==================== 報表 ====================
-function renderReport() {
-    const selectedMonth = document.getElementById('month-select').value;
-    if (!selectedMonth) return;
-    const filtered = ORDERS_HISTORY.filter(o => o.month === selectedMonth);
-    if (filtered.length === 0) {
-        document.getElementById('report-detail').innerHTML = '<p class="text-gray-400 text-center py-12">尚無該月份資料</p>';
-        renderAllMonthsTable();
-        return;
-    }
-    const order = filtered[0];
-    document.getElementById('report-detail').innerHTML = `
-        <div class="grid grid-cols-3 gap-4 text-center">
-            <div class="bg-blue-50 rounded-2xl p-6"><div class="text-blue-600 text-xs">哲華</div><div class="text-4xl font-bold mt-2">NT$ ${order.zhehua.toLocaleString()}</div></div>
-            <div class="bg-purple-50 rounded-2xl p-6"><div class="text-purple-600 text-xs">川容</div><div class="text-4xl font-bold mt-2">NT$ ${order.chuanrong.toLocaleString()}</div></div>
-            <div class="bg-amber-50 rounded-2xl p-6"><div class="text-amber-600 text-xs">金祥吉</div><div class="text-4xl font-bold mt-2">NT$ ${order.jinxiangji.toLocaleString()}</div></div>
-        </div>`;
-    const ctx = document.getElementById('monthlyChart');
-    if (monthlyChartInstance) monthlyChartInstance.destroy();
-    monthlyChartInstance = new Chart(ctx, {
-        type: 'bar',
-        data: { labels: ['哲華', '川容', '金祥吉'], datasets: [{ label: '金額', data: [order.zhehua, order.chuanrong, order.jinxiangji], backgroundColor: ['#3b82f6', '#a855f7', '#f59e0b'] }] },
-        options: { responsive: true, scales: { y: { beginAtZero: true } } }
-    });
-    renderRankingTable(selectedMonth);
-    renderAllMonthsTable();
-}
+        function resetMonthDisplay() {
+            document.getElementById('summary-total').innerText = '$0';
+            document.getElementById('summary-zh').innerText = '$0';
+            document.getElementById('summary-cr').innerText = '$0';
+            document.getElementById('summary-jxj').innerText = '$0';
+            document.getElementById('order-count').innerText = '(暫無此月數據)';
+            document.getElementById('order-table-body').innerHTML = `<tr><td colspan="7" class="text-center py-12 text-gray-400">此月份目前無帳務資料。請在左側選擇檔案並上傳。</td></tr>`;
+            document.getElementById('btn-export').disabled = true;
+            document.getElementById('btn-export').className = "bg-gray-100 text-gray-400 cursor-not-allowed font-medium text-sm px-4 py-2 rounded-xl transition flex items-center gap-1";
+        }
 
-function renderRankingTable(month) {
-    const order = ORDERS_HISTORY.find(o => o.month === month);
-    if (!order) return;
-    const salesMap = {};
-    order.items.forEach(item => {
-        const key = `${item.productName} | ${item.optionName || ''}`;
-        salesMap[key] = (salesMap[key] || 0) + item.totalPrice;
-    });
-    const sorted = Object.entries(salesMap).sort((a, b) => b[1] - a[1]).slice(0, 10);
-    const tbody = document.getElementById('ranking-table');
-    tbody.innerHTML = sorted.map(([key, amount], i) => {
-        const [name, option] = key.split(' | ');
-        return `<tr class="hover:bg-emerald-50"><td class="px-6 py-4 font-medium">${i+1}</td><td class="px-6 py-4">${name}</td><td class="px-6 py-4 text-gray-500">${option}</td><td class="px-6 py-4 text-right font-medium">NT$ ${amount.toLocaleString()}</td></tr>`;
-    }).join('');
-}
+        function handleFile(input) {
+            const file = input.files[0];
+            if (!file) return;
 
-function renderAllMonthsTable() {
-    const tbody = document.getElementById('all-months-table');
-    tbody.innerHTML = ORDERS_HISTORY.map(order => `
-        <tr class="hover:bg-emerald-50">
-            <td class="px-6 py-4">${order.month}</td>
-            <td class="px-6 py-4 text-right font-medium">NT$ ${order.totalSales.toLocaleString()}</td>
-            <td class="px-6 py-4 text-right">${order.zhehua.toLocaleString()}</td>
-            <td class="px-6 py-4 text-right">${order.chuanrong.toLocaleString()}</td>
-            <td class="px-6 py-4 text-right">${order.jinxiangji.toLocaleString()}</td>
-            <td class="px-6 py-4"><button onclick="deleteMonth('${order.month}')" class="text-red-500 hover:underline text-xs">刪除</button></td>
-        </tr>`).join('') || `<tr><td colspan="6" class="px-8 py-12 text-center text-gray-400">尚無任何月份資料</td></tr>`;
-}
+            const month = document.getElementById('selected-month').value;
+            document.getElementById('file-info').innerText = `已成功讀取並歸類至 ${month}：${file.name}`;
+            document.getElementById('file-info').classList.remove('hidden');
 
-function deleteMonth(month) {
-    if (confirm(`確定刪除 ${month} 的所有資料？`)) {
-        ORDERS_HISTORY = ORDERS_HISTORY.filter(o => o.month !== month);
-        saveToLocalStorage();
-        renderReport();
-        refreshDashboard();
-    }
-}
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                const rawRows = XLSX.utils.sheet_to_json(worksheet);
+                
+                localStorage.setItem(`orders_month_${month}`, JSON.stringify(rawRows));
+                calculateAndRenderOrders(rawRows, true);
+            };
+            reader.readAsArrayBuffer(file);
+            input.value = '';
+        }
 
-// ==================== 匯出 Excel ====================
-function exportReportExcel() {
-    const selectedMonth = document.getElementById('month-select').value;
-    if (!selectedMonth) return alert('請先選擇月份');
-    const filtered = ORDERS_HISTORY.filter(o => o.month === selectedMonth);
-    if (filtered.length === 0) return alert('該月份無資料');
-    const order = filtered[0];
-    const reportData = [
-        ['月份', selectedMonth],
-        ['總銷售額', order.totalSales],
-        ['哲華', order.zhehua],
-        ['川容', order.chuanrong],
-        ['金祥吉', order.jinxiangji],
-        [],
-        ['商品名稱', '選項', '總計', '哲華', '川容', '金祥吉']
-    ];
-    order.items.forEach(item => {
-        const prod = PRODUCTS.find(p => p.key === item.key);
-        let z = 0, c = 0, j = 0;
-        if (prod) {
-            if (prod.splitType && prod.splitType.startsWith('custom:')) {
-                const [zh, cr] = prod.splitType.replace('custom:','').split('/').map(Number);
-                z = item.totalPrice * (zh/100);
-                c = item.totalPrice * (cr/100);
-            } else {
-                const rule = SPLIT_RULES[prod.splitType] || {zhehua:0, chuanrong:0, jinxiangji:0};
-                z = item.totalPrice * rule.zhehua;
-                c = item.totalPrice * rule.chuanrong;
-                j = item.totalPrice * rule.jinxiangji;
+        // 計算並渲染表格與卡片數字
+        function calculateAndRenderOrders(rawRows, triggerAlert = false) {
+            activeCalculatedOrders = [];
+            let totalRevenue = 0, totalZH = 0, totalCR = 0, totalJXJ = 0;
+            let missingRulesCount = 0;
+
+            rawRows.forEach(row => {
+                if (!row['商品名稱'] && !row['訂單編號']) return;
+
+                const orderId = row['訂單編號'] || '無編號';
+                const pName = row['商品名稱'] || '';
+                const pOption = row['商品選項名稱'] || '';
+                const price = parseFloat(row['價格']) || 0;
+
+                const key = generateKey(pName, pOption);
+                const ruleObj = productDB[key] || null;
+
+                if (!ruleObj) missingRulesCount++;
+
+                const res = calculateShares(price, ruleObj);
+
+                totalRevenue += price;
+                totalZH += res.zh;
+                totalCR += res.cr;
+                totalJXJ += res.jxj;
+
+                activeCalculatedOrders.push({
+                    orderId, pName, pOption, price, key, ruleObj, 
+                    zhShare: res.zh, crShare: res.cr, jxjShare: res.jxj, labelText: res.text, originalRow: row
+                });
+            });
+
+            document.getElementById('summary-total').innerText = `$${Math.round(totalRevenue).toLocaleString()}`;
+            document.getElementById('summary-zh').innerText = `$${Math.round(totalZH).toLocaleString()}`;
+            document.getElementById('summary-cr').innerText = `$${Math.round(totalCR).toLocaleString()}`;
+            document.getElementById('summary-jxj').innerText = `$${Math.round(totalJXJ).toLocaleString()}`;
+
+            const btnExport = document.getElementById('btn-export');
+            if (activeCalculatedOrders.length > 0) {
+                btnExport.disabled = false;
+                btnExport.className = "bg-indigo-600 text-white hover:bg-indigo-700 font-medium text-sm px-4 py-2 rounded-xl transition flex items-center gap-1 shadow-sm";
+            }
+
+            const tbody = document.getElementById('order-table-body');
+            const month = document.getElementById('selected-month').value;
+            document.getElementById('order-count').innerText = `(${month} 月共 ${activeCalculatedOrders.length} 筆明細)`;
+            tbody.innerHTML = '';
+
+            activeCalculatedOrders.forEach(item => {
+                const tr = document.createElement('tr');
+                
+                let badgeStyle = "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100";
+                let displayLabel = item.labelText;
+
+                if (!item.ruleObj) {
+                    tr.className = "bg-amber-50/70 hover:bg-amber-100/70 transition";
+                    badgeStyle = "bg-white text-amber-700 border-amber-300 hover:bg-amber-50 font-semibold";
+                    displayLabel = "⚠️ 點擊補比例";
+                } else {
+                    tr.className = "hover:bg-gray-50 transition";
+                    if(item.ruleObj.zh > 0 && item.ruleObj.cr === 0 && item.ruleObj.jxj === 0) badgeStyle = "bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100";
+                    else if(item.ruleObj.cr > 0 && item.ruleObj.zh === 0 && item.ruleObj.jxj === 0) badgeStyle = "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100";
+                    else if(item.ruleObj.jxj > 0 && item.ruleObj.zh === 0 && item.ruleObj.cr === 0) badgeStyle = "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100";
+                    else badgeStyle = "bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100"; // 混和自訂比例
+                }
+
+                tr.innerHTML = `
+                    <td class="px-6 py-3 text-xs text-gray-500 font-mono">${item.orderId}</td>
+                    <td class="px-6 py-3">
+                        <div class="font-medium text-gray-900 max-w-xs truncate" title="${item.pName}">${item.pName}</div>
+                        <div class="text-xs text-gray-400 max-w-xs truncate">規格: ${item.pOption || '無'}</div>
+                    </td>
+                    <td class="px-6 py-3 text-right font-semibold text-gray-900">$${item.price}</td>
+                    <td class="px-6 py-3 text-center">
+                        <button onclick="openQuickModal('${encodeURIComponent(item.key)}')" class="text-xs px-2.5 py-1 rounded-full border ${badgeStyle} shadow-sm transition font-medium">${displayLabel}</button>
+                    </td>
+                    <td class="px-6 py-3 text-right font-medium text-indigo-600">${item.ruleObj ? '$' + item.zhShare.toLocaleString() : '-'}</td>
+                    <td class="px-6 py-3 text-right font-medium text-rose-600">${item.ruleObj ? '$' + item.crShare.toLocaleString() : '-'}</td>
+                    <td class="px-6 py-3 text-right font-medium text-amber-600">${item.ruleObj ? '$' + item.jxjShare.toLocaleString() : '-'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            if(triggerAlert && missingRulesCount > 0) {
+                alert(`📊 捕捉成功！本月有 ${missingRulesCount} 項商品無規則，已自動標為黃色，您可以直接點選表格中的標籤進行自由比例配分！`);
             }
         }
-        reportData.push([item.productName, item.optionName, item.totalPrice, z, c, j]);
-    });
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.aoa_to_sheet(reportData);
-    XLSX.utils.book_append_sheet(wb, ws, selectedMonth);
-    XLSX.writeFile(wb, `金工分帳報表_${selectedMonth}.xlsx`);
-}
 
-// ==================== 儀表板 ====================
-function refreshDashboard() {
-    let total = 0, z = 0, c = 0, j = 0;
-    ORDERS_HISTORY.forEach(o => {
-        total += o.totalSales || 0;
-        z += o.zhehua || 0;
-        c += o.chuanrong || 0;
-        j += o.jinxiangji || 0;
-    });
-    document.getElementById('total-sales').textContent = `NT$ ${total.toLocaleString()}`;
-    document.getElementById('zhehua-total').textContent = `NT$ ${z.toLocaleString()}`;
-    document.getElementById('chuanrong-total').textContent = `NT$ ${c.toLocaleString()}`;
-    document.getElementById('jinxiangji-total').textContent = `NT$ ${j.toLocaleString()}`;
+        function openQuickModal(encodedKey) {
+            const key = decodeURIComponent(encodedKey);
+            const parts = key.split('_');
+            
+            document.getElementById('modal-key-hidden').value = encodedKey;
+            document.getElementById('modal-key-display').innerText = `商品：${parts[0]}\n規格：${parts.slice(1).join('_') || '無'}`;
+            
+            const current = productDB[key] || { zh: 0, cr: 0, jxj: 0 };
+            document.getElementById('modal-w-zh').value = current.zh;
+            document.getElementById('modal-w-cr').value = current.cr;
+            document.getElementById('modal-w-jxj').value = current.jxj;
+            
+            document.getElementById('quick-modal').classList.remove('hidden');
+        }
 
-    const pieCtx = document.getElementById('pieChart');
-    if (window.pieChart) window.pieChart.destroy();
-    window.pieChart = new Chart(pieCtx, {
-        type: 'pie',
-        data: { labels: ['哲華','川容','金祥吉'], datasets: [{ data: [z,c,j], backgroundColor: ['#3b82f6','#a855f7','#f59e0b'] }] },
-        options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
-    });
-    renderTrendChart();
-}
+        function closeQuickModal() {
+            document.getElementById('quick-modal').classList.add('hidden');
+        }
 
-function renderTrendChart() {
-    const months = [...new Set(ORDERS_HISTORY.map(o => o.month))].sort();
-    const totals = months.map(m => ORDERS_HISTORY.find(o => o.month === m)?.totalSales || 0);
-    const zData = months.map(m => ORDERS_HISTORY.find(o => o.month === m)?.zhehua || 0);
-    const cData = months.map(m => ORDERS_HISTORY.find(o => o.month === m)?.chuanrong || 0);
-    const jData = months.map(m => ORDERS_HISTORY.find(o => o.month === m)?.jinxiangji || 0);
-    const ctx = document.getElementById('trendChart');
-    if (trendChartInstance) trendChartInstance.destroy();
-    trendChartInstance = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: months,
-            datasets: [
-                { label: '總銷售額', data: totals, borderColor: '#10b981', tension: 0.3 },
-                { label: '哲華', data: zData, borderColor: '#3b82f6', tension: 0.3 },
-                { label: '川容', data: cData, borderColor: '#a855f7', tension: 0.3 },
-                { label: '金祥吉', data: jData, borderColor: '#f59e0b', tension: 0.3 }
-            ]
-        },
-        options: { responsive: true, scales: { y: { beginAtZero: true } } }
-    });
-}
+        function saveQuickProduct() {
+            const encodedKey = document.getElementById('modal-key-hidden').value;
+            const key = decodeURIComponent(encodedKey);
+            
+            const zh = parseFloat(document.getElementById('modal-w-zh').value) || 0;
+            const cr = parseFloat(document.getElementById('modal-w-cr').value) || 0;
+            const jxj = parseFloat(document.getElementById('modal-w-jxj').value) || 0;
 
-// ==================== 初始化 ====================
-function initApp() {
-    loadFromLocalStorage();
-    refreshDashboard();
-    renderProductTable();
-    console.log('%c✅ 金工分帳工具最終版已啟動（月份選擇已完全修正）', 'color:#10b981;font-size:16px');
-}
+            if(zh + cr + jxj === 0) {
+                alert('請至少指定一位出資人的比例數值！');
+                return;
+            }
 
-window.onload = initApp;
-</script>
+            productDB[key] = { zh, cr, jxj };
+            localStorage.setItem('art_product_db', JSON.stringify(productDB));
+            
+            renderDBTable();
+            closeQuickModal();
+
+            const month = document.getElementById('selected-month').value;
+            const savedOrders = localStorage.getItem(`orders_month_${month}`);
+            if (savedOrders) calculateAndRenderOrders(JSON.parse(savedOrders), false);
+        }
+
+        function exportCalculatedExcel() {
+            if (activeCalculatedOrders.length === 0) return;
+            const month = document.getElementById('selected-month').value;
+
+            const exportRows = activeCalculatedOrders.map(item => {
+                const base = Object.assign({}, item.originalRow);
+                base['分帳比例說明'] = item.labelText;
+                base['哲華'] = item.zhShare;
+                base['川容'] = item.crShare;
+                base['金祥吉'] = item.jxjShare;
+                return base;
+            });
+
+            const worksheet = XLSX.utils.json_to_sheet(exportRows);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "拆帳結果");
+            XLSX.writeFile(workbook, `ArtStudio_${month}_精準分帳報表.xlsx`);
+        }
+
+        // --- 主資料庫維護邏輯 ---
+        function renderDBTable() {
+            const tbody = document.getElementById('db-table-body');
+            const searchKeyword = document.getElementById('search-db').value.toLowerCase();
+            tbody.innerHTML = '';
+
+            let count = 0;
+            for (let key in productDB) {
+                if (searchKeyword && !key.toLowerCase().includes(searchKeyword)) continue;
+                count++;
+                
+                const current = productDB[key];
+                const parts = key.split('_');
+                const demo = calculateShares(100, current);
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-gray-50 transition text-xs";
+                tr.innerHTML = `
+                    <td class="px-4 py-2.5">
+                        <div class="font-medium text-gray-900">${parts[0]}</div>
+                        <div class="text-gray-400">選項: ${parts.slice(1).join('_') || '無'}</div>
+                    </td>
+                    <td class="px-4 py-2.5 text-center">
+                        <span class="px-2.5 py-1 rounded-full border border-gray-200 bg-gray-50 text-gray-700 font-medium font-mono">${demo.text} (${current.zh} : ${current.cr} : ${current.jxj})</span>
+                    </td>
+                    <td class="px-4 py-2.5 text-center space-x-3">
+                        <button onclick="editProduct('${encodeURIComponent(key)}')" class="text-indigo-600 hover:text-indigo-900 font-medium">修改</button>
+                        <button onclick="deleteProduct('${encodeURIComponent(key)}')" class="text-red-600 hover:text-red-900 font-medium">刪除</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            }
+            if (count === 0) tbody.innerHTML = `<tr><td colspan="3" class="text-center py-6 text-gray-400">查無資料</td></tr>`;
+        }
+
+        function saveProduct(e) {
+            e.preventDefault();
+            const name = document.getElementById('form-name').value;
+            const option = document.getElementById('form-option').value;
+            const zh = parseFloat(document.getElementById('form-w-zh').value) || 0;
+            const cr = parseFloat(document.getElementById('form-w-cr').value) || 0;
+            const jxj = parseFloat(document.getElementById('form-w-jxj').value) || 0;
+            const oldKey = document.getElementById('edit-old-key').value;
+
+            if (zh + cr + jxj === 0) {
+                alert('比例總和不可為 0');
+                return;
+            }
+
+            const newKey = generateKey(name, option);
+            if (oldKey && oldKey !== newKey) delete productDB[decodeURIComponent(oldKey)];
+
+            productDB[newKey] = { zh, cr, jxj };
+            localStorage.setItem('art_product_db', JSON.stringify(productDB));
+            
+            renderDBTable();
+            resetForm();
+            loadMonthData();
+        }
+
+        function editProduct(encodedKey) {
+            const key = decodeURIComponent(encodedKey);
+            const current = productDB[key];
+            const parts = key.split('_');
+            
+            document.getElementById('form-title').innerText = "編輯產品比例規則";
+            document.getElementById('form-name').value = parts[0];
+            document.getElementById('form-option').value = parts.slice(1).join('_');
+            document.getElementById('form-w-zh').value = current.zh;
+            document.getElementById('form-w-cr').value = current.cr;
+            document.getElementById('form-w-jxj').value = current.jxj;
+            document.getElementById('edit-old-key').value = encodedKey;
+            
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function deleteProduct(encodedKey) {
+            if(confirm(`確定刪除此規則嗎？`)) {
+                delete productDB[decodeURIComponent(encodedKey)];
+                localStorage.setItem('art_product_db', JSON.stringify(productDB));
+                renderDBTable();
+                loadMonthData();
+            }
+        }
+
+        function resetForm() {
+            document.getElementById('form-title').innerText = "手動新增產品規則";
+            document.getElementById('product-form').reset();
+            document.getElementById('form-w-zh').value = 0;
+            document.getElementById('form-w-cr').value = 0;
+            document.getElementById('form-w-jxj').value = 0;
+            document.getElementById('edit-old-key').value = '';
+        }
+
+        function exportDB() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(productDB, null, 2));
+            const dl = document.createElement('a');
+            dl.setAttribute("href", dataStr);
+            dl.setAttribute("download", "art_custom_ratio_database.json");
+            dl.click();
+        }
+
+        // 【修正核心】：還原資料庫時，立刻強制調用 loadAndNormalizeDB 進行相容轉型
+        function importDB(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    let jsonRaw = JSON.parse(e.target.result);
+                    
+                    // 關鍵修正：在匯入當下立刻做格式升級轉換！
+                    productDB = loadAndNormalizeDB(jsonRaw); 
+                    
+                    localStorage.setItem('art_product_db', JSON.stringify(productDB));
+                    renderDBTable();
+                    loadMonthData();
+                    alert('🎉 自由分帳比例資料庫已完全轉換並成功還原！');
+                } catch(err) { alert('導入失敗，請確認檔案格式。'); }
+            };
+            reader.readAsText(file);
+            input.value = '';
+        }
+    </script>
 </body>
 </html>
